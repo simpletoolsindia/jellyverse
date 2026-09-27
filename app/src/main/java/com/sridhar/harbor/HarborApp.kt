@@ -25,6 +25,7 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
         // Off the main thread: channels + WorkManager aren't needed for the first frame.
         container.scope.launch {
             com.sridhar.harbor.alerts.Alerts.createChannels(this@HarborApp)
+            com.sridhar.harbor.update.UpdateWorker.schedule(this@HarborApp)
             if (!packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)) com.sridhar.harbor.alerts.Alerts.schedule(this@HarborApp)
         }
     }

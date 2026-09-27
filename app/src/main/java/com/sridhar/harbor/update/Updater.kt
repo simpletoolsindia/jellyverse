@@ -47,9 +47,28 @@ class Updater(private val context: Context, private val http: OkHttpClient) {
     val currentVersion: String = BuildConfig.VERSION_NAME.substringBefore('-')
     private val assetName = if (BuildConfig.FLAVOR == "tv") "JellyVerseTV-tv.apk" else "JellyVerse-phone.apk"
 
+    /** "Check for updates automatically" – on by default. */
+    var autoCheck: Boolean
+        get() = prefs.getBoolean("auto_check", true)
+        set(v) { prefs.edit().putBoolean("auto_check", v).apply(); _autoFlow.value = v }
+    private val _autoFlow = MutableStateFlow(prefs.getBoolean("auto_check", true))
+    val autoCheckFlow: StateFlow<Boolean> = _autoFlow.asStateFlow()
+
+    /** Background worker path: no UI state changes; returns the newer release, if any. */
+    suspend fun checkQuietly(): UpdateInfo? {
+        prefs.edit().putLong("last_check", System.currentTimeMillis()).apply()
+        return fetchLatest()?.takeIf { isNewer(it.version, currentVersion) }?.also { _state.value = UpdateState.Available(it) }
+    }
+
+    /** True the first time a version is announced by notification (so each release notifies once). */
+    fun markNotified(version: String): Boolean {
+        if (prefs.getString("notified", null) == version) return false
+        prefs.edit().putString("notified", version).apply(); return true
+    }
+
     /** Background check: at most once a day, and never nags again about a version the user dismissed. */
     suspend fun checkIfDue() {
-        if (!enabled) return
+        if (!enabled || !autoCheck) return
         val last = prefs.getLong("last_check", 0)
         if (System.currentTimeMillis() - last < 20 * 3_600_000L) return
         check(userInitiated = false)

@@ -1,0 +1,9 @@
+[Unit]
+Description=JellyVerse auto-import: move finished downloads into the Jellyfin library
+After=network-online.target docker.service mnt-pool-movies.mount
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/homelab/scripts/jv-import.py
+StandardOutput=append:/var/log/jv-import.log
+StandardError=append:/var/log/jv-import.log

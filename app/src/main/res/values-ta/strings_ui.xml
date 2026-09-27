@@ -1008,4 +1008,11 @@
     <string name="doctor_applying">பயன்படுத்துகிறது… Jellyfin விவரங்களைப் பெறுகிறது</string>
     <string name="doctor_move_to_tv">TV தொடர்களுக்கு நகர்த்து</string>
     <string name="doctor_move_to_movies">திரைப்படங்களுக்கு நகர்த்து</string>
+    <string name="update_auto">புதுப்பிப்புகளைத் தானாகச் சரிபார்</string>
+    <string name="update_auto_hint">தினமும் பின்னணியில் – புதிய பதிப்பு வந்தால் அறிவிப்பு வரும்</string>
+    <string name="update_channel">ஆப் புதுப்பிப்புகள்</string>
+    <string name="update_notif_title">JellyVerse %1$s கிடைக்கிறது</string>
+    <string name="update_notif_body">புதியவற்றைப் பார்த்து புதுப்பிக்கத் தட்டவும்</string>
+    <string name="on_label">இயக்கம்</string>
+    <string name="off_label">முடக்கம்</string>
 </resources>

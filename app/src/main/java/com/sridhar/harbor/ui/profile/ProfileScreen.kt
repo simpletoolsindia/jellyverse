@@ -126,6 +126,12 @@ fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () 
             ToggleRow(stringResource(R.string.request_available), stringResource(R.string.when_jellyseerr_requests_land_in_your), aRq) { aRq = it; alertPrefs.requests = it; com.sridhar.harbor.alerts.Alerts.schedule(ctx) }
             ToggleRow(stringResource(R.string.homelab_alerts), stringResource(R.string.disk_full_overheating_containers_down), aLab) { aLab = it; alertPrefs.homelab = it; com.sridhar.harbor.alerts.Alerts.schedule(ctx) }
             ToggleRow(stringResource(R.string.app_lock), stringResource(R.string.fingerprint_pin_after_1_minute_away), lock) { lock = it; lockPrefs.enabled = it }
+            if (container.updater.enabled) {
+                val autoUpd by container.updater.autoCheckFlow.collectAsState()
+                ToggleRow(stringResource(R.string.update_auto), stringResource(R.string.update_auto_hint), autoUpd) {
+                    container.updater.autoCheck = it; com.sridhar.harbor.update.UpdateWorker.schedule(ctx)
+                }
+            }
         }
         Spacer(Modifier.height(24.dp))
         Text(stringResource(R.string.library), style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)

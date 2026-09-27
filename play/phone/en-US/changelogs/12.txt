@@ -1,0 +1,1 @@
+JellyVerse 2.6.2: automatic update checks – a daily background check with a notification when a new version is out (turn it off in Settings) • the video player follows your phone's rotation (choose Auto / Landscape / Portrait in the player) • the music bar hides itself after 1 minute without music • fixes.

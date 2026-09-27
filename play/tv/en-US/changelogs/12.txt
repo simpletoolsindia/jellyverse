@@ -1,0 +1,1 @@
+JellyVerse TV 2.6.2: automatic update checks (on/off in Settings) • fixes.

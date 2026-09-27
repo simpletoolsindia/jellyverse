@@ -1008,4 +1008,11 @@
     <string name="doctor_applying">Applying… Jellyfin is fetching the details</string>
     <string name="doctor_move_to_tv">Move to TV Shows</string>
     <string name="doctor_move_to_movies">Move to Movies</string>
+    <string name="update_auto">Check for updates automatically</string>
+    <string name="update_auto_hint">Daily, in the background – you get a notification when a new version is out</string>
+    <string name="update_channel">App updates</string>
+    <string name="update_notif_title">JellyVerse %1$s is available</string>
+    <string name="update_notif_body">Tap to see what\'s new and update</string>
+    <string name="on_label">On</string>
+    <string name="off_label">Off</string>
 </resources>

@@ -194,6 +194,14 @@ private fun HarborNavContent(initial: ServerConfig) {
     // Bring back the last music queue (paused) so the mini player is there on every tab after a restart.
     LaunchedEffect(Unit) { if (container.config.value?.navidromeReady == true) container.musicEngine.restore() }
     val music by container.musicEngine.state.collectAsState()
+    // The mini player follows actual listening: it tucks away after 1 min without playback (a restored/paused
+    // queue no longer sits on every screen) and returns the moment anything plays.
+    var musicIdle by remember { mutableStateOf(!music.playing) }
+    LaunchedEffect(music.playing, music.current?.id) {
+        if (music.playing) musicIdle = false
+        else { kotlinx.coroutines.delay(60_000); musicIdle = true }
+    }
+    val musicActive = music.current != null && !musicIdle
     val musicNav = remember(nav) {
         com.sridhar.harbor.ui.music.MusicNav(
             album = { nav.navigate(MusicAlbumRoute(it)) }, playlist = { nav.navigate(MusicPlaylistRoute(it)) }, liked = { nav.navigate(MusicLikedRoute) },
@@ -237,7 +245,7 @@ private fun HarborNavContent(initial: ServerConfig) {
     Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
         val isTab: (androidx.navigation.NavBackStackEntry) -> Boolean = { e -> tabs.any { t -> e.destination.hasRoute(t.route::class) } }
         // Mini player height (+ gap) that floating buttons and lists must stay clear of.
-        val miniVisible = music.current != null && (showBar || dest != null && listOf(MusicAlbumRoute::class, MusicPlaylistRoute::class, MusicLikedRoute::class, MusicArtistRoute::class, MusicSearchRoute::class, MusicLibraryRoute::class).any { dest.hasRoute(it) })
+        val miniVisible = musicActive && (showBar || dest != null && listOf(MusicAlbumRoute::class, MusicPlaylistRoute::class, MusicLikedRoute::class, MusicArtistRoute::class, MusicSearchRoute::class, MusicLibraryRoute::class).any { dest.hasRoute(it) })
         val miniInset by androidx.compose.animation.core.animateDpAsState(if (miniVisible) 72.dp else 0.dp, label = "miniInset")
         androidx.compose.runtime.CompositionLocalProvider(com.sridhar.harbor.ui.components.LocalMiniPlayerInset provides miniInset) {
         NavHost(
@@ -361,7 +369,8 @@ private fun HarborNavContent(initial: ServerConfig) {
 
         }
         val onMusicScreen = dest != null && listOf(MusicAlbumRoute::class, MusicPlaylistRoute::class, MusicLikedRoute::class, MusicArtistRoute::class, MusicSearchRoute::class, MusicLibraryRoute::class).any { dest.hasRoute(it) }
-        val showMini = music.current != null && (showBar || onMusicScreen)
+        val onMusicTab = dest?.hasRoute(MusicRoute::class) == true
+        val showMini = (musicActive || (onMusicScreen || onMusicTab) && music.current != null) && (showBar || onMusicScreen)
         val miniLift = if (showMini && !useRail) 68.dp else 0.dp
         com.sridhar.harbor.cast.CastMiniBar(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = (if (showBar && !useRail) 160.dp else 16.dp) + miniLift))
         AnimatedVisibility(

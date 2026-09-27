@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -131,6 +132,13 @@ fun TvSettings() {
         var parental by remember { mutableStateOf(false) }
         TvButton(stringResource(R.string.parental_title) + " · " + com.sridhar.harbor.ui.parental.parentalSummary(), Icons.Rounded.Lock) { parental = true }
         if (parental) com.sridhar.harbor.ui.parental.ParentalSettingsDialog { parental = false }
+        if (container.updater.enabled) {
+            val autoUpd by container.updater.autoCheckFlow.collectAsState()
+            val ctxU = androidx.compose.ui.platform.LocalContext.current
+            TvButton(stringResource(R.string.update_auto) + " · " + stringResource(if (autoUpd) R.string.on_label else R.string.off_label), Icons.Rounded.SystemUpdate) {
+                container.updater.autoCheck = !autoUpd; com.sridhar.harbor.update.UpdateWorker.schedule(ctxU)
+            }
+        }
         com.sridhar.harbor.update.updateStatus()?.let { status ->
             TvButton(stringResource(R.string.update_check) + " · " + status, Icons.Rounded.SystemUpdate) {
                 scope.launch(com.sridhar.harbor.CrashGuard) { container.updater.check(userInitiated = true) }

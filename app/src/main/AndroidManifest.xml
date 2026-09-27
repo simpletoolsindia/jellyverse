@@ -97,7 +97,6 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
-            android:screenOrientation="sensorLandscape"
             android:supportsPictureInPicture="true"
             android:theme="@style/Theme.Harbor.Player" />
     </application>

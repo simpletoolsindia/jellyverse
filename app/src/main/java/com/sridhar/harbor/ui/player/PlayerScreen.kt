@@ -207,10 +207,12 @@ fun PlayerScreen(vm: PlayerViewModel, inPip: Boolean, onBack: () -> Unit, onPip:
     }
     LaunchedEffect(tapSeekStamp) { if (tapSeek != null) { delay(700); tapSeek = null } }
     LaunchedEffect(ui.rotation) {
+        if (isTv) return@LaunchedEffect   // TVs are always landscape; never touch their orientation
         activity.requestedOrientation = when (ui.rotation) {
             Rotation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             Rotation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-            Rotation.Auto -> ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+            // Follows the phone: turns with the device, and honours the system rotation lock.
+            Rotation.Auto -> ActivityInfo.SCREEN_ORIENTATION_FULL_USER
         }
     }
 

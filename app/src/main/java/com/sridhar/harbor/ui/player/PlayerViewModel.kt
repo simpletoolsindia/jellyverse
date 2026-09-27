@@ -120,7 +120,7 @@ data class PlayerUi(
     val seekStepSec: Int = 10,
     val subScale: Float = 1f,
     val subStyle: SubStyle = SubStyle.Embedded,
-    val rotation: Rotation = Rotation.Landscape,
+    val rotation: Rotation = Rotation.Auto,
     val showStats: Boolean = false,
     val stats: PlayerStats = PlayerStats(),
     // Live TV (IPTV)

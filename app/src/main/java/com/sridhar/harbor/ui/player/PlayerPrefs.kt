@@ -7,7 +7,7 @@ import android.content.Context
 enum class SubStyle(@androidx.annotation.StringRes val labelRes: Int) { Embedded(R.string.original), Outline(R.string.outline), Box(R.string.box), Yellow(R.string.yellow);
     val label: String get() = com.sridhar.harbor.L10n.s(labelRes)
 }
-enum class Rotation(@androidx.annotation.StringRes val labelRes: Int) { Landscape(R.string.landscape), Portrait(R.string.portrait), Auto(R.string.auto_rotate);
+enum class Rotation(@androidx.annotation.StringRes val labelRes: Int) { Auto(R.string.auto_rotate), Landscape(R.string.landscape), Portrait(R.string.portrait);
     val label: String get() = com.sridhar.harbor.L10n.s(labelRes)
 }
 
@@ -24,7 +24,7 @@ class PlayerPrefs(context: Context) {
         get() = runCatching { SubStyle.valueOf(p.getString("sub_style", SubStyle.Embedded.name)!!) }.getOrDefault(SubStyle.Embedded)
         set(v) = p.edit().putString("sub_style", v.name).apply()
     var rotation: Rotation
-        get() = runCatching { Rotation.valueOf(p.getString("rotation", Rotation.Landscape.name)!!) }.getOrDefault(Rotation.Landscape)
+        get() = runCatching { Rotation.valueOf(p.getString("rotation", Rotation.Auto.name)!!) }.getOrDefault(Rotation.Auto)
         set(v) = p.edit().putString("rotation", v.name).apply()
     var speed: Float get() = p.getFloat("speed", 1f); set(v) = p.edit().putFloat("speed", v).apply()
     /** Remembered language choices (ISO 639-2, e.g. "tam") – applied automatically to the next title. */

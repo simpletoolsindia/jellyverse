@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -51,7 +52,11 @@ fun UpdatePrompt() {
     val state by updater.state.collectAsState()
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
-    LaunchedEffect(Unit) { updater.checkIfDue() }
+    // Check on launch and whenever the app comes back to the foreground (at most every 20 h).
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { runCatching { updater.checkIfDue() } }
+    }
 
     val info = when (val s = state) {
         is UpdateState.Available -> s.info
