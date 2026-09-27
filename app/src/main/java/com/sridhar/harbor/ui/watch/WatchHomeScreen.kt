@@ -279,14 +279,15 @@ private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val pager = rememberPagerState { items.size }
     val favs = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
-    LaunchedEffect(pager, items.size) {
+    var trailerOn by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    LaunchedEffect(pager, items.size, trailerOn) {
         while (true) {
-            delay(6000)
+            delay(if (trailerOn) 45_000 else 6000)
             if (!pager.isScrollInProgress) pager.animateScrollToPage((pager.currentPage + 1) % items.size)
         }
     }
     if (com.sridhar.harbor.ui.components.widthClass() != com.sridhar.harbor.ui.components.WidthClass.Compact) {
-        WideHero(items, pager, favs, onItem, onPlay); return
+        WideHero(items, pager, favs, onItem, onPlay, onTrailer = { trailerOn = it }); return
     }
     Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 64.dp)) {
         // Hotstar-style spotlight: centred card, neighbours peek and shrink.
@@ -300,7 +301,7 @@ private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (
             ) {
                 NetImage(jf.posterUrl(cfg, item, 900), Modifier.fillMaxSize(), fallback = item.name)
                 // The settled spotlight card plays its trailer (muted), like Hotstar.
-                if (page == pager.currentPage && !pager.isScrollInProgress) com.sridhar.harbor.ui.components.TrailerPreview(item, Modifier.fillMaxSize(), delayMs = 1800)
+                if (page == pager.currentPage && !pager.isScrollInProgress) com.sridhar.harbor.ui.components.TrailerPreview(item, Modifier.fillMaxSize(), delayMs = 1800, onPlaying = { trailerOn = it })
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = .92f))))
                 Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     val logo = jf.logoUrl(cfg, item)
@@ -348,7 +349,7 @@ private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (
 @Composable
 private fun WideHero(
     items: List<BaseItem>, pager: androidx.compose.foundation.pager.PagerState, favs: MutableMap<String, Boolean>,
-    onItem: (String) -> Unit, onPlay: (BaseItem) -> Unit,
+    onItem: (String) -> Unit, onPlay: (BaseItem) -> Unit, onTrailer: (Boolean) -> Unit = {},
 ) {
     val cfg = rememberConfig()
     val jf = LocalContainer.current.jellyfin
@@ -365,7 +366,7 @@ private fun WideHero(
             val item = items[page]
             Box(Modifier.fillMaxSize().clickable { onItem(item.id) }) {
                 NetImage(jf.backdropUrl(cfg, item, 1920), Modifier.fillMaxSize().graphicsLayer { scaleX = drift.value; scaleY = drift.value }, fallback = item.name)
-                if (page == pager.currentPage && !pager.isScrollInProgress) com.sridhar.harbor.ui.components.TrailerPreview(item, Modifier.fillMaxSize(), delayMs = 1800)
+                if (page == pager.currentPage && !pager.isScrollInProgress) com.sridhar.harbor.ui.components.TrailerPreview(item, Modifier.fillMaxSize(), delayMs = 1800, onPlaying = onTrailer)
             }
         }
         // Scrims: left for the text, bottom to melt into the rows below.

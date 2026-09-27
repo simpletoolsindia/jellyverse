@@ -138,7 +138,7 @@ fun TvButton(text: String, icon: ImageVector?, primary: Boolean = false, modifie
 
 /** Full-bleed ambient backdrop that cross-fades whenever focus lands on a new title. */
 @Composable
-fun AmbientBackdrop(url: String?, drift: Boolean = false, preview: com.sridhar.harbor.data.jellyfin.BaseItem? = null) {
+fun AmbientBackdrop(url: String?, drift: Boolean = false, preview: com.sridhar.harbor.data.jellyfin.BaseItem? = null, onTrailer: (Boolean) -> Unit = {}) {
     // Optional slow Ken Burns push-in so the hero feels alive; each new backdrop starts its own drift.
     Box(Modifier.fillMaxSize().background(Harbor.Ink).clipToBounds()) {
         Crossfade(url, animationSpec = tween(650), label = "ambient") { u ->
@@ -147,7 +147,7 @@ fun AmbientBackdrop(url: String?, drift: Boolean = false, preview: com.sridhar.h
             NetImage(u, Modifier.fillMaxSize().graphicsLayer { alpha = 0.9f; scaleX = zoom.value; scaleY = zoom.value; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.7f, 0.3f) })
         }
         // Hotstar-style: rest on a title and its trailer fades in behind the same scrims.
-        com.sridhar.harbor.ui.components.TrailerPreview(preview, Modifier.fillMaxSize())
+        com.sridhar.harbor.ui.components.TrailerPreview(preview, Modifier.fillMaxSize(), onPlaying = onTrailer)
         Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Harbor.Ink, 0.45f to Harbor.Ink.copy(.75f), 1f to Color.Transparent)))
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.55f to Harbor.Ink.copy(.55f), 1f to Harbor.Ink)))
     }

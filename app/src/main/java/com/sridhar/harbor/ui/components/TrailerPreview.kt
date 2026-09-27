@@ -37,10 +37,12 @@ import kotlinx.coroutines.delay
  * titles without one get a muted preview from the film itself. Skipped on low-RAM devices and mobile data.
  */
 @Composable
-fun TrailerPreview(item: BaseItem?, modifier: Modifier = Modifier, delayMs: Long = 1500) {
+fun TrailerPreview(item: BaseItem?, modifier: Modifier = Modifier, delayMs: Long = 1500, onPlaying: (Boolean) -> Unit = {}) {
     val c = LocalContainer.current
     val ctx = LocalContext.current
-    if (item == null || c.lowRam) return
+    // Only true low-memory devices skip previews (budget TVs with a 192 MB heap still play them fine).
+    val lowRamDevice = remember { ctx.getSystemService(android.app.ActivityManager::class.java).isLowRamDevice }
+    if (item == null || lowRamDevice) return
     var start by remember(item.id) { mutableStateOf(false) }
     var playing by remember(item.id) { mutableStateOf(false) }
     LaunchedEffect(item.id) {
@@ -51,6 +53,9 @@ fun TrailerPreview(item: BaseItem?, modifier: Modifier = Modifier, delayMs: Long
     }
     if (!start) return
     val alpha by animateFloatAsState(if (playing) 1f else 0f, tween(700), label = "trailer")
+    val latest by androidx.compose.runtime.rememberUpdatedState(onPlaying)
+    LaunchedEffect(playing) { latest(playing) }
+    DisposableEffect(item.id) { onDispose { latest(false) } }
     val yt = item.remoteTrailers.firstNotNullOfOrNull { it.youtubeId }
     Box(modifier.graphicsLayer { this.alpha = alpha }) {
         if (yt != null) YouTubePreview(yt, onPlaying = { playing = it })

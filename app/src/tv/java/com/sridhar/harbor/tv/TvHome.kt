@@ -119,16 +119,18 @@ fun TvHome(onOpen: (String) -> Unit) {
     var display by remember { mutableStateOf<BaseItem?>(null) }
     var heroIndex by remember { mutableIntStateOf(0) }
     var heroFocused by remember { mutableStateOf(true) }
+    // A trailer playing holds the spotlight (Hotstar-style), up to 45 s, then rotation resumes.
+    var trailerOn by remember { mutableStateOf(false) }
     val watchFocus = remember { FocusRequester() }
 
     LaunchedEffect(vm.hero) { if (vm.hero.isNotEmpty() && display == null) { display = vm.hero.first(); runCatching { delay(150); watchFocus.requestFocus() } } }
     // Spotlight auto-rotates while the hero buttons have focus.
-    LaunchedEffect(heroFocused, vm.hero.size) {
-        while (heroFocused && vm.hero.size > 1) { delay(8000); heroIndex = (heroIndex + 1) % vm.hero.size; display = vm.hero[heroIndex] }
+    LaunchedEffect(heroFocused, vm.hero.size, trailerOn) {
+        while (heroFocused && vm.hero.size > 1) { delay(if (trailerOn) 45_000 else 8000); heroIndex = (heroIndex + 1) % vm.hero.size; display = vm.hero[heroIndex] }
     }
 
     Box(Modifier.fillMaxSize()) {
-        AmbientBackdrop(display?.let { jf.backdropUrl(cfg, it, if (container.lowRam) 1280 else 1920) }, drift = !container.lowRam, preview = display)
+        AmbientBackdrop(display?.let { jf.backdropUrl(cfg, it, if (container.lowRam) 1280 else 1920) }, drift = !container.lowRam, preview = display, onTrailer = { trailerOn = it })
         if (vm.loading && vm.hero.isEmpty()) com.sridhar.harbor.ui.components.JellyLoader(Modifier.align(Alignment.Center), color = Harbor.VioletSoft)
         Box(Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 40.dp)) { ClockGreeting(cfg.jellyfinUser) }
         Column(Modifier.fillMaxSize()) {
@@ -156,7 +158,7 @@ fun TvHome(onOpen: (String) -> Unit) {
                     TvButton(stringResource(R.string.details), Icons.Rounded.Info) { display?.let { onOpen(it.seriesId ?: it.id) } }
                 }
             }
-            if (vm.hero.size > 1) TvMarquee(vm.hero, heroIndex, rotating = heroFocused,
+            if (vm.hero.size > 1) TvMarquee(vm.hero, heroIndex, rotating = heroFocused && !trailerOn,
                 onFocus = { i -> heroIndex = i; display = vm.hero[i] }, onOpen = { onOpen(it.seriesId ?: it.id) })
             }
             LazyColumn(Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(top = 18.dp, bottom = 48.dp)) {

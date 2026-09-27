@@ -82,6 +82,10 @@ Both are product flavors of one project (add `-Pstore` for Play builds without p
 
 **Jellyfin admin dashboard** – users & policies, live sessions, libraries, scheduled tasks, activity, devices, plugins, API keys
 
+**Phone ↔ TV** – pair your phone with JellyVerse TV over Wi-Fi (4-digit code): full remote (D-pad, swipe pad, volume, channels) and a keyboard that types into TV fields as you type
+
+**Trailers & polish** – Hotstar-style trailer previews on the spotlight (YouTube trailers, or a muted clip of the film), animated launch intro, in-app updates from GitHub Releases (verified same-signer APK)
+
 **Everything else** – Tamil (தமிழ்) UI, library filters by language / year / genre, voice play ("Play … on JellyVerse"), offline mode with downloads shelf, tablet / foldable / landscape layouts, swimming-jellyfish loaders, crash guard
 
 **v2.1 extras** – loading screen before playback, smart notifications (downloads / requests / homelab), Quick Settings turtle tile, app shortcuts, fingerprint lock, TV "Play Next" row on the Android TV home, TV genre/My List rows, smart OK (skip intro / next episode), low-RAM tuning
