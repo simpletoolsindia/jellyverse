@@ -753,7 +753,7 @@ private fun QualityTag(text: String) {
 }
 
 /** Visible focus for D-pad users: white ring + slight scale. */
-private fun Modifier.focusRing(shape: androidx.compose.ui.graphics.Shape = CircleShape): Modifier = composed {
+internal fun Modifier.focusRing(shape: androidx.compose.ui.graphics.Shape = CircleShape): Modifier = composed {
     var f by remember { mutableStateOf(false) }
     val sc by animateFloatAsState(if (f) 1.12f else 1f, spring(), label = "fr")
     this.onFocusChanged { f = it.isFocused }.graphicsLayer { scaleX = sc; scaleY = sc }

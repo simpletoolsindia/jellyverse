@@ -94,6 +94,8 @@ data class BaseItem(
     @SerialName("Id") val id: String,
     @SerialName("Name") val name: String = "",
     @SerialName("Type") val type: String = "",
+    /** YouTube trailer links from metadata providers – used for the hover/focus trailer preview. */
+    @SerialName("RemoteTrailers") val remoteTrailers: List<RemoteTrailer> = emptyList(),
     @SerialName("CollectionType") val collectionType: String? = null,
     @SerialName("Overview") val overview: String? = null,
     @SerialName("ProductionYear") val year: Int? = null,
@@ -221,3 +223,11 @@ data class RemoteSubtitle(
     @SerialName("IsHashMatch") val hashMatch: Boolean? = null,
     @SerialName("HearingImpaired") val hearingImpaired: Boolean? = null,
 )
+
+@Serializable
+data class RemoteTrailer(@SerialName("Url") val url: String? = null, @SerialName("Name") val name: String? = null) {
+    /** YouTube video id from watch?v=, youtu.be/ or /embed/ links. */
+    val youtubeId: String? get() = url?.let { u ->
+        Regex("""(?:v=|youtu\.be/|/embed/)([A-Za-z0-9_-]{11})""").find(u)?.groupValues?.get(1)
+    }
+}

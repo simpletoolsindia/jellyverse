@@ -67,7 +67,7 @@ private fun TvGridContent(view: BaseItem, onOpen: (String) -> Unit) {
     LaunchedEffect(nearEnd) { if (nearEnd) vm.loadMore() }
 
     Box(Modifier.fillMaxSize()) {
-        AmbientBackdrop(focused?.let { jf.backdropUrl(cfg, it, 1280) })
+        AmbientBackdrop(focused?.let { jf.backdropUrl(cfg, it, 1280) }, preview = focused)
         LazyVerticalGrid(GridCells.Adaptive(132.dp), Modifier.fillMaxSize(), grid,
             contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 36.dp, bottom = 48.dp),
             horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(30.dp)) {

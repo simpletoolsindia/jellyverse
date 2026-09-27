@@ -130,6 +130,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class ArrMovieRoute(val id: Int)
 @Serializable data class ArrSeriesRoute(val id: Int)
 @Serializable object ProtectedRoute
+@Serializable object RemoteRoute
 @Serializable object MusicRoute
 @Serializable data class MusicAlbumRoute(val id: String)
 @Serializable data class MusicPlaylistRoute(val id: String)
@@ -214,6 +215,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                 "lab" -> nav.switchTab(LabRoute)
                 "live" -> nav.navigate(LiveRoute)
                 "music" -> nav.switchTab(MusicRoute)
+                "remote" -> nav.navigate(RemoteRoute)
                 "nowplaying" -> { nav.switchTab(MusicRoute); showPlayer = true }
                 else -> nav.switchTab(WatchRoute)
             }
@@ -264,6 +266,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                     onItem = { nav.navigate(ItemRoute(it)) },
                     onLibrary = { id, name, type -> nav.navigate(LibraryRoute(id, name, type)) },
                     onProtected = { nav.navigate(ProtectedRoute) },
+                    onRemote = { nav.navigate(RemoteRoute) },
                     onSearch = { nav.navigate(SearchRoute) },
                     onSetup = { nav.navigate(SetupRoute) },
                 )
@@ -284,6 +287,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                     onUsers = { nav.navigate(UsersRoute) },
                     onAdmin = { nav.navigate(AdminRoute) },
                     onOffline = { nav.navigate(OfflineRoute) },
+                    onRemote = { nav.navigate(RemoteRoute) },
                 )
             }}
             composable<SearchRoute> { SearchScreen(onItem = { nav.navigate(ItemRoute(it)) }, onBack = { nav.popBackStack() }) }
@@ -343,6 +347,7 @@ private fun HarborNavContent(initial: ServerConfig) {
             composable<UsersRoute> { Readable { UsersScreen(onBack = { nav.popBackStack() }) }}
             composable<AdminRoute> { Readable { com.sridhar.harbor.ui.admin.AdminDashboardScreen(onBack = { nav.popBackStack() }, onUser = { id, name -> nav.navigate(AdminUserRoute(id, name)) }) }}
             composable<AdminUserRoute> { Readable { val r = it.toRoute<AdminUserRoute>(); com.sridhar.harbor.ui.admin.AdminUserScreen(r.id, r.name, onBack = { nav.popBackStack() }) }}
+            composable<RemoteRoute> { com.sridhar.harbor.ui.remote.RemoteScreen(onBack = { nav.popBackStack() }) }
             composable<ProtectedRoute> { com.sridhar.harbor.ui.parental.ProtectedTitlesScreen(onItem = { nav.navigate(ItemRoute(it)) }, onBack = { nav.popBackStack() }) }
             composable<OfflineRoute> { Readable { OfflineScreen(onBack = { nav.popBackStack() }) }}
             composable<MusicRoute> { com.sridhar.harbor.ui.music.MusicHomeScreen(musicNav) }

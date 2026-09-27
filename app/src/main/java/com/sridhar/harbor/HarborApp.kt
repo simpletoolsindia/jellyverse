@@ -16,6 +16,7 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         CrashGuard.install(this)
         L10n.init(this)
         com.sridhar.harbor.net.NetworkMonitor.init(this)
@@ -26,6 +27,12 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
             com.sridhar.harbor.alerts.Alerts.createChannels(this@HarborApp)
             if (!packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)) com.sridhar.harbor.alerts.Alerts.schedule(this@HarborApp)
         }
+    }
+
+    companion object {
+        /** For process-wide helpers (e.g. the phone-remote server) that have no Context of their own. */
+        @Volatile var instance: HarborApp? = null
+            private set
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =

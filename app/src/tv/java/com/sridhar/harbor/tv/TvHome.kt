@@ -128,7 +128,7 @@ fun TvHome(onOpen: (String) -> Unit) {
     }
 
     Box(Modifier.fillMaxSize()) {
-        AmbientBackdrop(display?.let { jf.backdropUrl(cfg, it, if (container.lowRam) 1280 else 1920) }, drift = !container.lowRam)
+        AmbientBackdrop(display?.let { jf.backdropUrl(cfg, it, if (container.lowRam) 1280 else 1920) }, drift = !container.lowRam, preview = display)
         if (vm.loading && vm.hero.isEmpty()) com.sridhar.harbor.ui.components.JellyLoader(Modifier.align(Alignment.Center), color = Harbor.VioletSoft)
         Box(Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 40.dp)) { ClockGreeting(cfg.jellyfinUser) }
         Column(Modifier.fillMaxSize()) {

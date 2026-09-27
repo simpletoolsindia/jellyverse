@@ -10,7 +10,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 private const val DEFAULT_FIELDS =
-    "Overview,Genres,PrimaryImageAspectRatio,MediaSourceCount,ChildCount,Taglines,PremiereDate"
+    "Overview,Genres,PrimaryImageAspectRatio,MediaSourceCount,ChildCount,Taglines,PremiereDate,RemoteTrailers"
 
 interface JellyfinApi {
     @GET("QuickConnect/Enabled") suspend fun quickConnectEnabled(): Boolean

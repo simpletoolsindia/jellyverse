@@ -77,7 +77,7 @@ fun TvDetail(id: String, onOpen: (String) -> Unit) {
     LaunchedEffect(item.id) { runCatching { playFocus.requestFocus() } }
 
     Box(Modifier.fillMaxSize()) {
-        AmbientBackdrop(jf.backdropUrl(cfg, focusedEp ?: item, if (container.lowRam) 1280 else 1920))
+        AmbientBackdrop(jf.backdropUrl(cfg, focusedEp ?: item, if (container.lowRam) 1280 else 1920), preview = if (focusedEp == null) item else null)
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 64.dp, bottom = 48.dp)) {
             item {
                 Column(Modifier.padding(start = 64.dp, end = 300.dp)) {

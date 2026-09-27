@@ -27,9 +27,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
@@ -88,7 +90,13 @@ fun TvSetup() {
 @Composable
 private fun TvField(label: String, value: String, type: KeyboardType = KeyboardType.Text, secret: Boolean = false, onChange: (String) -> Unit) {
     val fm = androidx.compose.ui.platform.LocalFocusManager.current
-    OutlinedTextField(value, onChange, Modifier.width(440.dp).onPreviewKeyEvent { e ->
+    val kb = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    OutlinedTextField(value, onChange, Modifier.width(440.dp)
+        .onFocusChanged {
+            com.sridhar.harbor.remote.RemoteServer.fieldFocused(it.isFocused, label)
+            // Typing from a paired phone – keep the TV's own keyboard out of the way.
+            if (it.isFocused && com.sridhar.harbor.remote.RemoteServer.connected.value > 0) kb?.hide()
+        }.onPreviewKeyEvent { e ->
             // TV remotes: ▲/▼ leave the field instead of moving the caret.
             if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
             when (e.key) {
@@ -123,6 +131,14 @@ fun TvSettings() {
         var parental by remember { mutableStateOf(false) }
         TvButton(stringResource(R.string.parental_title) + " · " + com.sridhar.harbor.ui.parental.parentalSummary(), Icons.Rounded.Lock) { parental = true }
         if (parental) com.sridhar.harbor.ui.parental.ParentalSettingsDialog { parental = false }
+        com.sridhar.harbor.update.updateStatus()?.let { status ->
+            TvButton(stringResource(R.string.update_check) + " · " + status, Icons.Rounded.SystemUpdate) {
+                scope.launch(com.sridhar.harbor.CrashGuard) { container.updater.check(userInitiated = true) }
+            }
+        }
+        com.sridhar.harbor.remote.RemoteServer.localIp()?.let { ip ->
+            Text("📱 " + stringResource(R.string.remote_tv_address, ip), color = Harbor.TextDim, fontSize = 15.sp)
+        }
         com.sridhar.harbor.ui.components.LanguagePicker()
         Text(stringResource(R.string.jellyverse_tv_1_s, com.sridhar.harbor.BuildConfig.VERSION_NAME), color = Harbor.TextDim, fontSize = 13.sp)
         com.sridhar.harbor.ui.components.MadeWithLove()

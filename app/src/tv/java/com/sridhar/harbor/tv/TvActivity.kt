@@ -18,17 +18,23 @@ class TvActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Phone remote / keyboard over Wi-Fi (runs for the whole app process, player included).
+        com.sridhar.harbor.remote.RemoteServer.start(application)
         handleDeepLink(intent)
         setContent {
             HarborTheme {
                 ProvideContainer(container) {
                     val cfg by container.config.collectAsState()
-                    when {
-                        cfg == null -> {}
-                        !cfg!!.jellyfinReady -> TvSetup()
-                        else -> TvApp()
+                    com.sridhar.harbor.ui.components.LaunchIntro {
+                        when {
+                            cfg == null -> {}
+                            !cfg!!.jellyfinReady -> TvSetup()
+                            else -> TvApp()
+                        }
                     }
+                    TvRemoteOverlay()
                     com.sridhar.harbor.ui.components.OfflineBanner()
+                    com.sridhar.harbor.update.UpdatePrompt()
                     com.sridhar.harbor.ui.components.CrashNotice()
                 }
             }

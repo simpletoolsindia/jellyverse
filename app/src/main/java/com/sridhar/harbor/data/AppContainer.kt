@@ -62,6 +62,8 @@ class AppContainer(context: Context) {
     val qbit = QbitRepository(settings, http)
     val music by lazy { com.sridhar.harbor.data.music.NavidromeRepository(settings, http) }
     val musicEngine by lazy { com.sridhar.harbor.music.MusicEngine(context, music, settings, http) }
+    val updater by lazy { com.sridhar.harbor.update.Updater(context, http) }
+    val remote by lazy { com.sridhar.harbor.remote.RemoteClient(context) }
     val parental by lazy { com.sridhar.harbor.data.parental.ParentalControls(context) }
     val radio by lazy { com.sridhar.harbor.data.music.RadioStations(context, http) }
     /** A stream link shared into the app ("Share → JellyVerse"); Music home offers to save it as a station. */

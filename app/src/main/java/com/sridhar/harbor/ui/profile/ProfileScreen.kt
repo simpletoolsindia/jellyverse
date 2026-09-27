@@ -28,6 +28,8 @@ import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.FamilyRestroom
+import androidx.compose.material.icons.rounded.SettingsRemote
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.AutoFixHigh
 import androidx.compose.material.icons.rounded.AdminPanelSettings
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -63,7 +65,7 @@ import com.sridhar.harbor.ui.theme.Harbor
 import kotlinx.coroutines.launch
 
 @Composable
-fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () -> Unit, onSetup: () -> Unit, onUsers: () -> Unit, onOffline: () -> Unit, onAdmin: () -> Unit = {}) {
+fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () -> Unit, onSetup: () -> Unit, onUsers: () -> Unit, onOffline: () -> Unit, onAdmin: () -> Unit = {}, onRemote: () -> Unit = {}) {
     val container = LocalContainer.current
     val cfg = rememberConfig()
     val scope = rememberCoroutineScope()
@@ -135,6 +137,12 @@ fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () 
             if (isAdmin) MenuRow(Icons.Rounded.AdminPanelSettings, stringResource(R.string.server_dashboard), stringResource(R.string.jellyfin_users_live_sessions_libraries_tasks), onAdmin)
             if (cfg.seerrReady) MenuRow(Icons.Rounded.Group, stringResource(R.string.manage_users), stringResource(R.string.jellyseerr_accounts_permissions), onUsers)
             if (cfg.jellyfinReady) MenuRow(Icons.Rounded.Devices, stringResource(R.string.quick_connect), stringResource(R.string.sign_in_a_tv_or_device)) { authorize = true }
+            MenuRow(Icons.Rounded.SettingsRemote, stringResource(R.string.remote_title), stringResource(R.string.remote_menu_sub), onRemote)
+            com.sridhar.harbor.update.updateStatus()?.let { status ->
+                MenuRow(Icons.Rounded.SystemUpdate, stringResource(R.string.update_check), status) {
+                    scope.launch(com.sridhar.harbor.CrashGuard) { container.updater.check(userInitiated = true) }
+                }
+            }
             if (cfg.jellyfinReady) MenuRow(Icons.Rounded.FamilyRestroom, stringResource(R.string.parental_title), com.sridhar.harbor.ui.parental.parentalSummary()) { parental = true }
             MenuRow(Icons.Rounded.Terminal, stringResource(R.string.ssh_hosts), stringResource(R.string.terminal_logins_host_keys), onTerminal)
             MenuRow(Icons.Rounded.Dns, stringResource(R.string.servers_accounts), stringResource(R.string.change_addresses_or_sign_in_again), onSetup)

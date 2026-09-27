@@ -49,9 +49,10 @@ class MainActivity : FragmentActivity() {
         setContent {
             HarborTheme {
                 ProvideContainer(container) {
-                    LockGate(locked.value, onUnlock = ::authenticate) { HarborNavHost() }
+                    com.sridhar.harbor.ui.components.LaunchIntro { LockGate(locked.value, onUnlock = ::authenticate) { HarborNavHost() } }
                     com.sridhar.harbor.ui.components.OfflineBanner()
                     com.sridhar.harbor.ui.components.DownloadsBanner()
+                    com.sridhar.harbor.update.UpdatePrompt()
                     com.sridhar.harbor.ui.components.CrashNotice()
                 }
             }

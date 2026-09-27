@@ -38,7 +38,7 @@ import kotlin.math.sin
  */
 
 /** The logo's bell in its 108-unit design space (same path as the launcher icon). */
-private fun bellPath() = Path().apply {
+internal fun bellPath() = Path().apply {
     moveTo(45f, 29f); cubicTo(63f, 29f, 80f, 43f, 83f, 54f); cubicTo(80f, 65f, 63f, 79f, 45f, 79f)
     quadraticTo(49f, 70.7f, 45f, 62.3f); quadraticTo(49f, 54f, 45f, 45.7f); quadraticTo(49f, 37.3f, 45f, 29f); close()
 }
@@ -50,7 +50,7 @@ private fun pump(t: Float): Float = if (t < 0.28f) FastOutSlowInEasing.transform
  * Draws the swimming jellyfish so the 108-unit box maps to [box] px with its top-left at [origin].
  * [t] is the 0..1 beat clock.
  */
-private fun DrawScope.jelly(origin: Offset, box: Float, t: Float, color: Color, accent: Color, bell: Path, bubbles: Boolean) {
+internal fun DrawScope.jelly(origin: Offset, box: Float, t: Float, color: Color, accent: Color, bell: Path, bubbles: Boolean) {
     val c = pump(t)
     val sx = 1f + 0.07f * c; val sy = 1f - 0.15f * c; val surge = 3.5f * c
     withTransform({ translate(origin.x, origin.y); scale(box / 108f, box / 108f, Offset.Zero) }) {

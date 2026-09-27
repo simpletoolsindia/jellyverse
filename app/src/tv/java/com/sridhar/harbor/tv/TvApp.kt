@@ -92,6 +92,11 @@ fun TvApp() {
     val stack = remember { mutableStateListOf<TvDest>(TvDest.Home) }
     val current = stack.last()
     val go: (TvDest) -> Unit = { d -> if (d is TvDest.Detail || d is TvDest.MusicCollection || d is TvDest.NowPlaying) stack.add(d) else { stack.clear(); stack.add(d) } }
+    // "Home" from the phone remote.
+    val navContainer = com.sridhar.harbor.ui.components.LocalContainer.current
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        navContainer.navRequests.collect { if (it == "home") { stack.clear(); stack.add(TvDest.Home) } }
+    }
     BackHandler(enabled = stack.size > 1 || current != TvDest.Home) { if (stack.size > 1) stack.removeAt(stack.lastIndex) else { stack.clear(); stack.add(TvDest.Home) } }
     var railFocused by remember { mutableStateOf(false) }
     val railWidth by animateDpAsState(if (railFocused) 230.dp else 84.dp, spring(dampingRatio = 0.85f), label = "rail")

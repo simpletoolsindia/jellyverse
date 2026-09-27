@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
@@ -72,7 +73,8 @@ fun TvSearch(onOpen: (String) -> Unit) {
             Column {
                 Row {
                     val fm = androidx.compose.ui.platform.LocalFocusManager.current
-                    OutlinedTextField(vm.query, { vm.query = it }, Modifier.width(560.dp).onPreviewKeyEvent { e ->
+                    OutlinedTextField(vm.query, { vm.query = it }, Modifier.width(560.dp)
+                        .onFocusChanged { com.sridhar.harbor.remote.RemoteServer.fieldFocused(it.isFocused, "Search") }.onPreviewKeyEvent { e ->
                         if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == androidx.compose.ui.input.key.Key.DirectionDown)
                             fm.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) else false
                     }, singleLine = true, shape = RoundedCornerShape(16.dp),

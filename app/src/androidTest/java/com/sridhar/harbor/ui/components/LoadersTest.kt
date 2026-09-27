@@ -51,6 +51,19 @@ class LoadersTest {
         rule.onNodeWithTag("tb").assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo.Indeterminate))
     }
 
+    @Test fun introFrames() {
+        if (InstrumentationRegistry.getArguments().getString("loaderFrames") != "true") return
+        rule.mainClock.autoAdvance = false
+        val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as com.sridhar.harbor.HarborApp
+        rule.setThemed { ProvideContainer(app.container) { LaunchIntro { androidx.compose.material3.Text("APP CONTENT") } } }
+        val dir = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "loader-frames").apply { mkdirs() }
+        for (i in 0 until 10) {
+            rule.mainClock.advanceTimeBy(160)
+            val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
+            File(dir, "intro$i.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        }
+    }
+
     /** Design review aid: `-e loaderFrames true` saves animation frames to …/files/loader-frames. */
     @Test fun saveFrames() {
         if (InstrumentationRegistry.getArguments().getString("loaderFrames") != "true") return

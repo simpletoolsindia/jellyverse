@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.SettingsRemote
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -137,6 +138,7 @@ fun WatchHomeScreen(
     onItem: (String) -> Unit,
     onLibrary: (String, String, String?) -> Unit,
     onProtected: () -> Unit = {},
+    onRemote: () -> Unit = {},
     onSearch: () -> Unit,
     onSetup: () -> Unit,
 ) {
@@ -241,6 +243,8 @@ fun WatchHomeScreen(
             Spacer(Modifier.width(10.dp))
             Text(stringResource(R.string.jellyverse), style = MaterialTheme.typography.headlineSmall.copy(brush = Harbor.accentH), fontWeight = FontWeight.Black)
             Spacer(Modifier.weight(1f))
+            IconButton(onRemote, Modifier.glass(RoundedCornerShape(50))) { Icon(Icons.Rounded.SettingsRemote, stringResource(R.string.remote_title), tint = Color.White) }
+            Spacer(Modifier.width(8.dp))
             IconButton(onSearch, Modifier.glass(RoundedCornerShape(50))) { Icon(Icons.Rounded.Search, stringResource(R.string.search), tint = Color.White) }
         }
     }
@@ -295,6 +299,8 @@ private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (
                 }.clip(RoundedCornerShape(22.dp)).clickable { onItem(item.id) },
             ) {
                 NetImage(jf.posterUrl(cfg, item, 900), Modifier.fillMaxSize(), fallback = item.name)
+                // The settled spotlight card plays its trailer (muted), like Hotstar.
+                if (page == pager.currentPage && !pager.isScrollInProgress) com.sridhar.harbor.ui.components.TrailerPreview(item, Modifier.fillMaxSize(), delayMs = 1800)
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = .92f))))
                 Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     val logo = jf.logoUrl(cfg, item)
@@ -359,6 +365,7 @@ private fun WideHero(
             val item = items[page]
             Box(Modifier.fillMaxSize().clickable { onItem(item.id) }) {
                 NetImage(jf.backdropUrl(cfg, item, 1920), Modifier.fillMaxSize().graphicsLayer { scaleX = drift.value; scaleY = drift.value }, fallback = item.name)
+                if (page == pager.currentPage && !pager.isScrollInProgress) com.sridhar.harbor.ui.components.TrailerPreview(item, Modifier.fillMaxSize(), delayMs = 1800)
             }
         }
         // Scrims: left for the text, bottom to melt into the rows below.

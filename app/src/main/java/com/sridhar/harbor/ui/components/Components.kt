@@ -56,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.composed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.key
@@ -296,7 +297,8 @@ fun HarborLogo(size: Dp, modifier: Modifier = Modifier) {
 /** TV remotes: ▲/▼ move between form fields instead of being swallowed by the text caret. */
 fun Modifier.dpadFieldNav(): Modifier = composed {
     val fm = androidx.compose.ui.platform.LocalFocusManager.current
-    this.onPreviewKeyEvent { e ->
+    // On TV, a paired phone pops its keyboard as soon as a text field is focused.
+    this.onFocusChanged { com.sridhar.harbor.remote.RemoteServer.fieldFocused(it.isFocused) }.onPreviewKeyEvent { e ->
         if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
         when (e.key) {
             androidx.compose.ui.input.key.Key.DirectionDown -> fm.moveFocus(androidx.compose.ui.focus.FocusDirection.Down)
