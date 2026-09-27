@@ -1,0 +1,18 @@
+JellyVerse TV brings your Jellyfin library to the big screen with a modern, remote-first design.
+
+• Immersive home: ambient backdrops that follow your focus, spotlight rotation, Continue Watching, Next Up and latest rows
+• Movies and TV Shows grids with sorting and filters
+• Detail pages with seasons, episodes, cast and recommendations
+• Search with voice
+• Smart player: remote seek with acceleration, trickplay thumbnails while scrubbing, chapters, skip intro, next-episode autoplay, audio/subtitle tracks, subtitle size & style, speed, quality, hardware/software decoding, playback stats
+• Sign in with Jellyfin Quick Connect – no typing with the remote
+• Live TV (IPTV): bring your own M3U / Xtream playlist, channel up/down zapping, channel list and now/next guide
+• Continue Watching appears on your Android TV home screen
+• Music for Navidrome: mixes, albums, playlists and a big-screen player with synced lyrics
+• English and தமிழ் (Tamil) interface
+
+JellyVerse TV is a client for Jellyfin servers you run yourself. It does not provide any content.
+
+JellyVerse is an independent app and is not affiliated with or endorsed by the Jellyfin project.
+
+Made with ❤ by simpletools.in

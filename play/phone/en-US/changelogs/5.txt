@@ -1,0 +1,1 @@
+JellyVerse 2.2: full Jellyfin server dashboard – manage users, permissions & library access, control live sessions remotely, libraries, scheduled tasks, activity, devices, plugins, API keys and logs • refresh metadata or delete media from any title • Tamil (தமிழ்) language • faster, more reliable qBittorrent connection • accessibility and stability improvements.

@@ -1,0 +1,7 @@
+<resources>
+    <string name="sc_search">தேடல்</string>
+    <string name="sc_ai">JellyVerse AI</string>
+    <string name="sc_downloads">பதிவிறக்கங்கள்</string>
+    <string name="sc_lab">ஹோம்லேப்</string>
+    <string name="sc_live">நேரலை டிவி</string>
+</resources>

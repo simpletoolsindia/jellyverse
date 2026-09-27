@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome JellyVerse mark (themed icons, notifications): a jellyfish bell shaped like a play button, tentacles trailing like motion lines. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:scaleX="0.84" android:scaleY="0.84" android:pivotX="54" android:pivotY="54">
+        <path android:pathData="M45,45.7 C39,42.5 35.5,50 30,47 C27,45.4 25,46 23.5,47.6" android:strokeWidth="4.0" android:strokeLineCap="round" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" />
+        <path android:pathData="M45,62.3 C39,59.1 35.5,66.6 30,63.6 C27,62 25,62.6 23.5,64.2" android:strokeWidth="4.0" android:strokeLineCap="round" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" />
+        <path android:pathData="M46.5,54 C42,51.8 39.5,57 35,54.8" android:strokeWidth="4.0" android:strokeLineCap="round" android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" />
+        <path android:pathData="M45,29 C63,29 80,43 83,54 C80,65 63,79 45,79 Q49,70.7 45,62.3 Q49,54 45,45.7 Q49,37.3 45,29 Z" android:fillColor="#FFFFFFFF" />
+        <path android:pathData="M53.5,37 C60,37.8 66,41 70,46" android:strokeWidth="2.6" android:strokeLineCap="round" android:fillColor="#00000000" android:strokeColor="#00000000" />
+    </group>
+</vector>

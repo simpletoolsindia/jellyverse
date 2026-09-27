@@ -1,0 +1,49 @@
+JellyVerse turns your self-hosted homelab into one beautiful app.
+
+WATCH (Jellyfin)
+• Cinematic home with spotlight carousel, Continue Watching, Next Up and new arrivals
+• Powerful player: gestures, trickplay thumbnails, chapters, skip intro, next-episode autoplay, audio & subtitle tracks, subtitle styling, speed, quality, sleep timer, picture-in-picture, background audio
+• Chromecast support and offline downloads
+• Jellyfin Quick Connect – sign in TVs and devices with a 6-digit code
+
+DOWNLOADS
+• qBittorrent: live speed graph, add magnet/torrent, pause/resume/delete, per-file selection, global & alternative speed limits
+• aria2: HTTP/FTP/magnet downloads with speed limits
+
+MUSIC (Navidrome)
+• A music player built for your own library: "Made for you" mixes, albums, artists, playlists and liked songs
+• Synced lyrics, song radio, queue editing, shuffle & repeat, sleep timer with a gentle fade-out
+• Equalizer & bass boost, streaming quality and data saver on mobile data, smart offline cache
+• Background playback with notification, lock-screen and Bluetooth controls – plus Android Auto
+• Cleans up messy tags from downloaded music and gives untagged albums beautiful covers
+
+SERVER ADMIN (Jellyfin dashboard)
+• Create, edit and delete users; passwords, permissions and per-library access
+• Live sessions: see who is watching, play/pause/seek/stop remotely and send messages
+• Libraries (add, remove, scan), scheduled tasks, activity log, devices, plugins, API keys and server logs
+• Restart or shut down the server, refresh metadata or delete media
+
+REQUESTS & AUTOMATION
+• Jellyseerr: discover, request movies and series, approve requests, manage users
+• Sonarr & Radarr: queue, calendar, missing media, automatic and manual release search
+
+HOMELAB
+• Live CPU, RAM, temperature, storage, network, Docker containers and processes over SSH
+• Built-in SSH terminal with extra keys (Ctrl, Esc, Tab, arrows) and snippets
+
+JELLYVERSE AI – PRIVATE, ON-DEVICE
+• Optional Qwen 0.5B model runs entirely on your phone – nothing is sent to the cloud
+• Ask “what's downloading?”, “server health”, “play Leo on TV”
+• Library Doctor fixes messy file names so Jellyfin fetches the right posters
+LIVE TV (IPTV)
+• Add your own M3U / M3U8 playlist or Xtream Codes login, with optional provider credentials and User-Agent
+• XMLTV guide with now & next, favourites, groups, search and channel health check
+
+LANGUAGES
+• English and தமிழ் (Tamil) – switch any time in Settings
+
+JellyVerse is a client for servers you run yourself. It does not provide, host or index any content.
+
+JellyVerse is an independent app and is not affiliated with or endorsed by the Jellyfin project.
+
+Made with ❤ by simpletools.in

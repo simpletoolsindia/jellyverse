@@ -1,0 +1,1 @@
+JellyVerse 2.0: on-device AI assistant, Library Doctor, Chromecast, Quick Connect, aria2, Sonarr/Radarr, homelab dashboard and SSH terminal.

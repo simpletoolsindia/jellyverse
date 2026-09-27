@@ -1,0 +1,25 @@
+-keepattributes *Annotation*, InnerClasses, Signature, Exceptions
+-keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
+-keepclasseswithmembers class com.sridhar.harbor.** { kotlinx.serialization.KSerializer serializer(...); }
+-keep,includedescriptorclasses class com.sridhar.harbor.**$$serializer { *; }
+-keepclassmembers class com.sridhar.harbor.** { *** Companion; }
+-keep interface com.sridhar.harbor.data.**.*Api { *; }
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
+-dontwarn okhttp3.internal.platform.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
+-keep class com.jcraft.jsch.** { *; }
+-dontwarn com.jcraft.jsch.**
+-dontwarn org.slf4j.**
+-dontwarn org.apache.logging.log4j.**
+-dontwarn com.sun.jna.**
+-dontwarn org.newsclub.net.unix.**
+-keepclassmembers class com.sridhar.harbor.ui.ssh.TerminalBridge { @android.webkit.JavascriptInterface <methods>; }
+-keep class com.google.mediapipe.** { *; }
+-dontwarn com.google.mediapipe.**
+-keep class com.google.protobuf.** { *; }
+-dontwarn com.google.protobuf.**
+-keep class com.sridhar.harbor.cast.CastOptionsProvider { *; }

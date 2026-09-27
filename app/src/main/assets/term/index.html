@@ -1,0 +1,56 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<link rel="stylesheet" href="xterm.css">
+<style>
+  html,body{margin:0;height:100%;background:#0B0B12;overflow:hidden}
+  #t{position:absolute;top:6px;left:8px}
+  .xterm .xterm-viewport{background:#0B0B12!important}
+  .xterm-viewport::-webkit-scrollbar{width:3px}.xterm-viewport::-webkit-scrollbar-thumb{background:#8B5CF6;border-radius:3px}
+</style>
+</head><body><div id="t"></div>
+<script src="xterm.js"></script><script src="addon-fit.js"></script><script src="addon-web-links.js"></script>
+<script>
+  const term = new Terminal({
+    fontFamily: "'JetBrains Mono','Droid Sans Mono','monospace'", fontSize: 13, lineHeight: 1.15,
+    cursorBlink: true, cursorStyle: 'bar', scrollback: 5000, allowProposedApi: true, macOptionIsMeta: true,
+    theme: {
+      background:'#0B0B12', foreground:'#E6E6F0', cursor:'#FF7A59', cursorAccent:'#0B0B12', selectionBackground:'#8B5CF655',
+      black:'#1D1B2C', red:'#FB7185', green:'#34D399', yellow:'#FBBF24', blue:'#60A5FA', magenta:'#C4B5FD', cyan:'#38BDF8', white:'#E6E6F0',
+      brightBlack:'#6B6B80', brightRed:'#FDA4AF', brightGreen:'#6EE7B7', brightYellow:'#FCD34D', brightBlue:'#93C5FD', brightMagenta:'#DDD6FE', brightCyan:'#7DD3FC', brightWhite:'#FFFFFF'
+    }
+  });
+  const fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.loadAddon(new WebLinksAddon.WebLinksAddon((e, uri) => Android.openLink(uri)));
+  term.open(document.getElementById('t'));
+  const el = document.getElementById('t');
+  const refit = () => {
+    try {
+      // Size explicitly from the viewport: some WebViews report 0 height for stretched absolute boxes.
+      el.style.width = Math.max(0, window.innerWidth - 12) + 'px';
+      el.style.height = Math.max(0, window.innerHeight - 6) + 'px';
+      const d = fit.proposeDimensions();
+      if (d && d.rows > 2 && d.cols > 10) fit.fit();
+    } catch (e) {}
+  };
+  window.refit = refit;
+  refit();
+  setTimeout(refit, 150); setTimeout(refit, 600);
+  if (document.fonts) document.fonts.ready.then(refit);
+  window.addEventListener('resize', refit);
+  term.onData(d => Android.onInput(d));
+  // Mobile keyboards: no autocorrect / capitalisation / suggestions on xterm's hidden input,
+  // otherwise predictive text composes words and re-sends them ("ls" arrives as "lls").
+  const ta = document.querySelector('.xterm-helper-textarea');
+  if (ta) { ['autocorrect','autocapitalize','autocomplete'].forEach(a => ta.setAttribute(a, 'off')); ta.setAttribute('spellcheck', 'false'); }
+  term.onBinary(d => Android.onInput(d));
+  term.onResize(({cols, rows}) => Android.onResize(cols, rows));
+  new ResizeObserver(refit).observe(document.body);
+  window.writeB64 = (s) => term.write(Uint8Array.from(atob(s), c => c.charCodeAt(0)));
+  window.setFontSize = (n) => { term.options.fontSize = n; refit(); };
+  window.focusTerm = () => term.focus();
+  window.clearTerm = () => term.clear();
+  window.copySelection = () => term.getSelection();
+  Android.onReady(term.cols, term.rows);
+</script></body></html>

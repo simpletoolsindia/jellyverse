@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="search" android:enabled="true" android:icon="@drawable/ic_sc_search"
+        android:shortcutShortLabel="@string/sc_search">
+        <intent android:action="android.intent.action.VIEW" android:data="jellyverse://open/search" android:targetPackage="com.sridhar.jellyverse" android:targetClass="com.sridhar.harbor.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="ai" android:enabled="true" android:icon="@drawable/ic_sc_ai"
+        android:shortcutShortLabel="@string/sc_ai">
+        <intent android:action="android.intent.action.VIEW" android:data="jellyverse://open/ai" android:targetPackage="com.sridhar.jellyverse" android:targetClass="com.sridhar.harbor.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="downloads" android:enabled="true" android:icon="@drawable/ic_sc_downloads"
+        android:shortcutShortLabel="@string/sc_downloads">
+        <intent android:action="android.intent.action.VIEW" android:data="jellyverse://open/downloads" android:targetPackage="com.sridhar.jellyverse" android:targetClass="com.sridhar.harbor.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="live" android:enabled="true" android:icon="@drawable/ic_sc_ai"
+        android:shortcutShortLabel="@string/sc_live">
+        <intent android:action="android.intent.action.VIEW" android:data="jellyverse://open/live" android:targetPackage="com.sridhar.jellyverse" android:targetClass="com.sridhar.harbor.MainActivity" />
+    </shortcut>
+    <shortcut android:shortcutId="lab" android:enabled="true" android:icon="@drawable/ic_sc_lab"
+        android:shortcutShortLabel="@string/sc_lab">
+        <intent android:action="android.intent.action.VIEW" android:data="jellyverse://open/lab" android:targetPackage="com.sridhar.jellyverse" android:targetClass="com.sridhar.harbor.MainActivity" />
+    </shortcut>
+</shortcuts>

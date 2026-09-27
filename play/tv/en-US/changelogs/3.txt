@@ -1,0 +1,1 @@
+First release of JellyVerse TV: remote-first Jellyfin player with Quick Connect sign-in.

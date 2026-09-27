@@ -1,0 +1,1 @@
+JellyVerse 2.1: Live TV (IPTV) with M3U / Xtream Codes, EPG and channel zapping • new lighthouse logo • smart notifications for finished downloads, available requests and homelab alerts • Quick Settings turtle-mode tile • app shortcuts • fingerprint app lock • Library Doctor now catches wrong matches • faster startup and playback.

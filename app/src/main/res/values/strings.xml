@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name" translatable="false">JellyVerse</string>
+    <string name="sc_search">Search</string>
+    <string name="sc_ai">JellyVerse AI</string>
+    <string name="sc_downloads">Downloads</string>
+    <string name="sc_lab">Homelab</string>
+    <string name="sc_live">Live TV</string>
+</resources>

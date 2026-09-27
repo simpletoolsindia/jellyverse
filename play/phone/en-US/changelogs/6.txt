@@ -1,0 +1,1 @@
+JellyVerse 2.3: NEW Music – a full music player for your Navidrome server: mixes made for you, album & artist pages, synced lyrics, song radio, queue, sleep timer with fade-out, equalizer & bass boost, data saver, smart cache, background play with lock-screen controls and Android Auto • fresh Hotstar-inspired look • Jellyfin server dashboard • Tamil (தமிழ்) language.

@@ -1,0 +1,18 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+.kotlin/
+keystore/
+keystore.properties
+*.apk
+*.aab
+release/
+
+# Store screenshots show a real library / homelab – kept local, never published
+play/**/phoneScreenshots/
+play/**/tvScreenshots/
+# Scratch
+patch_urls.kt
