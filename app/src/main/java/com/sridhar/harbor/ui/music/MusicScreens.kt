@@ -61,6 +61,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.sridhar.harbor.ui.components.enterRise
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.focusRequester
@@ -353,7 +354,7 @@ fun CollectionScreen(kind: String, id: String, nav: MusicNav) {
                 vm.songs.isEmpty() -> item { MessageState(stringResource(R.string.nothing_here), null, icon = Icons.Rounded.MusicNote) }
             }
             itemsIndexed(vm.songs, key = { i, song -> "$i-${song.id}" }) { i, song ->
-                Box(Modifier.padding(horizontal = 16.dp)) {
+                Box(Modifier.animateItem().enterRise(i).padding(horizontal = 16.dp)) {
                     SongRow(song, index = i + 1, current = s.current?.id == song.id, playing = s.playing, onClick = { vm.play(i) }, onMore = { actionsFor = song }, showArt = kind != "album")
                 }
             }

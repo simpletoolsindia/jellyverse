@@ -57,6 +57,7 @@ class PlayerActivity : ComponentActivity() {
      */
     var remoteKeys: ((android.view.KeyEvent) -> Boolean)? = null
 
+    @android.annotation.SuppressLint("RestrictedApi")   // Activity.dispatchKeyEvent is public API; the lint hit is ComponentActivity's annotation
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean =
         super.dispatchKeyEvent(event) || remoteKeys?.invoke(event) == true
 

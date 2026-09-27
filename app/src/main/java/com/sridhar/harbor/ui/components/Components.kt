@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.sridhar.harbor.ui.components
 
 import com.sridhar.harbor.L10n
@@ -56,6 +57,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.composed
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -111,6 +115,7 @@ fun Modifier.glass(shape: RoundedCornerShape = RoundedCornerShape(20.dp)) =
 
 @Composable
 fun NetImage(url: String?, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop, fallback: String? = null, alignment: Alignment = Alignment.Center) {
+    if (url != null && url.startsWith(com.sridhar.harbor.data.jellyfin.COLLAGE)) { Collage(url.removePrefix(com.sridhar.harbor.data.jellyfin.COLLAGE), modifier, fallback); return }
     SubcomposeAsyncImage(
         model = url, contentDescription = null, contentScale = contentScale, modifier = modifier, alignment = alignment,
         loading = { Box(Modifier.fillMaxSize().shimmer()) },
@@ -144,8 +149,12 @@ fun PosterCard(
 }
 
 @Composable
-fun WideCard(imageUrl: String?, title: String, subtitle: String?, progress: Float, width: Dp = 260.dp, onClick: () -> Unit) {
-    Column(Modifier.width(width).pressable(onClick = onClick)) {
+fun WideCard(imageUrl: String?, title: String, subtitle: String?, progress: Float, width: Dp = 260.dp, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    Column(Modifier.width(width).then(
+        if (onLongClick == null) Modifier.pressable(onClick = onClick)
+        else Modifier.combinedClickable(onLongClick = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); onLongClick() }, onClick = onClick)
+    )) {
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp))) {
             NetImage(imageUrl, Modifier.fillMaxSize(), fallback = title)
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .55f)))))
@@ -196,7 +205,8 @@ fun Modifier.pressable(pressedScale: Float = 0.95f, enabled: Boolean = true, onC
 /** Items fade + rise in once, staggered by [index] — for lists that appear after loading. */
 fun Modifier.enterRise(index: Int): Modifier = composed {
     val shown = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { shown.animateTo(1f, tween(420, delayMillis = (index.coerceAtMost(8)) * 45, easing = FastOutSlowInEasing)) }
+    // Stagger only the first screenful; items revealed by scrolling later rise at once (no lag on fast flings).
+    LaunchedEffect(Unit) { shown.animateTo(1f, tween(if (index < 12) 380 else 260, delayMillis = if (index < 12) index * 40 else 0, easing = FastOutSlowInEasing)) }
     graphicsLayer { alpha = shown.value; translationY = (1f - shown.value) * 28.dp.toPx() }
 }
 
@@ -218,7 +228,7 @@ fun <T> Rail(
         SectionHeader(title, action = action, onAction = onAction)
         Spacer(Modifier.height(8.dp))
         LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(items, key = key) { content(it) }
+            itemsIndexed(items, key = { _, it -> key(it) }) { i, it -> Box(Modifier.animateItem().enterRise(i)) { content(it) } }
         }
     }
 }
@@ -318,5 +328,26 @@ fun MadeWithLove(modifier: Modifier = Modifier) {
         Text("❤", color = Harbor.Rose, fontSize = 12.sp)
         Text(stringResource(R.string.by), color = Harbor.TextDim, fontSize = 12.sp)
         Text(stringResource(R.string.simpletools_in), fontSize = 12.sp, fontWeight = FontWeight.Bold, style = androidx.compose.ui.text.TextStyle(brush = Harbor.accentH))
+    }
+}
+
+/** Poster for a collection without artwork: its movies' posters tiled 2×2 (or fewer), fading in. */
+@Composable
+private fun Collage(collectionId: String, modifier: Modifier, fallback: String?) {
+    val jf = LocalContainer.current.jellyfin
+    val urls by androidx.compose.runtime.produceState<List<String>?>(null, collectionId) { value = jf.collagePosters(collectionId) }
+    val list = urls
+    when {
+        list == null -> Box(modifier.shimmer())
+        list.isEmpty() -> NetImage(null, modifier, fallback = fallback)
+        list.size == 1 -> NetImage(list[0], modifier, fallback = fallback)
+        else -> androidx.compose.foundation.layout.Column(modifier.background(Harbor.Ink)) {
+            val rows = if (list.size >= 4) list.chunked(2) else listOf(list.take(2))
+            rows.forEach { row ->
+                androidx.compose.foundation.layout.Row(Modifier.weight(1f).fillMaxWidth()) {
+                    row.forEach { u -> NetImage(u, Modifier.weight(1f).fillMaxHeight()) }
+                }
+            }
+        }
     }
 }

@@ -30,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.sridhar.harbor.ui.components.enterRise
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -83,9 +85,9 @@ private fun TvGridContent(view: BaseItem, onOpen: (String) -> Unit) {
                     com.sridhar.harbor.ui.watch.LibraryFilterBar(vm) { label, active, dropdown, onClick -> Chip(if (dropdown) "$label ▾" else "✕ $label", active, onClick) }
                 }
             }
-            items(vm.items, key = { it.id }) { item ->
+            itemsIndexed(vm.items, key = { _, it -> it.id }) { i, item ->
                 // TV-sized poster that fills its cell, with the title and year under it (never hidden behind the next row).
-                androidx.compose.foundation.layout.BoxWithConstraints {
+                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.animateItem().enterRise(i)) {
                     val cellWidth = maxWidth
                     Column {
                         PosterTile(item.name, jf.posterUrl(cfg, item, 320), width = cellWidth, progress = item.progress,

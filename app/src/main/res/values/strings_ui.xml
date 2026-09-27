@@ -1000,4 +1000,12 @@
     <string name="update_up_to_date">You\'re on the latest version (%1$s)</string>
     <string name="update_failed">Couldn\'t check – %1$s</string>
     <string name="update_current">Version %1$s · tap to check</string>
+    <string name="play_nothing_inside">“%1$s” has nothing playable inside it yet</string>
+    <string name="resume_remove">Remove from Continue watching</string>
+    <string name="resume_remove_hint">It disappears from Continue watching. Watched status and the title itself are kept.</string>
+    <string name="resume_removed">Removed from Continue watching</string>
+    <string name="resume_remove_failed">Couldn\'t remove – check your connection</string>
+    <string name="doctor_applying">Applying… Jellyfin is fetching the details</string>
+    <string name="doctor_move_to_tv">Move to TV Shows</string>
+    <string name="doctor_move_to_movies">Move to Movies</string>
 </resources>

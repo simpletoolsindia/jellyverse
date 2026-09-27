@@ -124,6 +124,29 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
         val (a, c) = api(); return a.episodes(seriesId, c.jellyfinUserId, seasonId).items
     }
 
+    private val collageCache = java.util.concurrent.ConcurrentHashMap<String, List<String>>()
+
+    /** Up to four poster URLs from inside a collection (cached for the session). */
+    suspend fun collagePosters(collectionId: String): List<String> = collageCache[collectionId] ?: run {
+        val cfg = settings.current()
+        val kids = runCatching { library(collectionId, "Movie,Series", "PremiereDate,SortName", "Ascending", 0, 12).items }.getOrDefault(emptyList())
+        kids.filter { it.imageTags["Primary"] != null }.take(4).map { posterUrl(cfg, it, 300) }.also { collageCache[collectionId] = it }
+    }
+
+    /**
+     * Something the player can actually stream. Collections, series, seasons and folders have no file of their own
+     * (the server rejects them with an HTTP error), so resolve them to the right movie / episode inside.
+     */
+    suspend fun playable(item: BaseItem): BaseItem? {
+        if (!item.isFolderish) return item
+        return when (item.type) {
+            "Series" -> nextUpFor(item.id) ?: episodes(item.id, null).firstOrNull { it.userData?.played != true } ?: episodes(item.id, null).firstOrNull()
+            "Season" -> episodes(item.seriesId ?: return null, item.id).let { eps -> eps.firstOrNull { it.userData?.played != true } ?: eps.firstOrNull() }
+            else -> library(item.id, "Movie,Episode,Video", "PremiereDate,ProductionYear,SortName", "Ascending", 0, 200).items
+                .let { kids -> kids.firstOrNull { it.userData?.played != true } ?: kids.firstOrNull() }
+        }
+    }
+
     suspend fun library(
         parentId: String?, types: String?, sortBy: String, sortOrder: String, start: Int, limit: Int,
         filters: String? = null, recursive: Boolean = true, genres: String? = null, years: String? = null,
@@ -246,6 +269,13 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
         val (a, c) = api(); if (played) a.markPlayed(id, c.jellyfinUserId) else a.markUnplayed(id, c.jellyfinUserId)
     }
 
+    /** Drops a title from Continue watching by clearing its saved position (watched state is untouched). */
+    suspend fun removeFromResume(id: String) {
+        val (a, c) = api()
+        val r = a.updateUserData(id, c.jellyfinUserId, kotlinx.serialization.json.buildJsonObject { put("PlaybackPositionTicks", kotlinx.serialization.json.JsonPrimitive(0)) })
+        if (!r.isSuccessful) throw retrofit2.HttpException(r)
+    }
+
     suspend fun setFavorite(id: String, fav: Boolean) {
         val (a, c) = api(); if (fav) a.favorite(id, c.jellyfinUserId) else a.unfavorite(id, c.jellyfinUserId)
     }
@@ -260,6 +290,8 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
         "${cfg.jellyfinUrl}/Items/$itemId/Images/$type?maxWidth=$maxWidth&quality=90" + (tag?.let { "&tag=$it" } ?: "")
 
     fun posterUrl(cfg: ServerConfig, item: BaseItem, maxWidth: Int = 400): String = when {
+        // Collections usually have no artwork of their own – NetImage draws a collage of the movies inside.
+        item.type == "BoxSet" && item.imageTags["Primary"] == null -> "$COLLAGE${item.id}"
         // For episodes, prefer the series poster over the episode still
         item.type == "Episode" && item.seriesId != null && item.seriesPrimaryImageTag != null -> imageUrl(cfg, item.seriesId, "Primary", maxWidth, item.seriesPrimaryImageTag)
         item.imageTags["Primary"] != null -> imageUrl(cfg, item.id, "Primary", maxWidth, item.imageTags["Primary"])
@@ -290,7 +322,7 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
 
     fun directStreamUrl(cfg: ServerConfig, itemId: String, mediaSourceId: String): String =
         "${cfg.jellyfinUrl}/Videos/$itemId/stream?static=true&mediaSourceId=$mediaSourceId" +
-            "&deviceId=${cfg.deviceId}&api_key=${cfg.jellyfinToken}"
+            "&deviceId=${cfg.deviceId}&ApiKey=${cfg.jellyfinToken}"
 
     /** Server-side transcode to H.264/AAC HLS; used for quality caps or when direct play fails. */
     fun hlsUrl(
@@ -299,7 +331,7 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
     ): String = buildString {
         append("${cfg.jellyfinUrl}/Videos/$itemId/master.m3u8?")
         append("mediaSourceId=$mediaSourceId&playSessionId=$playSessionId&deviceId=${cfg.deviceId}")
-        append("&api_key=${cfg.jellyfinToken}&videoCodec=h264&audioCodec=aac&maxAudioChannels=2")
+        append("&ApiKey=${cfg.jellyfinToken}&videoCodec=h264&audioCodec=aac&maxAudioChannels=2")
         append("&videoBitrate=$maxBitrate&audioBitrate=192000&segmentContainer=mp4&transcodingMaxAudioChannels=2")
         audioIndex?.let { append("&audioStreamIndex=$it") }
         subtitleIndex?.let { append("&subtitleStreamIndex=$it&subtitleMethod=Encode") }
@@ -309,16 +341,19 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
     }
 
     fun trickplayTileUrl(cfg: ServerConfig, itemId: String, mediaSourceId: String, width: Int, tile: Int): String =
-        "${cfg.jellyfinUrl}/Videos/$itemId/Trickplay/$width/$tile.jpg?mediaSourceId=$mediaSourceId&api_key=${cfg.jellyfinToken}"
+        "${cfg.jellyfinUrl}/Videos/$itemId/Trickplay/$width/$tile.jpg?mediaSourceId=$mediaSourceId&ApiKey=${cfg.jellyfinToken}"
 
     fun chapterImageUrl(cfg: ServerConfig, itemId: String, index: Int, tag: String?): String =
         "${cfg.jellyfinUrl}/Items/$itemId/Images/Chapter/$index?maxWidth=360" + (tag?.let { "&tag=$it" } ?: "")
 
     fun subtitleUrl(cfg: ServerConfig, itemId: String, mediaSourceId: String, index: Int): String =
-        "${cfg.jellyfinUrl}/Videos/$itemId/$mediaSourceId/Subtitles/$index/0/Stream.vtt?api_key=${cfg.jellyfinToken}"
+        "${cfg.jellyfinUrl}/Videos/$itemId/$mediaSourceId/Subtitles/$index/0/Stream.vtt?ApiKey=${cfg.jellyfinToken}"
 
     fun downloadUrl(cfg: ServerConfig, itemId: String): String =
-        "${cfg.jellyfinUrl}/Items/$itemId/Download?api_key=${URLEncoder.encode(cfg.jellyfinToken, "UTF-8")}"
+        "${cfg.jellyfinUrl}/Items/$itemId/Download?ApiKey=${URLEncoder.encode(cfg.jellyfinToken, "UTF-8")}"
 
     fun newPlaySessionId(): String = UUID.randomUUID().toString().replace("-", "")
 }
+
+/** Pseudo-URL NetImage understands: "collage:<collectionId>". */
+const val COLLAGE = "collage:"

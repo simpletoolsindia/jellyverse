@@ -45,6 +45,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.sridhar.harbor.ui.components.enterRise
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -156,7 +158,7 @@ fun DiscoverScreen(onOpen: (String, Int) -> Unit, onSetup: () -> Unit) {
         if (vm.query.isNotBlank()) {
             LazyVerticalGrid(GridCells.Adaptive(112.dp), Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current),
                 horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(vm.results, key = { "${it.mediaType}-${it.id}" }) { SeerrPoster(it, 200.dp, onOpen) }
+                itemsIndexed(vm.results, key = { _, it -> "${it.mediaType}-${it.id}" }) { i, it -> Box(Modifier.animateItem().enterRise(i)) { SeerrPoster(it, 200.dp, onOpen) } }
             }
             return@Column
         }

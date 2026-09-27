@@ -45,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -129,6 +130,23 @@ fun TvHome(onOpen: (String) -> Unit) {
         while (heroFocused && vm.hero.size > 1) { delay(if (trailerOn) 45_000 else 8000); heroIndex = (heroIndex + 1) % vm.hero.size; display = vm.hero[heroIndex] }
     }
 
+    var removing by remember { mutableStateOf<BaseItem?>(null) }
+    removing?.let { r ->
+        val focusRemove = remember { androidx.compose.ui.focus.FocusRequester() }
+        LaunchedEffect(r) { runCatching { kotlinx.coroutines.delay(100); focusRemove.requestFocus() } }
+        androidx.compose.ui.window.Dialog(onDismissRequest = { removing = null }) {
+            Column(Modifier.clip(RoundedCornerShape(24.dp)).background(Harbor.Surface).padding(32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(r.seriesName ?: r.name, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.resume_remove_hint), color = Harbor.TextDim, fontSize = 16.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    TvButton(stringResource(R.string.resume_remove), Icons.Rounded.Delete, primary = true, modifier = Modifier.focusRequester(focusRemove)) {
+                        vm.removeFromResume(r); removing = null
+                    }
+                    TvButton(stringResource(R.string.cancel), null) { removing = null }
+                }
+            }
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         AmbientBackdrop(display?.let { jf.backdropUrl(cfg, it, if (container.lowRam) 1280 else 1920) }, drift = !container.lowRam, preview = display, onTrailer = { trailerOn = it })
         if (vm.loading && vm.hero.isEmpty()) com.sridhar.harbor.ui.components.JellyLoader(Modifier.align(Alignment.Center), color = Harbor.VioletSoft)
@@ -165,7 +183,7 @@ fun TvHome(onOpen: (String) -> Unit) {
                 item(key = "resume") {
                     TvRow(stringResource(R.string.continue_watching_2), vm.resume, key = { it.id }) { it2 ->
                         LandscapeTile(it2.seriesName ?: it2.name, it2.episodeLabel ?: it2.year?.toString(), jf.thumbUrl(cfg, it2, 600), progress = it2.progress,
-                            onFocus = { display = it2 }) { PlayerActivity.start(ctx, it2.id) }
+                            onFocus = { display = it2 }, onMenu = { removing = it2 }) { PlayerActivity.start(ctx, it2.id) }
                     }
                 }
                 item(key = "next") {

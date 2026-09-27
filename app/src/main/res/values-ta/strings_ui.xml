@@ -1000,4 +1000,12 @@
     <string name="update_up_to_date">நீங்கள் சமீபத்திய பதிப்பில் உள்ளீர்கள் (%1$s)</string>
     <string name="update_failed">சரிபார்க்க முடியவில்லை – %1$s</string>
     <string name="update_current">பதிப்பு %1$s · சரிபார்க்கத் தட்டவும்</string>
+    <string name="play_nothing_inside">“%1$s”-இல் இயக்கக்கூடியது எதுவும் இல்லை</string>
+    <string name="resume_remove">தொடர்ந்து பார்ப்பதிலிருந்து நீக்கு</string>
+    <string name="resume_remove_hint">இது தொடர்ந்து பார்ப்பதிலிருந்து மறையும். பார்த்த நிலையும் படமும் அப்படியே இருக்கும்.</string>
+    <string name="resume_removed">தொடர்ந்து பார்ப்பதிலிருந்து நீக்கப்பட்டது</string>
+    <string name="resume_remove_failed">நீக்க முடியவில்லை – இணைப்பைச் சரிபார்க்கவும்</string>
+    <string name="doctor_applying">பயன்படுத்துகிறது… Jellyfin விவரங்களைப் பெறுகிறது</string>
+    <string name="doctor_move_to_tv">TV தொடர்களுக்கு நகர்த்து</string>
+    <string name="doctor_move_to_movies">திரைப்படங்களுக்கு நகர்த்து</string>
 </resources>

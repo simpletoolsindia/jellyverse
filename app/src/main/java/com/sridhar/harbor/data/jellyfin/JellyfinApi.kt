@@ -162,6 +162,9 @@ interface JellyfinApi {
     @POST("Sessions/Playing/Stopped")
     suspend fun stopped(@Body body: PlaybackReport): Response<ResponseBody>
 
+    @POST("UserItems/{id}/UserData")
+    suspend fun updateUserData(@Path("id") id: String, @Query("userId") userId: String, @Body body: kotlinx.serialization.json.JsonObject): Response<ResponseBody>
+
     @POST("UserPlayedItems/{id}")
     suspend fun markPlayed(@Path("id") id: String, @Query("userId") userId: String): Response<ResponseBody>
 

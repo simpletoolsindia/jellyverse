@@ -107,6 +107,13 @@ class WatchHomeViewModel(private val c: AppContainer) : ViewModel() {
 
     init { load() }
 
+    /** Optimistic: the card disappears immediately; it comes back if the server refuses. */
+    fun removeFromResume(item: BaseItem, onDone: (Boolean) -> Unit = {}) = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
+        val before = resume
+        resume = resume.filterNot { it.id == item.id }
+        runCatching { c.jellyfin.removeFromResume(item.id) }.onSuccess { onDone(true) }.onFailure { resume = before; onDone(false) }
+    }
+
     fun load(pull: Boolean = false) = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
         if (pull) refreshing = true
         error = null
@@ -158,6 +165,18 @@ fun WatchHomeScreen(
     val jf = container.jellyfin
     val play: (BaseItem) -> Unit = { PlayerActivity.start(ctx, it.id) }
 
+    var removing by remember { androidx.compose.runtime.mutableStateOf<BaseItem?>(null) }
+    removing?.let { it ->
+        val removedMsg = stringResource(R.string.resume_removed); val failMsg = stringResource(R.string.resume_remove_failed)
+        androidx.compose.material3.AlertDialog(onDismissRequest = { removing = null }, containerColor = Harbor.Surface,
+            title = { Text(it.seriesName ?: it.name) },
+            text = { Text(stringResource(R.string.resume_remove_hint), color = Harbor.TextDim) },
+            confirmButton = { androidx.compose.material3.TextButton({
+                vm.removeFromResume(it) { ok -> android.widget.Toast.makeText(ctx, if (ok) removedMsg else failMsg, android.widget.Toast.LENGTH_SHORT).show() }
+                removing = null
+            }) { Text(stringResource(R.string.resume_remove), color = Harbor.Rose) } },
+            dismissButton = { androidx.compose.material3.TextButton({ removing = null }) { Text(stringResource(R.string.cancel)) } })
+    }
     val downloads = rememberFinishedDownloads()
     val parental by container.parental.state.collectAsState()
     // Protection switched on/off or a title (un)locked → Home re-filters.
@@ -210,6 +229,7 @@ fun WatchHomeScreen(
                         jf.thumbUrl(cfg, item), item.seriesName ?: item.name,
                         listOfNotNull(item.episodeLabel, if (item.seriesName != null) item.name else null).joinToString(" · ").ifBlank { null },
                         item.progress,
+                        onLongClick = { removing = item },
                     ) { play(item) }
                 }
             }

@@ -12,7 +12,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.io.IOException
 
 enum class IssueKind(val label: String) { Unidentified("Not matched"), WrongMatch("Wrong match?"), MessyName("Messy name"), NoPoster("No poster"), Misfiled("Series in Movies") }
-enum class FixStatus { Pending, Applied, Skipped, Failed }
+enum class FixStatus { Pending, Applying, Applied, Skipped, Failed }
 
 data class Candidate(val result: RemoteSearchResult, val raw: JsonObject, val kind: String, val score: Float)
 

@@ -137,9 +137,18 @@ class DoctorViewModel(private val c: AppContainer) : ViewModel() {
 
     private fun update(id: String, f: (DoctorIssue) -> DoctorIssue) { val i = issues.indexOfFirst { it.item.id == id }; if (i >= 0) issues[i] = f(issues[i]) }
 
-    fun apply(issue: DoctorIssue) = viewModelScope.launch(com.sridhar.harbor.CrashGuard) { update(issue.item.id) { it.copy(status = FixStatus.Pending, error = null) }; val r = c.doctor.apply(issue); update(issue.item.id) { r } }
+    fun apply(issue: DoctorIssue) = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
+        val current = issues.firstOrNull { it.item.id == issue.item.id } ?: issue
+        if (current.status == FixStatus.Applying) return@launch   // already working – ignore double taps
+        val best = current.best
+        // Matched a series but filed as a movie (or vice versa): metadata can't fix that – offer to move the file instead.
+        if (best != null && best.kind != current.item.type) { planMoves(listOf(current)); return@launch }
+        update(current.item.id) { it.copy(status = FixStatus.Applying, error = null) }
+        val r = runCatching { c.doctor.apply(current) }.getOrElse { e -> current.copy(status = FixStatus.Failed, error = e.friendly()) }
+        update(current.item.id) { r }
+    }
     fun applyConfident() = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
-        val list = issues.filter { it.confident && it.status == FixStatus.Pending }
+        val list = issues.filter { it.confident && it.status == FixStatus.Pending && it.best?.kind == it.item.type }
         list.forEach { i -> val r = c.doctor.apply(i); update(i.item.id) { r } }
         message = L10n.s(R.string.applied_1_s_matches_jellyfin_is, list.size)
     }
@@ -155,8 +164,8 @@ class DoctorViewModel(private val c: AppContainer) : ViewModel() {
         message = L10n.s(R.string.saved_as_a_qwen_example_for)
     }
 
-    fun planMoves() = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
-        plans = runCatching { c.doctor.planMoves(issues.filter { it.status != FixStatus.Skipped && it.best != null }) }.getOrElse { message = it.friendly(); null }
+    fun planMoves(only: List<DoctorIssue>? = null) = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
+        plans = runCatching { c.doctor.planMoves(only ?: issues.filter { it.status != FixStatus.Skipped && it.best != null }) }.getOrElse { message = it.friendly(); null }
         if (plans?.isEmpty() == true) { message = L10n.s(R.string.everything_is_already_organised); plans = null }
     }
 
@@ -356,8 +365,12 @@ private fun IssueCard(
             when (issue.status) {
                 FixStatus.Applied -> { Icon(Icons.Rounded.CheckCircle, null, tint = Harbor.Mint, modifier = Modifier.size(18.dp)); Text(stringResource(R.string.applied_posters_on_the_way), color = Harbor.Mint, fontSize = 12.sp) }
                 FixStatus.Skipped -> Text(stringResource(R.string.skipped), color = Harbor.TextDim, fontSize = 12.sp)
+                FixStatus.Applying -> {
+                    com.sridhar.harbor.ui.components.JellyLoader(Modifier.size(22.dp))
+                    Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.doctor_applying), color = Harbor.Sky, fontSize = 12.sp)
+                }
                 else -> {
-                    if (best != null) Text(stringResource(R.string.apply), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    if (best != null) Text(stringResource(when { best.kind == issue.item.type -> R.string.apply; best.kind == "Series" -> R.string.doctor_move_to_tv; else -> R.string.doctor_move_to_movies }), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                         modifier = Modifier.clip(RoundedCornerShape(50)).background(Harbor.accentH).pressable(onClick = onApply).padding(horizontal = 16.dp, vertical = 7.dp))
                     if (issue.candidates.size > 1) TextButton(onAlternatives) { Icon(Icons.Rounded.SwapHoriz, null, modifier = Modifier.size(16.dp)); Text(stringResource(R.string.s_1_s_more, issue.candidates.size - 1)) }
                     TextButton(onEdit) { Icon(Icons.Rounded.Edit, null, modifier = Modifier.size(16.dp)); Text(stringResource(R.string.fix_title)) }

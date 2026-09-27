@@ -46,6 +46,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.sridhar.harbor.ui.components.enterRise
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -186,12 +188,12 @@ fun LibraryScreen(id: String, name: String, collectionType: String?, onItem: (St
                     }
                 }
             }
-            items(vm.items, key = { it.id }) { item ->
-                PosterCard(
+            itemsIndexed(vm.items, key = { _, it -> it.id }) { i, item ->
+                Box(Modifier.animateItem().enterRise(i)) { PosterCard(
                     container.jellyfin.posterUrl(cfg, item), item.name, item.year?.toString(), width = 200.dp,
                     progress = item.progress, played = item.userData?.played == true,
                     badge = item.userData?.unplayedCount?.takeIf { it > 0 }?.let { n -> { CountBadge(n) } },
-                ) { onItem(item.id) }
+                ) { onItem(item.id) } }
             }
             if (vm.loading) item(span = { GridItemSpan(maxLineSpan) }) {
                 Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { com.sridhar.harbor.ui.components.JellyLoader() }
@@ -257,12 +259,12 @@ fun SearchScreen(onItem: (String) -> Unit, onBack: () -> Unit) {
             contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            items(vm.results, key = { it.id }) { item ->
-                PosterCard(
+            itemsIndexed(vm.results, key = { _, it -> it.id }) { i, item ->
+                Box(Modifier.animateItem().enterRise(i)) { PosterCard(
                     container.jellyfin.posterUrl(cfg, item), item.name,
                     listOfNotNull(item.type.takeIf { it != "Movie" }, item.seriesName, item.year?.toString()).joinToString(" · "),
                     width = 200.dp,
-                ) { onItem(item.id) }
+                ) { onItem(item.id) } }
             }
         }
     }

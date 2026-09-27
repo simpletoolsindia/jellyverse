@@ -54,7 +54,9 @@ object RemoteServer {
     private val main = Handler(Looper.getMainLooper())
     private val clients = CopyOnWriteArraySet<Client>()
     @Volatile private var started = false
-    @Volatile private var current: Activity? = null
+    // Weak: the server outlives activities; a strong reference would leak the whole screen.
+    @Volatile private var currentRef: java.lang.ref.WeakReference<Activity>? = null
+    private val current: Activity? get() = currentRef?.get()
     private lateinit var app: Application
 
     /** Code shown on screen while a phone is pairing (null = not pairing). */
@@ -75,8 +77,8 @@ object RemoteServer {
         if (started) return
         started = true; app = application
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityResumed(a: Activity) { current = a }
-            override fun onActivityPaused(a: Activity) { if (current === a) current = null }
+            override fun onActivityResumed(a: Activity) { currentRef = java.lang.ref.WeakReference(a) }
+            override fun onActivityPaused(a: Activity) { if (current === a) currentRef = null }
             override fun onActivityCreated(a: Activity, b: Bundle?) {}
             override fun onActivityStarted(a: Activity) {}
             override fun onActivityStopped(a: Activity) {}

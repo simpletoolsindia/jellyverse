@@ -38,6 +38,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.sridhar.harbor.ui.components.enterRise
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
@@ -93,9 +96,19 @@ fun PosterTile(title: String, image: String?, width: Dp = 150.dp, progress: Floa
 }
 
 @Composable
-fun LandscapeTile(title: String, subtitle: String?, image: String?, width: Dp = 300.dp, progress: Float = 0f, onFocus: () -> Unit, onClick: () -> Unit) {
+fun LandscapeTile(title: String, subtitle: String?, image: String?, width: Dp = 300.dp, progress: Float = 0f, onFocus: () -> Unit, onMenu: (() -> Unit)? = null, onClick: () -> Unit) {
     Column(Modifier.width(width)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).tvFocusable(focusedScale = 1.06f, onFocus = onFocus, onClick = onClick).clip(RoundedCornerShape(14.dp)).background(Harbor.Surface)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)
+            // Menu key, or holding OK, opens the tile's options (e.g. remove from Continue watching).
+            .then(if (onMenu == null) Modifier else Modifier.onPreviewKeyEvent { e ->
+                val ne = e.nativeKeyEvent
+                val menu = ne.keyCode == android.view.KeyEvent.KEYCODE_MENU && ne.action == android.view.KeyEvent.ACTION_DOWN
+                val hold = (ne.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || ne.keyCode == android.view.KeyEvent.KEYCODE_ENTER) &&
+                    ne.action == android.view.KeyEvent.ACTION_DOWN && ne.repeatCount == 1
+                if (menu || hold) { onMenu(); true }
+                else ne.repeatCount > 1 && (ne.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || ne.keyCode == android.view.KeyEvent.KEYCODE_ENTER)
+            })
+            .tvFocusable(focusedScale = 1.06f, onFocus = onFocus, onClick = onClick).clip(RoundedCornerShape(14.dp)).background(Harbor.Surface)) {
             NetImage(image, Modifier.fillMaxSize(), fallback = title)
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(.75f)))))
             Column(Modifier.align(Alignment.BottomStart).padding(12.dp)) {
@@ -115,7 +128,7 @@ fun <T> TvRow(title: String, items: List<T>, key: (T) -> Any, content: @Composab
     Column(Modifier.padding(bottom = 22.dp)) {
         Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 48.dp, bottom = 12.dp))
         LazyRow(contentPadding = PaddingValues(horizontal = 48.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-            items(items, key = key) { content(it) }
+            itemsIndexed(items, key = { _, it -> key(it) }) { i, it -> Box(Modifier.animateItem().enterRise(i)) { content(it) } }
         }
     }
 }

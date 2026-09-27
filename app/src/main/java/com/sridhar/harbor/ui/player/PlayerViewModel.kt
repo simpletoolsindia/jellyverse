@@ -315,7 +315,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             firstFrame = false, loadStartedAt = System.currentTimeMillis(), buffering = true)
         reportedStart = false; skippedSegmentStart = null; dropped = 0
         playSessionId = c.jellyfin.newPlaySessionId()
-        val it = runCatching { c.jellyfin.item(itemId) }.getOrElse { e -> ui = ui.copy(error = e.friendly()); return@launch }
+        val requested = runCatching { c.jellyfin.item(itemId) }.getOrElse { e -> ui = ui.copy(error = e.friendly()); return@launch }
+        // A collection / series / season can't be streamed itself – play the right movie or episode inside it.
+        val it = if (!requested.isFolderish) requested else runCatching { c.jellyfin.playable(requested)?.let { p -> c.jellyfin.item(p.id) } }.getOrNull()
+            ?: run { ui = ui.copy(error = L10n.s(R.string.play_nothing_inside, requested.name)); return@launch }
         applyItem(it, offline = false)
         ui = ui.copy(download = if (c.offline.isDownloaded(it.id)) DownloadState.Done else DownloadState.None)
         val resumeMs = if (fromStart) 0 else (it.userData?.positionTicks ?: 0) / TICKS_PER_MS
@@ -779,7 +782,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun stopReport() {
-        if (item == null || ui.live) return
+        // Nothing to report if playback never started (e.g. closed at the parental PIN or on a load error).
+        if (item == null || ui.live || !reportedStart) return
         val body = reportBody()
         c.scope.launch(com.sridhar.harbor.CrashGuard) { c.jellyfin.reportStop(body) }
     }

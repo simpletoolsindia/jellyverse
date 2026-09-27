@@ -1,0 +1,1 @@
+JellyVerse TV 2.6.1: collection posters • playing a collection or series starts the right title • hold OK (or Menu) on Continue watching to remove it • smoother rows and grids • Ethernet-only TVs supported • Jellyfin 12 ready • fixes.
