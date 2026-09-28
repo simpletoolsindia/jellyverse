@@ -1,0 +1,1 @@
+JellyVerse TV 2.8.0: first-time setup shows a QR code – scan it with JellyVerse on your phone and the TV pairs and signs in automatically. New "Connect phone" menu. Music now has live FM radio on TV: pick stations with the remote, ⏮/⏭ switch stations. The side menu opens on the screen you're on.

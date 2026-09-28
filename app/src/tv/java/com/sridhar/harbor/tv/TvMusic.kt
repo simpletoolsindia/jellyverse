@@ -39,6 +39,8 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -82,19 +84,22 @@ fun TvMusicHome(onCollection: (String, String) -> Unit, onNowPlaying: () -> Unit
     val c = LocalContainer.current
     val cfg = rememberConfig()
     val vm = viewModel { MusicHomeViewModel(c) }
-    if (!cfg.navidromeReady) { Box(Modifier.fillMaxSize().padding(horizontal = 280.dp)) { NavidromeSignIn(onDone = { vm.load() }) }; return }
+    // Live FM works without Navidrome; library music appears once it's connected.
+    var connecting by remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (connecting && !cfg.navidromeReady) { Box(Modifier.fillMaxSize().padding(horizontal = 280.dp)) { NavidromeSignIn(onDone = { connecting = false; vm.load() }) }; return }
     val s by c.musicEngine.state.collectAsState()
     val song = s.current
     val heroArt = song?.let { c.music.coverUrl(cfg, it.coverArt, 600) }
     val tint = rememberArtColor(heroArt, song?.coverTitle ?: "music")
 
-    LazyColumn(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(lerp(tint, Harbor.Ink, .55f), Harbor.Ink, Harbor.Ink))), contentPadding = PaddingValues(start = 120.dp, top = 40.dp, bottom = 60.dp, end = 48.dp)) {
+    LazyColumn(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(lerp(tint, Harbor.Ink, .55f), Harbor.Ink, Harbor.Ink))), contentPadding = PaddingValues(top = 40.dp, bottom = 60.dp)) {
+        // Rows (TvRow) carry their own 48dp inset; everything else lines up with them.
         item {
-            Text(stringResource(R.string.tv_music), color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Black)
+            Text(stringResource(R.string.tv_music), color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 48.dp))
             Spacer(Modifier.height(20.dp))
         }
         if (song != null) item {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color.White.copy(.06f)).padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(horizontal = 48.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color.White.copy(.06f)).padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
                 CoverArt(heroArt, song.coverTitle, Modifier.size(150.dp), RoundedCornerShape(12.dp))
                 Spacer(Modifier.width(28.dp))
                 Column(Modifier.weight(1f)) {
@@ -111,8 +116,16 @@ fun TvMusicHome(onCollection: (String, String) -> Unit, onNowPlaying: () -> Unit
             }
             Spacer(Modifier.height(12.dp))
         }
-        if (vm.loading && vm.newest.isEmpty()) item { Box(Modifier.fillMaxWidth().padding(64.dp), Alignment.Center) { com.sridhar.harbor.ui.components.JellyLoader() } }
-        if (vm.mixes.isNotEmpty()) item {
+        item(key = "radio") { TvRadioRow(onNowPlaying) }
+        if (!cfg.navidromeReady) item(key = "connect") {
+            Column(Modifier.padding(start = 48.dp, top = 8.dp)) {
+                Text(stringResource(R.string.mu_connect_body), color = Harbor.TextDim, fontSize = 16.sp)
+                Spacer(Modifier.height(12.dp))
+                TvButton(stringResource(R.string.mu_connect_title), Icons.Rounded.PlayArrow) { connecting = true }
+            }
+        }
+        if (cfg.navidromeReady && vm.loading && vm.newest.isEmpty()) item { Box(Modifier.fillMaxWidth().padding(64.dp), Alignment.Center) { com.sridhar.harbor.ui.components.JellyLoader() } }
+        if (cfg.navidromeReady && vm.mixes.isNotEmpty()) item {
             TvRow(stringResource(R.string.mu_made_for_you), vm.mixes, key = { it.key }) { m ->
                 val (a, b) = remember(m.key) { seedColors(m.key + "mix") }
                 Column(Modifier.width(180.dp)) {
@@ -190,7 +203,7 @@ fun TvNowPlaying() {
     val art = c.music.coverUrl(cfg, song.coverArt, 800)
     val tint = rememberArtColor(art, song.coverTitle)
     val pos by produceState(0L, song.id) { engine.positionFlow().collect { value = it } }
-    val lyrics by produceState<StructuredLyrics?>(null, song.id) { value = c.music.lyrics(song.id) }
+    val lyrics by produceState<StructuredLyrics?>(null, song.id) { if (song.streamUrl == null) value = runCatching { c.music.lyrics(song.id) }.getOrNull() }
     val play = remember { FocusRequester() }
 
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -203,27 +216,40 @@ fun TvNowPlaying() {
             Text(song.displayTitle, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(song.displayArtist, color = Color.White.copy(.75f), fontSize = 18.sp, maxLines = 1)
             Spacer(Modifier.height(16.dp))
+            if (song.streamUrl != null) Row(verticalAlignment = Alignment.CenterVertically) {
+                // Live radio: no timeline.
+                Box(Modifier.clip(RoundedCornerShape(6.dp)).background(Harbor.Rose).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                    Text("LIVE", color = Color.White, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp)
+                }
+                Spacer(Modifier.width(12.dp)); EqualizerBars(s.playing, Modifier.size(22.dp), Color.White)
+            } else {
             val frac = if (s.durationMs > 0) (pos.toFloat() / s.durationMs).coerceIn(0f, 1f) else 0f
             Box(Modifier.width(artSize).height(5.dp).clip(RoundedCornerShape(3.dp)).background(Color.White.copy(.25f))) { Box(Modifier.fillMaxWidth(frac).height(5.dp).background(Color.White)) }
             Row(Modifier.width(artSize).padding(top = 6.dp)) {
                 Text(MusicText.duration((pos / 1000).toInt()), color = Color.White.copy(.7f), fontSize = 13.sp); Spacer(Modifier.weight(1f))
                 Text(MusicText.duration((s.durationMs / 1000).toInt()), color = Color.White.copy(.7f), fontSize = 13.sp)
             }
+            }
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                TvIcon(Icons.Rounded.Shuffle, s.shuffle) { engine.setShuffle(!s.shuffle) }
+                val live = song.streamUrl != null   // shuffle / repeat mean nothing for a live station
+                if (!live) TvIcon(Icons.Rounded.Shuffle, s.shuffle) { engine.setShuffle(!s.shuffle) }
                 TvIcon(Icons.Rounded.SkipPrevious) { engine.previous() }
                 TvIcon(if (s.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, big = true, modifier = Modifier.focusRequester(play)) { engine.toggle() }
                 TvIcon(Icons.Rounded.SkipNext) { engine.next() }
-                TvIcon(if (s.repeat == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, s.repeat != RepeatMode.Off) { engine.cycleRepeat() }
+                if (!live) TvIcon(if (s.repeat == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, s.repeat != RepeatMode.Off) { engine.cycleRepeat() }
             }
         }
         Spacer(Modifier.width(64.dp))
         val lines = Lyrics.clean(lyrics?.line.orEmpty())
         if (lines.isEmpty()) Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.mu_next_in_queue), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            if (s.upNext.isNotEmpty()) Text(stringResource(if (song.streamUrl != null) R.string.radio_title else R.string.mu_next_in_queue), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 12.dp))
             Spacer(Modifier.height(12.dp))
-            s.upNext.take(7).forEach { n -> Text("${n.displayTitle}  ·  ${n.displayArtist}", color = Color.White.copy(.7f), fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(vertical = 6.dp)) }
+            // Remote-friendly: each entry takes focus and OK jumps straight to it (switches station for radio).
+            s.upNext.take(7).forEachIndexed { j, n ->
+                Text("${n.displayTitle}  ·  ${n.displayArtist}", color = Color.White.copy(.8f), fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(vertical = 2.dp).tvFocusable(RoundedCornerShape(10.dp), focusedScale = 1.03f) { engine.jumpTo(s.index + 1 + j) }.padding(horizontal = 12.dp, vertical = 6.dp))
+            }
         } else {
             val active = if (lyrics?.synced == true) Lyrics.activeIndex(lines, pos, lyrics?.offset ?: 0) else -1
             val list = rememberLazyListState()
@@ -245,5 +271,29 @@ private fun TvIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, on: Bo
     val size = if (big) 76.dp else 56.dp
     Box(modifier.size(size).tvFocusable(RoundedCornerShape(50), onClick = onClick).clip(RoundedCornerShape(50)).background(if (big) Color.White else Color.White.copy(.08f)), Alignment.Center) {
         Icon(icon, null, tint = if (big) Color.Black else if (on) Harbor.Sky else Color.White, modifier = Modifier.size(if (big) 40.dp else 28.dp))
+    }
+}
+
+/** Live FM / internet radio on TV: the same stations as the phone (Tamil Nadu FM first). OK = tune in. */
+@Composable
+private fun TvRadioRow(onNowPlaying: () -> Unit) {
+    val c = LocalContainer.current
+    val stations by c.radio.stations.collectAsState()
+    val s by c.musicEngine.state.collectAsState()
+    if (stations.isEmpty()) return
+    TvRow(stringResource(R.string.radio_title), stations, key = { it.id }) { st ->
+        val live = s.current?.id == st.toSong().id
+        val (a, b) = remember(st.id) { seedColors(st.name + "radio") }
+        Column(Modifier.width(170.dp)) {
+            // The whole station list is the queue, so ⏮ / ⏭ on the remote flip between stations.
+            Box(Modifier.size(170.dp).tvFocusable(RoundedCornerShape(16.dp)) { c.musicEngine.play(stations.map { it.toSong() }, stations.indexOf(st).coerceAtLeast(0), source = st.name); onNowPlaying() }
+                .clip(RoundedCornerShape(16.dp)).background(Brush.linearGradient(listOf(a, b))), Alignment.Center) {
+                if (live && s.playing) EqualizerBars(true, Modifier.size(48.dp), Color.White)
+                else Icon(androidx.compose.material.icons.Icons.Rounded.Radio, null, tint = Color.White, modifier = Modifier.size(64.dp))
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(st.name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (live) stringResource(R.string.radio_live) else stringResource(R.string.radio_station), color = if (live) Harbor.Mint else Harbor.TextDim, fontSize = 13.sp)
+        }
     }
 }

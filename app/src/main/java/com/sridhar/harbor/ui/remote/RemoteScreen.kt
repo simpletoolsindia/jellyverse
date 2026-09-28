@@ -46,6 +46,7 @@ import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Tv
+import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -108,6 +109,19 @@ fun RemoteScreen(onBack: () -> Unit) {
     LaunchedEffect(Unit) { if (state is RemoteState.Idle) client.lastTv()?.let { client.connect(it) } }
 
     Column(Modifier.fillMaxSize().background(Harbor.Ink).statusBarsPadding().navigationBarsPadding().imePadding()) {
+        val setup by client.tvSetup.collectAsState()
+        setup?.let { st ->
+            val (text, color) = when (st) {
+                RemoteClient.TvSetup.Working -> stringResource(R.string.qr_setting_up) to Harbor.Sky
+                RemoteClient.TvSetup.Done -> "✓ " + stringResource(R.string.qr_tv_ready) to Harbor.Mint
+                RemoteClient.TvSetup.Failed -> stringResource(R.string.remote_failed, "TV") to Harbor.Rose
+            }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).clip(RoundedCornerShape(14.dp)).background(color.copy(alpha = .15f)).padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                if (st == RemoteClient.TvSetup.Working) { JellyLoader(Modifier.size(28.dp)); Spacer(Modifier.width(10.dp)) }
+                Text(text, color = color, fontWeight = FontWeight.SemiBold)
+            }
+        }
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) }
             Column(Modifier.weight(1f)) {
@@ -148,6 +162,8 @@ private fun TvPicker(tvs: List<TvDevice>, error: String?, onPick: (TvDevice) -> 
     var ip by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         error?.let { Text(it, color = Harbor.Rose) }
+        ScanQrButton()
+        Spacer(Modifier.height(4.dp))
         Text(stringResource(R.string.remote_pick_tv), fontWeight = FontWeight.Bold, fontSize = 18.sp)
         if (tvs.isEmpty()) Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Harbor.Surface).padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
             JellyLoader(Modifier.size(44.dp)); Spacer(Modifier.width(14.dp))
@@ -294,5 +310,27 @@ private fun KeyboardBar(client: RemoteClient, field: String?, onClose: () -> Uni
             placeholder = { Text(stringResource(R.string.remote_type_hint)) },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next, autoCorrectEnabled = false),
             keyboardActions = KeyboardActions(onNext = { client.key("DOWN"); text = "" }, onDone = { client.key("OK") }))
+    }
+}
+
+/** Opens Google's code scanner (no camera permission needed) and connects to the scanned TV. */
+@Composable
+fun ScanQrButton(modifier: Modifier = Modifier) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val client = LocalContainer.current.remote
+    val bad = stringResource(R.string.qr_bad)
+    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(Harbor.Violet, Harbor.Coral)))
+        .clickable {
+            val opts = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
+                .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE).build()
+            com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(ctx, opts).startScan()
+                .addOnSuccessListener { code -> if (!client.connectFromQr(code.rawValue.orEmpty())) android.widget.Toast.makeText(ctx, bad, android.widget.Toast.LENGTH_SHORT).show() }
+        }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Rounded.QrCodeScanner, null, tint = Color.White, modifier = Modifier.size(30.dp))
+        Spacer(Modifier.width(14.dp))
+        Column {
+            Text(stringResource(R.string.qr_scan), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text(stringResource(R.string.qr_hint), color = Color.White.copy(alpha = .85f), fontSize = 12.sp)
+        }
     }
 }

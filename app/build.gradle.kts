@@ -20,8 +20,8 @@ android {
         applicationId = "com.sridhar.jellyverse"
         minSdk = 26
         targetSdk = 36
-        versionCode = 16
-        versionName = "2.7.3"
+        versionCode = 17
+        versionName = "2.8.0"
         // Play Store builds (-Pstore) ship without preloaded IPTV directories – "bring your own playlist" per Play policy.
         buildConfigField("boolean", "PRELOAD_IPTV", if (project.hasProperty("store")) "false" else "true")
         // GitHub builds update themselves from GitHub Releases; Play builds are updated by Play only.
@@ -144,6 +144,9 @@ dependencies {
     implementation("androidx.mediarouter:mediarouter:1.7.0")
 
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    // TV ↔ phone QR pairing: ZXing draws the TV's QR; Google code scanner reads it on the phone (no camera permission).
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.fragment:fragment-ktx:1.8.5")

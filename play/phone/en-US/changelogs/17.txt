@@ -1,0 +1,1 @@
+JellyVerse 2.8.0: set up a new TV by scanning its QR code with the phone app – it pairs and signs the TV in to Jellyfin automatically. "Connect phone" in the TV menu shows the QR any time. Also: the phone remote has a QR scanner, the TV menu opens on the screen you're on, and fixes.

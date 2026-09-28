@@ -84,13 +84,14 @@ fun QuickConnectPanel(serverUrl: String, big: Boolean = false, onSignedIn: () ->
         if (!enabled) { state = QcState.Failed(L10n.s(R.string.quick_connect_is_disabled_on_this)); return@LaunchedEffect }
         val start = runCatching { jf.quickConnectStart(serverUrl) }.getOrElse { state = QcState.Failed(it.friendly()); return@LaunchedEffect }
         state = QcState.Waiting(start.code, start.secret)
+        com.sridhar.harbor.remote.RemoteServer.quickConnectCode(start.code)   // a phone that scanned the TV's QR approves it
         // Codes live ~10 minutes; poll every 2 s.
         repeat(300) {
             delay(2000)
             val poll = runCatching { jf.quickConnectPoll(serverUrl, start.secret) }.getOrNull()
             if (poll?.authenticated == true) {
                 runCatching { jf.quickConnectFinish(serverUrl, start.secret) }
-                    .onSuccess { state = QcState.Approved; delay(600); onSignedIn() }
+                    .onSuccess { state = QcState.Approved; com.sridhar.harbor.remote.RemoteServer.signedIn(); delay(600); onSignedIn() }
                     .onFailure { state = QcState.Failed(it.friendly()) }
                 return@LaunchedEffect
             }

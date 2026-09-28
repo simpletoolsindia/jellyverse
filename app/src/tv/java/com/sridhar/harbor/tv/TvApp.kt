@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.QrCode2
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material.icons.rounded.LiveTv
 import androidx.compose.material3.Icon
@@ -57,6 +58,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -76,6 +79,7 @@ sealed interface TvDest {
     data object NowPlaying : TvDest
     data object Settings : TvDest
     data object Adult : TvDest
+    data object Connect : TvDest
     data class Detail(val id: String) : TvDest
 }
 
@@ -89,11 +93,13 @@ private val rail = listOf(
     RailItem(TvDest.Shows, com.sridhar.harbor.R.string.tv_shows, Icons.Rounded.Tv),
     RailItem(TvDest.Live, com.sridhar.harbor.R.string.tv_live, Icons.Rounded.LiveTv),
     RailItem(TvDest.Music, com.sridhar.harbor.R.string.tv_music, Icons.Rounded.MusicNote),
+    RailItem(TvDest.Connect, com.sridhar.harbor.R.string.tv_connect_phone, Icons.Rounded.QrCode2),
     RailItem(TvDest.Adult, com.sridhar.harbor.R.string.adult_menu, Icons.Rounded.Lock),
     RailItem(TvDest.Settings, com.sridhar.harbor.R.string.tv_settings, Icons.Rounded.Settings),
 )
 
 @Composable
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 fun TvApp() {
     val stack = remember { mutableStateListOf<TvDest>(TvDest.Home) }
     val current = stack.last()
@@ -105,6 +111,7 @@ fun TvApp() {
     }
     BackHandler(enabled = stack.size > 1 || current != TvDest.Home) { if (stack.size > 1) stack.removeAt(stack.lastIndex) else { stack.clear(); stack.add(TvDest.Home) } }
     var railFocused by remember { mutableStateOf(false) }
+    val railFocus = remember { mutableMapOf<TvDest, androidx.compose.ui.focus.FocusRequester>() }
     val railWidth by animateDpAsState(if (railFocused) 230.dp else 84.dp, spring(dampingRatio = 0.85f), label = "rail")
 
     Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
@@ -120,6 +127,7 @@ fun TvApp() {
                     TvDest.NowPlaying -> TvNowPlaying()
                     TvDest.Search -> TvSearch(onOpen = { go(TvDest.Detail(it)) })
                     TvDest.Settings -> TvSettings()
+                    TvDest.Connect -> TvConnectPhone()
                     TvDest.Adult -> TvProtected(onOpen = { go(TvDest.Detail(it)) }, onCancel = { stack.clear(); stack.add(TvDest.Home) })
                     is TvDest.Detail -> TvDetail(d.id, onOpen = { go(TvDest.Detail(it)) })
                 }
@@ -134,7 +142,10 @@ fun TvApp() {
                 // Open: a solid panel with a soft edge; closed: the light fade over content, as before.
                 .background(if (railFocused) Brush.horizontalGradient(listOf(Harbor.Ink, Harbor.Ink, Harbor.Surface))
                     else Brush.horizontalGradient(listOf(Harbor.Ink.copy(alpha = 0.9f), Harbor.Ink.copy(alpha = 0f))))
-                .onFocusChanged { railFocused = it.hasFocus }.focusGroup()
+                .onFocusChanged { railFocused = it.hasFocus }
+                // Entering the menu lands on the screen you're on, not whichever entry happens to be nearest.
+                .focusProperties { enter = { railFocus[current] ?: androidx.compose.ui.focus.FocusRequester.Default } }
+                .focusGroup()
                 // Fits 8 entries on a 540dp-tall TV screen; scrolls (keeping the focused entry visible) if ever taller.
                 .verticalScroll(rememberScrollState())
                 // Left inside the sidebar has nowhere to go – swallow it so focus never jumps to the last entry.
@@ -147,12 +158,13 @@ fun TvApp() {
             // Only services that are set up get a rail entry; 18+ appears once parental control is on.
             val cfgRail = com.sridhar.harbor.ui.components.rememberConfig()
             val parental by com.sridhar.harbor.ui.components.LocalContainer.current.parental.state.collectAsState()
-            rail.filter { r -> when (r.dest) { TvDest.Music -> cfgRail.navidromeReady; TvDest.Adult -> parental.enabled && parental.showMenu; else -> true } }.forEach { r ->
+            rail.filter { r -> when (r.dest) { TvDest.Adult -> parental.enabled && parental.showMenu; else -> true } }.forEach { r ->
                 var focused by remember { mutableStateOf(false) }
                 val selected = r.dest == current
                 Row(
                     Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp))
                         .background(when { focused -> Color.White; selected -> Color.White.copy(.12f); else -> Color.Transparent })
+                        .focusRequester(railFocus.getOrPut(r.dest) { androidx.compose.ui.focus.FocusRequester() })
                         .onFocusChanged { focused = it.isFocused }.clickable { go(r.dest) }.padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

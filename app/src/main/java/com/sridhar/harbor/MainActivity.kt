@@ -96,6 +96,8 @@ class MainActivity : FragmentActivity() {
                 if (com.sridhar.harbor.voice.VoicePlay.handle(this@MainActivity, container, intent) && container.musicEngine.state.value.current != null)
                     container.navRequests.tryEmit("nowplaying")
             }
+            // TV QR scanned with the phone's own camera app.
+            data?.scheme == "jellyverse" && data.host == "tv" -> if (container.remote.connectFromQr(data.toString())) container.navRequests.tryEmit("remote")
             data?.scheme == "jellyverse" -> container.navRequests.tryEmit(data.lastPathSegment ?: data.host?.takeIf { it != "open" } ?: "watch")
             data?.scheme == "magnet" -> container.incomingTorrents.tryEmit(IncomingTorrent.Magnet(data.toString()))
             intent.action == Intent.ACTION_SEND -> {

@@ -45,6 +45,20 @@ class RemoteClient(private val context: Context) {
     val tvs: StateFlow<List<TvDevice>> = _tvs.asStateFlow()
     private val _state = MutableStateFlow<RemoteState>(RemoteState.Idle)
     val state: StateFlow<RemoteState> = _state.asStateFlow()
+    /** One-scan TV setup progress (null = not setting a TV up). */
+    enum class TvSetup { Working, Done, Failed }
+    val tvSetup = MutableStateFlow<TvSetup?>(null)
+    @Volatile private var qrKey: String? = null
+    @Volatile private var tvNeedsSignIn = false
+
+    /** Connect from a scanned QR code (jellyverse://tv?h=…&p=…&k=…&n=…). Returns false if it isn't one. */
+    fun connectFromQr(raw: String): Boolean {
+        val q = parseQr(raw) ?: return false
+        qrKey = q.second; tvSetup.value = null
+        connect(q.first)
+        return true
+    }
+
     /** The TV focused a text field (label) – the remote opens its keyboard. null = no field focused. */
     val tvField = MutableStateFlow<String?>(null)
 
@@ -149,23 +163,44 @@ class RemoteClient(private val context: Context) {
                 fun str(k: String) = m[k]?.jsonPrimitive?.content
                 when (str("t")) {
                     "hi" -> {
+                        tvNeedsSignIn = str("signedIn") == "false"
                         known = tv.copy(id = str("id") ?: tv.id, name = str("name") ?: tv.name)
                         send(buildJsonObject { put("t", "hello"); prefs.getString(tokenKey(known), null)?.let { put("token", it) } })
                     }
-                    "ready" -> { remember(known); _state.value = RemoteState.Connected(known) }
-                    "unpaired" -> send(buildJsonObject { put("t", "pairRequest") })
+                    "ready" -> { remember(known); _state.value = RemoteState.Connected(known); offerSetup() }
+                    // Scanned QR: pair with its one-time key – no code to type.
+                    "unpaired" -> qrKey?.let { k -> send(buildJsonObject { put("t", "pair"); put("qr", k); put("phone", android.os.Build.MODEL) }) }
+                        ?: send(buildJsonObject { put("t", "pairRequest") })
                     "enterCode" -> _state.value = RemoteState.NeedCode(known)
                     "badCode" -> _state.value = RemoteState.NeedCode(known, wrong = true)
                     "paired" -> {
                         prefs.edit().putString(tokenKey(known), str("token")).apply()
-                        remember(known); _state.value = RemoteState.Connected(known)
+                        remember(known); _state.value = RemoteState.Connected(known); qrKey = null; offerSetup()
                     }
+                    "qc" -> str("code")?.let { code ->
+                        if (com.sridhar.harbor.BuildConfig.DEBUG) android.util.Log.d("RemoteClient", "qc received")
+                        // The TV is showing a Quick Connect code: approve it with this phone's Jellyfin account.
+                        scope.launch {
+                            runCatching { com.sridhar.harbor.HarborApp.instance!!.container.jellyfin.quickConnectAuthorize(code) }
+                                .onFailure { if (com.sridhar.harbor.BuildConfig.DEBUG) android.util.Log.d("RemoteClient", "qc authorize failed: ${it.message}"); tvSetup.value = TvSetup.Failed }
+                        }
+                    }
+                    "signedIn" -> tvSetup.value = TvSetup.Done
                     "field" -> tvField.value = if (str("focused") == "true") (str("label") ?: "") else null
                 }
             }
         } catch (_: Exception) {}
         // A newer connection may have replaced this one – only report our own drop.
         if (socket === s && _state.value !is RemoteState.Idle) _state.value = RemoteState.Failed(known, "disconnected")
+    }
+
+    /** New TV that isn't signed in + this phone has Jellyfin → hand over the server so the TV can sign in. */
+    private fun offerSetup() {
+        if (!tvNeedsSignIn) return
+        val cfg = com.sridhar.harbor.HarborApp.instance?.container?.config?.value ?: return
+        if (!cfg.jellyfinReady) return
+        tvSetup.value = TvSetup.Working
+        send(buildJsonObject { put("t", "setupJellyfin"); put("url", cfg.jellyfinUrl) })
     }
 
     private fun remember(tv: TvDevice) = prefs.edit().putString("last_host", tv.host).putInt("last_port", tv.port)
@@ -191,5 +226,16 @@ class RemoteClient(private val context: Context) {
 
     private suspend fun disconnectNow() = withContext(Dispatchers.IO) {
         runCatching { socket?.close() }; socket = null; out = null; tvField.value = null
+    }
+
+    companion object {
+        /** jellyverse://tv?h=192.168.1.50&p=47110&k=KEY&n=Name → (TV, key). */
+        fun parseQr(raw: String): Pair<TvDevice, String>? = runCatching {
+            val u = android.net.Uri.parse(raw.trim())
+            if (u.scheme != "jellyverse" || u.host != "tv") return null
+            val h = u.getQueryParameter("h") ?: return null
+            val k = u.getQueryParameter("k") ?: return null
+            TvDevice(u.getQueryParameter("n") ?: "JellyVerse TV", h, u.getQueryParameter("p")?.toIntOrNull() ?: RemoteProtocol.PORT) to k
+        }.getOrNull()
     }
 }

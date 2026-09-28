@@ -1025,4 +1025,13 @@
     <string name="remote_step2">On the phone open JellyVerse → Settings → TV remote</string>
     <string name="remote_step3">Pick this TV and enter the 4-digit code shown here</string>
     <string name="remote_not_listed">TV not listed on the phone? Enter this address:</string>
+    <string name="qr_title">Set up with your phone</string>
+    <string name="qr_hint">Scan with the camera or JellyVerse on your phone – it connects and signs this TV in.</string>
+    <string name="qr_connected">Phone connected</string>
+    <string name="qr_or_manual">Or pair by hand:</string>
+    <string name="qr_scan">Scan TV QR code</string>
+    <string name="qr_setting_up">Signing your TV in…</string>
+    <string name="qr_tv_ready">Your TV is signed in and ready</string>
+    <string name="qr_bad">That isn\'t a JellyVerse TV code</string>
+    <string name="tv_connect_phone">Connect phone</string>
 </resources>

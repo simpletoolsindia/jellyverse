@@ -1025,4 +1025,13 @@
     <string name="remote_step2">போனில் JellyVerse → அமைப்புகள் → TV ரிமோட்</string>
     <string name="remote_step3">இந்த TV-ஐத் தேர்ந்தெடுத்து இங்கே காட்டப்படும் 4 இலக்க குறியீட்டை உள்ளிடவும்</string>
     <string name="remote_not_listed">போனில் TV தெரியவில்லையா? இந்த முகவரியை உள்ளிடவும்:</string>
+    <string name="qr_title">உங்கள் போன் மூலம் அமைக்கவும்</string>
+    <string name="qr_hint">போனின் கேமரா அல்லது JellyVerse மூலம் ஸ்கேன் செய்யுங்கள் – இணைத்து இந்த TV-ஐ உள்நுழையச் செய்யும்.</string>
+    <string name="qr_connected">போன் இணைந்தது</string>
+    <string name="qr_or_manual">அல்லது கைமுறையாக இணைக்கவும்:</string>
+    <string name="qr_scan">TV QR குறியீட்டை ஸ்கேன் செய்</string>
+    <string name="qr_setting_up">உங்கள் TV-ஐ உள்நுழைக்கிறது…</string>
+    <string name="qr_tv_ready">உங்கள் TV உள்நுழைந்து தயார்</string>
+    <string name="qr_bad">இது JellyVerse TV குறியீடு அல்ல</string>
+    <string name="tv_connect_phone">போனை இணை</string>
 </resources>

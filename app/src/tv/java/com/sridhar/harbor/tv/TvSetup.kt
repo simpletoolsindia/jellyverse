@@ -27,6 +27,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.focus.focusRequester
@@ -62,15 +64,20 @@ fun TvSetup() {
     val vm = viewModel { SetupViewModel(container) }
     Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Harbor.Violet.copy(.10f), Harbor.Ink), radius = 1400f)), contentAlignment = Alignment.Center) {
         Row(horizontalArrangement = Arrangement.spacedBy(56.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.width(340.dp)) {
-                com.sridhar.harbor.ui.components.HarborLogo(96.dp)
-                Spacer(Modifier.height(24.dp))
-                Text(stringResource(R.string.jellyverse_tv), color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Black)
-                Text(stringResource(R.string.your_jellyfin_library_beautifully_on_the), color = Harbor.TextDim, fontSize = 20.sp)
-                Spacer(Modifier.height(18.dp))
-                com.sridhar.harbor.ui.components.MadeWithLove()
+            Column(Modifier.width(360.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    com.sridhar.harbor.ui.components.HarborLogo(64.dp)
+                    Spacer(Modifier.width(16.dp))
+                    Text(stringResource(R.string.jellyverse_tv), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                }
+                Text(stringResource(R.string.your_jellyfin_library_beautifully_on_the), color = Harbor.TextDim, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
+                Spacer(Modifier.height(22.dp))
+                PhoneQrCard(big = false)
             }
             var usePassword by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            // The phone that scanned the QR sends its Jellyfin server; Quick Connect starts and the phone approves it.
+            val offered by com.sridhar.harbor.remote.RemoteServer.setupServer.collectAsState()
+            androidx.compose.runtime.LaunchedEffect(offered) { offered?.let { vm.jfUrl = it; usePassword = false } }
             Column(Modifier.width(460.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 TvField(stringResource(R.string.jellyfin_server), vm.jfUrl, KeyboardType.Uri) { vm.jfUrl = it }
                 if (!usePassword) {
@@ -109,7 +116,7 @@ private fun TvField(label: String, value: String, type: KeyboardType = KeyboardT
                 else -> false
             }
         }, label = { Text(label) }, singleLine = true, shape = RoundedCornerShape(14.dp),
-        keyboardOptions = KeyboardOptions(keyboardType = type, imeAction = androidx.compose.ui.text.input.ImeAction.Next),
+        keyboardOptions = KeyboardOptions(keyboardType = type, imeAction = androidx.compose.ui.text.input.ImeAction.Next, showKeyboardOnFocus = false),
         keyboardActions = androidx.compose.foundation.text.KeyboardActions(onNext = { fm.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }),
         visualTransformation = if (secret) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.White, unfocusedContainerColor = Harbor.Surface, focusedContainerColor = Harbor.SurfaceHigh))
@@ -167,6 +174,8 @@ private fun PairPhoneDialog(onDismiss: () -> Unit) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(Modifier.clip(RoundedCornerShape(28.dp)).background(Harbor.Surface).padding(36.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("📱 " + stringResource(R.string.remote_pair_phone), color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+            PhoneQrCard(big = true)
+            Text(stringResource(R.string.qr_or_manual), color = Harbor.TextDim, fontSize = 15.sp)
             listOf(R.string.remote_step1, R.string.remote_step2, R.string.remote_step3).forEachIndexed { i, r ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).background(Harbor.Violet), Alignment.Center) { Text("${i + 1}", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -179,6 +188,51 @@ private fun PairPhoneDialog(onDismiss: () -> Unit) {
                 Text(ip, color = Harbor.Sky, fontSize = 34.sp, fontWeight = FontWeight.Black)
             }
             TvButton(stringResource(R.string.done), null, primary = true, modifier = Modifier.focusRequester(focus)) { onDismiss() }
+        }
+    }
+}
+
+/** "Scan with your phone" card: QR of this TV's address + a one-time key; refreshes every 9 minutes. */
+@Composable
+fun PhoneQrCard(big: Boolean) {
+    var payload by remember { mutableStateOf(com.sridhar.harbor.remote.RemoteServer.qrPayload()) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(9 * 60_000L); payload = com.sridhar.harbor.remote.RemoteServer.qrPayload() } }
+    val paired by com.sridhar.harbor.remote.RemoteServer.connected.collectAsState()
+    val p = payload ?: return
+    // Takes the first focus on the setup screen so the QR is what you see – not a text field and its keyboard.
+    val first = remember { androidx.compose.ui.focus.FocusRequester() }
+    var focused by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { runCatching { kotlinx.coroutines.delay(150); first.requestFocus() } }
+    Row(Modifier.focusRequester(first).onFocusChanged { focused = it.isFocused }.focusable()
+        .clip(RoundedCornerShape(20.dp)).background(Harbor.Surface)
+        .border(if (focused) 2.dp else 0.dp, if (focused) Harbor.Sky else Color.Transparent, RoundedCornerShape(20.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(if (big) 200.dp else 150.dp).clip(RoundedCornerShape(12.dp))) { com.sridhar.harbor.ui.components.QrCode(p, Modifier.fillMaxSize()) }
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.width(if (big) 220.dp else 170.dp)) {
+            Text("📱 " + stringResource(R.string.qr_title), color = Color.White, fontWeight = FontWeight.Bold, fontSize = if (big) 22.sp else 17.sp)
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.qr_hint), color = Harbor.TextDim, fontSize = if (big) 16.sp else 13.sp)
+            if (paired > 0) Text("✓ " + stringResource(R.string.qr_connected), color = Harbor.Mint, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+        }
+    }
+}
+
+/** Sidebar "Connect phone": big QR + the manual steps, always one press away. */
+@Composable
+fun TvConnectPhone() {
+    val ip = remember { com.sridhar.harbor.remote.RemoteServer.localIp() }
+    Row(Modifier.fillMaxSize().padding(start = 132.dp, end = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(40.dp)) {
+        PhoneQrCard(big = true)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(stringResource(R.string.qr_or_manual), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            listOf(R.string.remote_step1, R.string.remote_step2, R.string.remote_step3).forEachIndexed { i, r ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(30.dp).clip(RoundedCornerShape(50)).background(Harbor.Violet), Alignment.Center) { Text("${i + 1}", color = Color.White, fontWeight = FontWeight.Bold) }
+                    Spacer(Modifier.width(12.dp))
+                    Text(stringResource(r), color = Color.White.copy(alpha = .9f), fontSize = 15.sp, modifier = Modifier.weight(1f))
+                }
+            }
+            if (ip != null) Text(stringResource(R.string.remote_not_listed) + "  " + ip, color = Harbor.Sky, fontSize = 16.sp)
         }
     }
 }

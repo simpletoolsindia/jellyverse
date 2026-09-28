@@ -65,6 +65,45 @@ object RemoteServer {
     /** Remote phones currently connected (for a small "📱 Remote connected" hint). */
     private val _connected = MutableStateFlow(0)
     val connected: StateFlow<Int> = _connected.asStateFlow()
+    // ---------------- QR pairing & phone-driven setup ----------------
+    @Volatile private var qrSecret: String? = null
+    @Volatile private var qrIssued = 0L
+
+    /**
+     * Payload for the TV's QR code: this TV's address plus a fresh one-time key (valid 10 minutes, replaced after use).
+     * Scanning it pairs a phone without typing a code. null when the TV has no LAN address.
+     */
+    fun qrPayload(): String? {
+        val ip = localIp() ?: return null
+        val key = (1..10).map { "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".random() }.joinToString("")
+        qrSecret = key; qrIssued = System.currentTimeMillis()
+        val name = java.net.URLEncoder.encode("JellyVerse TV · ${android.os.Build.MODEL}", "UTF-8")
+        return "jellyverse://tv?h=$ip&p=${port}&k=$key&n=$name".also { if (com.sridhar.harbor.BuildConfig.DEBUG) Log.d(TAG, "qr $it") }
+    }
+    private fun qrValid(k: String?) = k != null && k == qrSecret && System.currentTimeMillis() - qrIssued < 10 * 60_000L
+    @Volatile private var port = RemoteProtocol.PORT
+
+    /** A paired phone offered its Jellyfin server – TvSetup fills it in and starts Quick Connect. */
+    val setupServer = MutableStateFlow<String?>(null)
+    /** The code TvSetup is showing now – a phone that asks to set up later (or reconnects) still gets it. */
+    @Volatile private var lastQc: String? = null
+    private val writer = java.util.concurrent.Executors.newSingleThreadExecutor()
+
+    /** TvSetup reports its Quick Connect code so the phone can approve it automatically. */
+    fun quickConnectCode(code: String) {
+        lastQc = code
+        if (!started) return
+        val msg = buildJsonObject { put("t", "qc"); put("code", code) }
+        clients.filter { it.paired && it.wantsSetup }.forEach { it.send(msg) }
+    }
+
+    /** TV finished signing in – tell phones so they can show "Your TV is ready". */
+    fun signedIn() {
+        lastQc = null
+        if (!started) return
+        clients.filter { it.paired }.forEach { it.send(buildJsonObject { put("t", "signedIn") }) }
+    }
+
     /** Paired a moment ago – drives the "Paired with …" toast. */
     val justPaired = MutableStateFlow<String?>(null)
 
@@ -87,6 +126,7 @@ object RemoteServer {
         })
         thread(name = "jv-remote", isDaemon = true) {
             val server = runCatching { ServerSocket(RemoteProtocol.PORT) }.getOrElse { runCatching { ServerSocket(0) }.getOrNull() } ?: return@thread
+            port = server.localPort
             advertise(server.localPort)
             while (true) {
                 val s = runCatching { server.accept() }.getOrNull() ?: continue
@@ -140,17 +180,23 @@ object RemoteServer {
 
     private class Client(private val socket: Socket) {
         @Volatile var paired = false
+        /** This phone offered to set the TV up – it gets the Quick Connect code. */
+        @Volatile var wantsSetup = false
         private val out = PrintWriter(socket.getOutputStream().bufferedWriter(), true)
         private var code: String? = null
         private var attempts = 0
 
-        fun send(o: JsonObject) = runCatching { synchronized(out) { out.println(o.toString()) } }
+        /** Socket writes never run on the caller's thread (UI callers would hit NetworkOnMainThreadException). */
+        fun send(o: JsonObject) { runCatching { writer.execute { runCatching { out.println(o.toString()) } } } }
 
         fun run() {
             clients += this
             try {
                 val input = BufferedReader(InputStreamReader(socket.getInputStream()))
-                send(buildJsonObject { put("t", "hi"); put("id", tvId()); put("name", "JellyVerse TV · ${android.os.Build.MODEL}") })
+                send(buildJsonObject {
+                    put("t", "hi"); put("id", tvId()); put("name", "JellyVerse TV · ${android.os.Build.MODEL}")
+                    put("signedIn", com.sridhar.harbor.HarborApp.instance?.container?.config?.value?.jellyfinReady == true)
+                })
                 while (true) {
                     val line = input.readLine() ?: break
                     val msg = runCatching { com.sridhar.harbor.data.HarborJson.parseToJsonElement(line).jsonObject }.getOrNull() ?: continue
@@ -183,7 +229,9 @@ object RemoteServer {
                     send(buildJsonObject { put("t", "enterCode") })
                 }
                 "pair" -> {
-                    if (code != null && str(m, "code") == code) {
+                    val viaQr = qrValid(str(m, "qr"))
+                    if (viaQr || (code != null && str(m, "code") == code)) {
+                        if (viaQr) qrSecret = null   // one scan, one phone
                         val token = UUID.randomUUID().toString()
                         prefs().edit().putStringSet("tokens", tokens() + token).apply()
                         paired = true; _pairingCode.value = null; code = null
@@ -209,6 +257,14 @@ object RemoteServer {
                     val am = app.getSystemService(AudioManager::class.java)
                     val dir = when (str(m, "d")) { "up" -> AudioManager.ADJUST_RAISE; "down" -> AudioManager.ADJUST_LOWER; else -> AudioManager.ADJUST_TOGGLE_MUTE }
                     am?.adjustStreamVolume(AudioManager.STREAM_MUSIC, dir, AudioManager.FLAG_SHOW_UI)
+                }
+                "setupJellyfin" -> str(m, "url")?.takeIf { it.startsWith("http") }?.let { url ->
+                    // Only while the TV isn't signed in – a paired phone can't swap the server of a working TV.
+                    if (com.sridhar.harbor.HarborApp.instance?.container?.config?.value?.jellyfinReady != true) {
+                        wantsSetup = true
+                        if (setupServer.value != url) { lastQc = null; setupServer.value = url }   // new server → new code comes from TvSetup
+                        lastQc?.let { send(buildJsonObject { put("t", "qc"); put("code", it) }) }
+                    }
                 }
                 "home" -> main.post { com.sridhar.harbor.HarborApp.instance?.container?.navRequests?.tryEmit("home") }
                 "ping" -> send(buildJsonObject { put("t", "pong") })
