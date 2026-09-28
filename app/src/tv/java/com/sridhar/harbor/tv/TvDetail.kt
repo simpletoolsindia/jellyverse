@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.launch
 import com.sridhar.harbor.ui.components.enterRise
 import androidx.compose.runtime.collectAsState
 import androidx.compose.material.icons.rounded.LockOpen
@@ -81,7 +83,9 @@ fun TvDetail(id: String, onOpen: (String) -> Unit) {
 
     Box(Modifier.fillMaxSize()) {
         AmbientBackdrop(jf.backdropUrl(cfg, focusedEp ?: item, if (container.lowRam) 1280 else 1920), preview = if (focusedEp == null) item else null)
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 64.dp, bottom = 48.dp)) {
+        val list = androidx.compose.foundation.lazy.rememberLazyListState()
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(top = 64.dp, bottom = 48.dp)) {
             item {
                 Column(Modifier.padding(start = 64.dp, end = 140.dp).enterRise(0)) {
                     val logo = jf.logoUrl(cfg, item)
@@ -96,7 +100,11 @@ fun TvDetail(id: String, onOpen: (String) -> Unit) {
                     val target = if (item.type == "Series") vm.nextUp ?: vm.episodes.firstOrNull() else item
                     val resume = (target?.userData?.positionTicks ?: 0) > 0
                     // Scrolls sideways on narrower TVs so every action (lock, watched…) stays reachable; focus pulls it along.
-                    Row(Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 6.dp, horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    // Back on the buttons (e.g. up from Cast): bring the title and overview back into view too.
+                    Row(Modifier.onFocusChanged { if (it.hasFocus && list.firstVisibleItemIndex + list.firstVisibleItemScrollOffset > 0) scope.launch {
+                        kotlinx.coroutines.delay(220)   // after focus's own bring-into-view scroll, which would cancel ours
+                        list.animateScrollToItem(0) } }
+                        .horizontalScroll(rememberScrollState()).padding(vertical = 6.dp, horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         TvButton(when { item.type == "Series" && target != null -> "Play ${target.episodeLabel ?: ""}".trim(); resume -> stringResource(R.string.resume); else -> stringResource(R.string.play) },
                             Icons.Rounded.PlayArrow, primary = true, modifier = Modifier.focusRequester(playFocus)) { target?.let { PlayerActivity.start(ctx, it.id) } }
                         if (resume && item.type != "Series") TvButton(stringResource(R.string.start_over), Icons.Rounded.Replay) { PlayerActivity.start(ctx, item.id, fromStart = true) }

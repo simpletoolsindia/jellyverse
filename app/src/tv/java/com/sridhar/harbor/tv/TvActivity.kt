@@ -12,7 +12,7 @@ import com.sridhar.harbor.ui.theme.HarborTheme
 import kotlinx.coroutines.launch
 
 class TvActivity : ComponentActivity() {
-    override fun attachBaseContext(newBase: android.content.Context) = super.attachBaseContext(com.sridhar.harbor.AppLocale.wrap(newBase))
+    override fun attachBaseContext(newBase: android.content.Context) = super.attachBaseContext(com.sridhar.harbor.TvScale.wrap(com.sridhar.harbor.AppLocale.wrap(newBase)))
 
     private val container get() = (application as HarborApp).container
 

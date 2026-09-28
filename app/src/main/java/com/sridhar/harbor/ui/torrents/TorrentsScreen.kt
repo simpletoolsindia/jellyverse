@@ -185,6 +185,9 @@ private fun QbitScreen(onSetup: () -> Unit, switcher: @Composable () -> Unit) {
             item(key = "head") {
                 Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 8.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.torrents), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
+                    // Landscape phones (side rail): "add" lives up here – a floating button would sit on the stats card.
+                    if (com.sridhar.harbor.ui.components.LocalBottomBarInset.current == 0.dp)
+                        IconButton({ incoming = null; showAdd = true }) { Icon(Icons.Rounded.Add, stringResource(R.string.add_torrent), tint = Harbor.Sky) }
                     IconButton({ searching = !searching; if (!searching) vm.query = "" }) { Icon(Icons.Rounded.Search, stringResource(R.string.search)) }
                     var sortMenu by remember { mutableStateOf(false) }
                     Box {
@@ -239,7 +242,7 @@ private fun QbitScreen(onSetup: () -> Unit, switcher: @Composable () -> Unit) {
         // Selection action bar or add FAB
         if (vm.selection.isNotEmpty()) {
             Row(
-                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 88.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current, start = 16.dp, end = 16.dp)
+                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = com.sridhar.harbor.ui.components.LocalBottomBarInset.current + 8.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current, start = 16.dp, end = 16.dp)
                     .fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Harbor.SurfaceHigh).padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -250,9 +253,9 @@ private fun QbitScreen(onSetup: () -> Unit, switcher: @Composable () -> Unit) {
                 IconButton({ vm.pause(vm.selection.toList()) }) { Icon(Icons.Rounded.Pause, stringResource(R.string.pause), tint = Harbor.Amber) }
                 IconButton({ confirmDelete = vm.selection.toList() }) { Icon(Icons.Rounded.Delete, stringResource(R.string.delete), tint = Harbor.Rose) }
             }
-        } else {
+        } else if (com.sridhar.harbor.ui.components.LocalBottomBarInset.current > 0.dp) {
             Box(
-                Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 20.dp, bottom = 92.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current)
+                Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 20.dp, bottom = com.sridhar.harbor.ui.components.LocalBottomBarInset.current + 12.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current)
                     .size(60.dp).clip(RoundedCornerShape(20.dp)).background(Harbor.accent).clickable { incoming = null; showAdd = true },
                 contentAlignment = Alignment.Center,
             ) { Icon(Icons.Rounded.Add, stringResource(R.string.add_torrent), tint = Color.White, modifier = Modifier.size(30.dp)) }

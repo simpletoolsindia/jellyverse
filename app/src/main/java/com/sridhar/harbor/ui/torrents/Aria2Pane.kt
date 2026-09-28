@@ -173,6 +173,8 @@ fun Aria2Pane(switcher: @Composable () -> Unit) {
             item {
                 Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 8.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.downloads), style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
+                    if (com.sridhar.harbor.ui.components.LocalBottomBarInset.current == 0.dp)
+                        IconButton({ adding = true }) { Icon(Icons.Rounded.Add, stringResource(R.string.add_download), tint = Harbor.Sky) }
                     IconButton({ vm.purge() }) { Icon(Icons.Rounded.CleaningServices, stringResource(R.string.clear_finished)) }
                 }
                 Box(Modifier.padding(horizontal = 20.dp)) { switcher() }
@@ -237,7 +239,7 @@ fun Aria2Pane(switcher: @Composable () -> Unit) {
                 }
             }
         }
-        Box(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 20.dp, bottom = 92.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current).size(60.dp)
+        if (com.sridhar.harbor.ui.components.LocalBottomBarInset.current > 0.dp) Box(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 20.dp, bottom = com.sridhar.harbor.ui.components.LocalBottomBarInset.current + 12.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current).size(60.dp)
             .clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(Harbor.Sky, Harbor.Violet))).pressable { adding = true },
             contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Add, stringResource(R.string.add_download), tint = Color.White, modifier = Modifier.size(30.dp)) }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 160.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current))

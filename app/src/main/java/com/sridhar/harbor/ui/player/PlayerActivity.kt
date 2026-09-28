@@ -17,7 +17,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.sridhar.harbor.ui.theme.HarborTheme
 
 class PlayerActivity : ComponentActivity() {
-    override fun attachBaseContext(newBase: android.content.Context) = super.attachBaseContext(com.sridhar.harbor.AppLocale.wrap(newBase))
+    override fun attachBaseContext(newBase: android.content.Context) = super.attachBaseContext(com.sridhar.harbor.TvScale.wrap(com.sridhar.harbor.AppLocale.wrap(newBase)))
 
     private val vm: PlayerViewModel by viewModels()
     private val inPip = mutableStateOf(false)

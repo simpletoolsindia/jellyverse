@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -263,7 +264,7 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit) {
                         }
                     }
                     Spacer(Modifier.height(14.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    Row(Modifier.fillMaxWidth().widthIn(max = 520.dp).align(Alignment.CenterHorizontally)) {
                         if (item.type != "Series" && resumeMs > 0)
                             ActionIcon(Icons.Rounded.Replay, stringResource(R.string.start_over)) { PlayerActivity.start(ctx, item.id, fromStart = true) }
                         val played = item.userData?.played == true
@@ -384,14 +385,17 @@ private fun AdminItemMenu(name: String, onRefresh: () -> Unit, onDelete: () -> U
 }
 
 @Composable
-private fun ActionIcon(icon: ImageVector, label: String, tint: Color = Color.White, onClick: () -> Unit) {
+private fun androidx.compose.foundation.layout.RowScope.ActionIcon(icon: ImageVector, label: String, tint: Color = Color.White, onClick: () -> Unit) {
+    // Equal share of the row on every width; labels wrap between words, never mid-word ("Downlo-ad").
     Column(
-        Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 6.dp),
+        Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(icon, label, tint = tint, modifier = Modifier.size(26.dp))
         Spacer(Modifier.height(4.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)
+        Text(label, style = MaterialTheme.typography.labelSmall.copy(lineBreak = androidx.compose.ui.text.style.LineBreak.Heading),
+            color = Harbor.TextDim, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 

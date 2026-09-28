@@ -247,7 +247,7 @@ private fun HarborNavContent(initial: ServerConfig) {
         // Mini player height (+ gap) that floating buttons and lists must stay clear of.
         val miniVisible = musicActive && (showBar || dest != null && listOf(MusicAlbumRoute::class, MusicPlaylistRoute::class, MusicLikedRoute::class, MusicArtistRoute::class, MusicSearchRoute::class, MusicLibraryRoute::class).any { dest.hasRoute(it) })
         val miniInset by androidx.compose.animation.core.animateDpAsState(if (miniVisible) 72.dp else 0.dp, label = "miniInset")
-        androidx.compose.runtime.CompositionLocalProvider(com.sridhar.harbor.ui.components.LocalMiniPlayerInset provides miniInset) {
+        androidx.compose.runtime.CompositionLocalProvider(com.sridhar.harbor.ui.components.LocalMiniPlayerInset provides miniInset, com.sridhar.harbor.ui.components.LocalBottomBarInset provides (if (useRail) 0.dp else 80.dp)) {
         NavHost(
             nav, startDestination = start, modifier = Modifier.fillMaxSize().padding(start = railInset),
             // Tabs cross-fade with a subtle zoom; pushed screens slide over like cards.
@@ -436,6 +436,12 @@ private fun FloatingNavBar(tabs: List<Tab>, selected: Int, onSelect: (Int) -> Un
             .navigationBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
     ) {
+        val barMax = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp.minus(24.dp).coerceAtMost(520.dp)
+        // Width the selected pill gets (weights 2.4 vs 1, minus the AI orb and padding) – its label only shows if it fits whole.
+        val activeW = (barMax - 12.dp - 50.dp) * (2.4f / (tabs.size - 1 + 2.4f))
+        val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+        val labelStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        val density = androidx.compose.ui.platform.LocalDensity.current
         Row(
             Modifier.widthIn(max = 520.dp).fillMaxWidth()
                 .shadow(24.dp, RoundedCornerShape(28.dp), ambientColor = Color.Black, spotColor = Color.Black)
@@ -461,7 +467,10 @@ private fun FloatingNavBar(tabs: List<Tab>, selected: Int, onSelect: (Int) -> Un
                     // Selected icon fills in with a small spring "pop".
                     val pop by t.animateFloat({ spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium) }, label = "pop") { if (it) 1.12f else 1f }
                     Icon(if (active) tab.icon else tab.idleIcon, tab.label, tint = tint, modifier = Modifier.size(22.dp).graphicsLayer { scaleX = pop; scaleY = pop })
-                    t.AnimatedVisibility({ it }, enter = fadeIn(tween(180, 80)) + expandHorizontally(), exit = fadeOut(tween(90)) + shrinkHorizontally()) {
+                    val fits = androidx.compose.runtime.remember(tab.label, activeW, density) {
+                        with(density) { measurer.measure(tab.label, labelStyle).size.width.toDp() } + 22.dp + 6.dp + 20.dp <= activeW
+                    }
+                    t.AnimatedVisibility({ it && fits }, enter = fadeIn(tween(180, 80)) + expandHorizontally(), exit = fadeOut(tween(90)) + shrinkHorizontally()) {
                         Text(tab.label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, softWrap = false,
                             modifier = Modifier.padding(start = 6.dp))
                     }

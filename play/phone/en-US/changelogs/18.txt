@@ -1,0 +1,1 @@
+JellyVerse 2.8.1: layouts adapt to every screen – small phones see Watch Now without scrolling, the tab bar never clips its labels, detail actions stay tidy, tablets get centred Manage lists, and landscape phones get add-buttons in the header instead of over content. Better with large font sizes.

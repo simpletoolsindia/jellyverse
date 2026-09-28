@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -132,7 +133,8 @@ fun ManageScreen(onMovie: (Int) -> Unit, onSeries: (Int) -> Unit, onSetup: () ->
     var removing by remember { mutableStateOf<Queued?>(null) }
 
     Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
-        Column(Modifier.fillMaxSize()) {
+        // Tablets / landscape: a readable centred column, like Settings, instead of edge-to-edge lists.
+        Column(Modifier.fillMaxHeight().widthIn(max = com.sridhar.harbor.ui.components.ReadableWidth).fillMaxWidth().align(Alignment.TopCenter)) {
             Column(Modifier.statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 12.dp)) {
                 Text(stringResource(R.string.manage), style = MaterialTheme.typography.headlineLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
@@ -229,12 +231,14 @@ private fun OverviewStrip(vm: ManageViewModel) {
 private fun TabStrip(selected: ManageTab, onSelect: (ManageTab) -> Unit) {
     BoxWithConstraints(Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(44.dp).clip(RoundedCornerShape(22.dp)).background(Harbor.Surface)) {
         val w = maxWidth / ManageTab.entries.size
+        val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale   // segmented control: grows at most 10%
         val x by animateDpAsState(w * selected.ordinal, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow), label = "indicator")
         Box(Modifier.offset { androidx.compose.ui.unit.IntOffset(x.roundToPx(), 0) }.width(w).fillMaxHeight().padding(4.dp).clip(RoundedCornerShape(18.dp)).background(Harbor.accentH))
         Row(Modifier.fillMaxSize()) {
             ManageTab.entries.forEach { t ->
                 Box(Modifier.weight(1f).fillMaxHeight().clickable { onSelect(t) }, contentAlignment = Alignment.Center) {
-                    Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+                    Text(t.label, fontSize = (12f * minOf(fontScale, 1.1f) / fontScale).sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 4.dp),
                         color = if (t == selected) Color.White else Harbor.TextDim)
                 }
             }

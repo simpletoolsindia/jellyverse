@@ -91,8 +91,11 @@ fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () 
                 else Text(cfg.jellyfinUser.take(1).uppercase().ifBlank { "H" }, style = MaterialTheme.typography.headlineMedium)
             }
             Spacer(Modifier.width(16.dp))
-            Column {
-                Text(cfg.jellyfinUser.ifBlank { stringResource(R.string.guest) }, style = MaterialTheme.typography.headlineSmall)
+            Column(Modifier.weight(1f)) {
+                // Long names (emails) step down a size and never break mid-word.
+                val name = cfg.jellyfinUser.ifBlank { stringResource(R.string.guest) }
+                Text(name, style = if (name.length > 16) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 Text(stringResource(R.string.jellyverse_your_whole_media_universe), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
             }
         }

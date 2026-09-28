@@ -1,0 +1,1 @@
+JellyVerse TV 2.8.1: the TV app now looks identical on every TV – 720p, 1080p and 4K boxes all show the same layout, just sharper. Title details scroll back into view when you return to the buttons.

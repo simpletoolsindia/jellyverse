@@ -315,7 +315,11 @@ private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (
     }
     Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 64.dp)) {
         // Hotstar-style spotlight: centred card, neighbours peek and shrink.
-        HorizontalPager(pager, Modifier.fillMaxWidth().height(470.dp), contentPadding = PaddingValues(horizontal = 36.dp), pageSpacing = 12.dp) { page ->
+        // Poster-shaped card sized from the screen: tall phones get the full poster, short ones (360×640)
+        // still see Watch Now and the shortcuts below it without scrolling.
+        val conf = androidx.compose.ui.platform.LocalConfiguration.current
+        val heroH = minOf((conf.screenWidthDp - 72).dp * 1.45f, conf.screenHeightDp.dp * 0.56f).coerceIn(280.dp, 520.dp)
+        HorizontalPager(pager, Modifier.fillMaxWidth().height(heroH), contentPadding = PaddingValues(horizontal = 36.dp), pageSpacing = 12.dp) { page ->
             val item = items[page]
             val offset = ((pager.currentPage - page) + pager.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
             Box(

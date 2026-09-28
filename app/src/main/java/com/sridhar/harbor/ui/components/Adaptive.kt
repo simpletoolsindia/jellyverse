@@ -45,3 +45,6 @@ fun Readable(max: Dp = ReadableWidth, content: @Composable () -> Unit) {
  * Provided by the nav host; FABs, snackbars, action bars and list padding add it so nothing hides underneath.
  */
 val LocalMiniPlayerInset = androidx.compose.runtime.compositionLocalOf { 0.dp }
+
+/** Height of the floating bottom tab bar that screens float buttons above; 0 when landscape phones use the side rail. */
+val LocalBottomBarInset = androidx.compose.runtime.compositionLocalOf { 80.dp }
