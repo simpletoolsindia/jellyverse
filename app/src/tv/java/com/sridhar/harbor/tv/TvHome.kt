@@ -157,18 +157,22 @@ fun TvHome(onOpen: (String) -> Unit) {
         Column(Modifier.fillMaxSize()) {
             // Info panel – follows the focused title
             // Fixed height so rows below never jump when a slide swaps a logo for a two-line title.
-            Row(Modifier.fillMaxWidth().padding(start = 48.dp, top = 36.dp, end = 40.dp).height(300.dp), verticalAlignment = Alignment.Bottom) {
+            // Sized by its content (fixed title/overview slots keep it steady between slides), so larger system
+            // text or a smaller screen pushes the rows down instead of overlapping them.
+            Row(Modifier.fillMaxWidth().padding(start = 48.dp, top = 28.dp, end = 40.dp), verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f).padding(end = 24.dp)) {
                 AnimatedContent(display, transitionSpec = { (fadeIn(tween(350)) + slideInVertically(tween(350)) { it / 12 }) togetherWith fadeOut(tween(150)) }, label = "info") { item ->
                     if (item != null) Column {
                         val logo = jf.logoUrl(cfg, item)
-                        if (logo != null) Box(Modifier.width(340.dp).height(96.dp)) { NetImage(logo, Modifier.fillMaxSize(), contentScale = ContentScale.Fit, fallback = item.name) }
-                        else Text(item.seriesName ?: item.name, color = Color.White, fontSize = 46.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 50.sp)
+                        Box(Modifier.height(96.dp).fillMaxWidth(), contentAlignment = Alignment.BottomStart) {
+                            if (logo != null) Box(Modifier.width(340.dp).fillMaxHeight()) { NetImage(logo, Modifier.fillMaxSize(), contentScale = ContentScale.Fit, fallback = item.name, alignment = Alignment.BottomStart) }
+                            else Text(item.seriesName ?: item.name, color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 40.sp)
+                        }
                         Spacer(Modifier.height(12.dp))
                         MetaLine(listOf(item.year?.toString(), item.communityRating?.let { "★ %.1f".format(it) }, formatRuntime(item.runtimeMinutes),
                             item.genres.firstOrNull(), item.episodeLabel))
                         Spacer(Modifier.height(12.dp))
-                        Text(item.overview.orEmpty(), color = Color.White.copy(.8f), fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 22.sp)
+                        Text(item.overview.orEmpty(), color = Color.White.copy(.8f), fontSize = 15.sp, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 22.sp)
                     }
                 }
                 Spacer(Modifier.height(16.dp))

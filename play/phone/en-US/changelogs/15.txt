@@ -1,0 +1,1 @@
+JellyVerse 2.7.2: TV layout fixes – Home no longer overlaps the Watch / Details buttons with the first row on TVs with larger text, and every button on a title's page (Lock with PIN, Mark watched…) is reachable.
