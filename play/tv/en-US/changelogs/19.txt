@@ -1,0 +1,1 @@
+JellyVerse TV 2.8.2: fixes video freezing and broken audio on budget TV boxes. Dolby/DTS audio is decoded on the TV (passthrough is optional in Settings), trailer previews never run during playback and are off by default on 2 GB TVs, and a stuttering film switches to a smoother stream on its own.

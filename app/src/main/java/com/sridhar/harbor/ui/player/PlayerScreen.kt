@@ -182,6 +182,8 @@ fun PlayerScreen(vm: PlayerViewModel, inPip: Boolean, onBack: () -> Unit, onPip:
     var controls by remember { mutableStateOf(true) }
     var locked by remember { mutableStateOf(false) }
     var panel by remember { mutableStateOf<Panel?>(null) }
+    // Position ticks 4×/s only while something shows it; hidden controls → 1×/s (less work on budget TVs).
+    LaunchedEffect(controls, panel) { vm.fastTick = controls || panel != null }
     var interaction by remember { mutableIntStateOf(0) }
     var scrubMs by remember { mutableStateOf<Long?>(null) }
     var side by remember { mutableStateOf<SideGesture?>(null) }

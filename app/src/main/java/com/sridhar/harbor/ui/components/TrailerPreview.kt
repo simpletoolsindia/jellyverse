@@ -12,6 +12,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,7 +43,10 @@ fun TrailerPreview(item: BaseItem?, modifier: Modifier = Modifier, delayMs: Long
     val ctx = LocalContext.current
     // Only true low-memory devices skip previews (budget TVs with a 192 MB heap still play them fine).
     val lowRamDevice = remember { ctx.getSystemService(android.app.ActivityManager::class.java).isLowRamDevice }
-    if (item == null || lowRamDevice) return
+    // Never run under the player (or any other screen): leaving composition releases the decoder / WebView.
+    val resumed = rememberResumed()
+    val mode by c.previewMode.collectAsState()
+    if (item == null || lowRamDevice || !resumed || !c.previewsOn(mode)) return
     var start by remember(item.id) { mutableStateOf(false) }
     var playing by remember(item.id) { mutableStateOf(false) }
     LaunchedEffect(item.id) {

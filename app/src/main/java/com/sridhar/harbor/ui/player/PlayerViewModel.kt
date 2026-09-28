@@ -163,14 +163,30 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val httpFactory = OkHttpDataSource.Factory(c.http)
 
+    /**
+     * Platform decoders first, FFmpeg for audio formats the device can't decode (AC3/E-AC3/DTS/TrueHD).
+     * Unless the user opted into passthrough, the audio sink only accepts PCM, so Dolby/DTS is decoded here rather
+     * than bitstreamed over HDMI – passthrough's audio clock is what stalls video and breaks audio on budget boxes.
+     */
+    private fun renderersFactory(ctx: android.content.Context) = object : DefaultRenderersFactory(ctx) {
+        override fun buildAudioSink(context: android.content.Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink? {
+            val b = androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+                .setEnableFloatOutput(enableFloatOutput).setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            @Suppress("DEPRECATION")
+            if (!prefs.passthrough) b.setAudioCapabilities(androidx.media3.exoplayer.audio.AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES)
+            return b.build()
+        }
+    }.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON).setEnableDecoderFallback(true).setMediaCodecSelector(codecSelector)
+
     val player: ExoPlayer = ExoPlayer.Builder(app)
-        .setRenderersFactory(DefaultRenderersFactory(app).setEnableDecoderFallback(true).setMediaCodecSelector(codecSelector))
+        .setRenderersFactory(renderersFactory(app))
         .setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(app, httpFactory)))
         .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), true)
         .setHandleAudioBecomingNoisy(true)
         // Start after ~1 s of buffer (default 2.5 s); cap memory on low-RAM TVs.
         .setLoadControl(androidx.media3.exoplayer.DefaultLoadControl.Builder()
-            .setBufferDurationsMs(15_000, 50_000, 1_000, 2_500)
+            // Budget boxes on Wi-Fi: a little more in hand before starting / resuming avoids stop-start playback.
+            .setBufferDurationsMs(if (c.lowEnd) 20_000 else 15_000, 50_000, if (c.lowEnd) 2_000 else 1_000, if (c.lowEnd) 4_000 else 2_500)
             .setTargetBufferBytes(if (c.lowRam) 24 shl 20 else androidx.media3.common.C.LENGTH_UNSET)
             .setPrioritizeTimeOverSizeThresholds(!c.lowRam)
             .build())
@@ -186,6 +202,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private var skippedSegmentStart: Long? = null
     private var decoderName = "–"
     private var dropped = 0
+    /** Stutter watchdog: frames dropped in the current 10 s window, and whether we already stepped down this title. */
+    private var droppedAtWindow = 0
+    private var windowStart = 0L
+    private var smoothSwitched = false
+    /** Controls on screen: the position needs 4 updates a second; otherwise once a second is plenty (less UI work). */
+    var fastTick = true
 
     init {
         // Remembered language choices apply to every title, before the first frame.
@@ -239,8 +261,21 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             }
         })
         player.addAnalyticsListener(object : AnalyticsListener {
-            override fun onVideoDecoderInitialized(e: AnalyticsListener.EventTime, name: String, initMs: Long, durMs: Long) { decoderName = name }
+            override fun onVideoDecoderInitialized(e: AnalyticsListener.EventTime, name: String, initMs: Long, durMs: Long) {
+                decoderName = name
+                // A weak TV that fell back to a software decoder for HD (HEVC 10-bit, 4K…) can't keep up: ask the
+                // server for H.264 its hardware decodes, once, instead of stuttering through the whole film.
+                val sw = name.startsWith("c2.android.") || name.startsWith("OMX.google.") || name.contains("ffmpeg", true)
+                if (sw && c.lowEnd && !prefs.softwareDecoding && !preferSoftware && ui.quality == Quality.Original && !ui.offline && !ui.live
+                    && (player.videoFormat?.height ?: 0) >= 700 && !smoothSwitched) {
+                    smoothSwitched = true
+                    viewModelScope.launch(com.sridhar.harbor.CrashGuard) { notice(L10n.s(R.string.play_smoother)); setQuality(Quality.Q8) }
+                }
+            }
             override fun onDroppedVideoFrames(e: AnalyticsListener.EventTime, count: Int, elapsedMs: Long) { dropped += count }
+            override fun onAudioDecoderInitialized(e: AnalyticsListener.EventTime, name: String, initMs: Long, durMs: Long) {
+                if (com.sridhar.harbor.BuildConfig.DEBUG) android.util.Log.d("Player", "audio decoder $name, video decoder $decoderName")
+            }
         })
     }
 
@@ -310,7 +345,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         // New title: forget the previous title's server-side track picks.
         autoLangTried = false
         ui = ui.copy(audioIndex = null, subIndex = null, serverForAudio = false, quality = if (ui.serverForAudio) prefs.quality else ui.quality)
-        recoveryStep = 0; reencode = false; preferSoftware = prefs.softwareDecoding
+        recoveryStep = 0; reencode = false; preferSoftware = prefs.softwareDecoding; smoothSwitched = false; dropped = 0; droppedAtWindow = 0
         ui = ui.copy(itemId = itemId, error = null, upNextDismissed = false, intro = null, creditsAtMs = null, next = null, previous = null, offline = false,
             firstFrame = false, loadStartedAt = System.currentTimeMillis(), buffering = true)
         reportedStart = false; skippedSegmentStart = null; dropped = 0
@@ -549,7 +584,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** User pick from the Quality panel: applied now and remembered for the next video. */
-    fun chooseQuality(q: Quality) { prefs.quality = q; recoveryStep = 0; reencode = false; setQuality(q) }
+    fun chooseQuality(q: Quality) { prefs.quality = q; recoveryStep = 0; reencode = false; smoothSwitched = true /* the user decides now */; setQuality(q) }
 
     fun setQuality(q: Quality) {
         if (ui.offline) return
@@ -740,6 +775,20 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         if (ui.showStats) ui = ui.copy(stats = stats())
+        stutterWatch()
+    }
+
+    /** Direct play dropping ≥ 60 frames in 10 s (≈ 2.5 s of a 24 fps film) → one step down to a server stream. */
+    private fun stutterWatch() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!player.isPlaying || ui.buffering) { windowStart = now; droppedAtWindow = dropped; return }
+        if (now - windowStart < 10_000) return
+        val lost = dropped - droppedAtWindow
+        windowStart = now; droppedAtWindow = dropped
+        if (lost >= 60 && !smoothSwitched && ui.quality == Quality.Original && !ui.offline && !ui.live) {
+            smoothSwitched = true
+            notice(L10n.s(R.string.play_smoother)); setQuality(Quality.Q8)
+        }
     }
 
     private fun describe(f: Format?, video: Boolean): String = f?.let {
@@ -761,7 +810,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun startTicker() {
         tickJob?.cancel()
-        tickJob = viewModelScope.launch(com.sridhar.harbor.CrashGuard) { while (isActive) { tick(); delay(250) } }
+        tickJob = viewModelScope.launch(com.sridhar.harbor.CrashGuard) { while (isActive) { tick(); delay(if (fastTick) 250 else 1000) } }
     }
 
     private fun startReporting() {

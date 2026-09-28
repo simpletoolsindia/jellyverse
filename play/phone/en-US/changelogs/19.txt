@@ -1,0 +1,1 @@
+JellyVerse 2.8.2: smoother playback – Dolby (AC3/E-AC3) and DTS audio are decoded in the app instead of being passed through, trailer previews stop while a video plays, and stuttering direct play steps down to a smoother stream automatically.

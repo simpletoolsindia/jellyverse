@@ -1034,4 +1034,11 @@
     <string name="qr_tv_ready">உங்கள் TV உள்நுழைந்து தயார்</string>
     <string name="qr_bad">இது JellyVerse TV குறியீடு அல்ல</string>
     <string name="tv_connect_phone">போனை இணை</string>
+    <string name="previews_title">டிரெய்லர் முன்னோட்டம்</string>
+    <string name="previews_auto_on">தானியங்கி · இயக்கம்</string>
+    <string name="previews_auto_off">தானியங்கி · மென்மையான இயக்கத்துக்காக இந்த TV-யில் அணைப்பு</string>
+    <string name="passthrough_title">Dolby / DTS நேரடி அனுப்புதல்</string>
+    <string name="passthrough_off">அணைப்பு · இந்த TV-யிலேயே டிகோட் (மென்மையானது)</string>
+    <string name="passthrough_on">இயக்கம் · AV ரிசீவர் / சவுண்ட்பாருக்கு</string>
+    <string name="play_smoother">இயக்கம் தடுமாறியது – மென்மையான ஸ்ட்ரீமுக்கு மாற்றப்பட்டது</string>
 </resources>

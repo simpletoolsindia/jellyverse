@@ -17,6 +17,8 @@ class PlayerPrefs(context: Context) {
     var autoSkip: Boolean get() = p.getBoolean("auto_skip", false); set(v) = p.edit().putBoolean("auto_skip", v).apply()
     var autoPlayNext: Boolean get() = p.getBoolean("autoplay_next", true); set(v) = p.edit().putBoolean("autoplay_next", v).apply()
     var softwareDecoding: Boolean get() = p.getBoolean("sw_decode", false); set(v) = p.edit().putBoolean("sw_decode", v).apply()
+    /** Send Dolby / DTS undecoded over HDMI (AV receivers). Off by default: decoded PCM is reliable on every TV box. */
+    var passthrough: Boolean get() = p.getBoolean("passthrough", false); set(v) = p.edit().putBoolean("passthrough", v).apply()
     var backgroundPlay: Boolean get() = p.getBoolean("bg_play", false); set(v) = p.edit().putBoolean("bg_play", v).apply()
     var seekStepSec: Int get() = p.getInt("seek_step", 10); set(v) = p.edit().putInt("seek_step", v).apply()
     var subScale: Float get() = p.getFloat("sub_scale", 1f); set(v) = p.edit().putFloat("sub_scale", v).apply()

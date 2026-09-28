@@ -45,6 +45,17 @@ class AppContainer(context: Context) {
     /** Low-RAM devices (e.g. 1.5 GB Android TVs) get lighter images and caches. */
     val lowRam: Boolean = context.getSystemService(android.app.ActivityManager::class.java).let { it.isLowRamDevice || it.memoryClass <= 192 }
 
+    /** 2 GB-class hardware (most budget TV boxes): trailer previews default off so playback gets the whole device. */
+    val lowEnd: Boolean = lowRam || context.getSystemService(android.app.ActivityManager::class.java).let { am ->
+        android.app.ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }.totalMem < 2_600L * 1024 * 1024
+    } || Runtime.getRuntime().availableProcessors() <= 2
+
+    private val uiPrefs = context.getSharedPreferences("harbor_ui", Context.MODE_PRIVATE)
+    /** Trailer previews: "auto" (on unless [lowEnd]), "on" or "off". */
+    val previewMode = kotlinx.coroutines.flow.MutableStateFlow(uiPrefs.getString("previews", "auto") ?: "auto")
+    fun setPreviewMode(mode: String) { uiPrefs.edit().putString("previews", mode).apply(); previewMode.value = mode }
+    fun previewsOn(mode: String = previewMode.value): Boolean = when (mode) { "on" -> true; "off" -> false; else -> !lowEnd }
+
     /** Image client: Jellyseerr avatars sit behind the same auth as its API. */
     val imageHttp: OkHttpClient = http.newBuilder().addInterceptor { chain ->
         val req = chain.request()

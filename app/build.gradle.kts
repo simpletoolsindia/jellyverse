@@ -20,8 +20,8 @@ android {
         applicationId = "com.sridhar.jellyverse"
         minSdk = 26
         targetSdk = 36
-        versionCode = 18
-        versionName = "2.8.1"
+        versionCode = 19
+        versionName = "2.8.2"
         // Play Store builds (-Pstore) ship without preloaded IPTV directories – "bring your own playlist" per Play policy.
         buildConfigField("boolean", "PRELOAD_IPTV", if (project.hasProperty("store")) "false" else "true")
         // GitHub builds update themselves from GitHub Releases; Play builds are updated by Play only.
@@ -135,6 +135,9 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-rtsp:$media3")
     implementation("androidx.media3:media3-exoplayer-smoothstreaming:$media3")
     implementation("androidx.media3:media3-ui:$media3")
+    // Software AC3 / E-AC3 / DTS / TrueHD audio (Jellyfin's build of the Media3 FFmpeg extension): decoding on the
+    // device avoids HDMI passthrough, whose audio clock stutters on budget TV boxes and freezes the video with it.
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.5.0+1")
     implementation("androidx.media3:media3-datasource-okhttp:$media3")
     implementation("androidx.media3:media3-session:$media3")
     implementation("com.google.android.gms:play-services-cast-framework:22.0.0")

@@ -304,8 +304,9 @@ private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (
     val pager = rememberPagerState { items.size }
     val favs = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
     var trailerOn by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    LaunchedEffect(pager, items.size, trailerOn) {
-        while (true) {
+    val resumed = com.sridhar.harbor.ui.components.rememberResumed()   // paused while the player (or another screen) is on top
+    LaunchedEffect(pager, items.size, trailerOn, resumed) {
+        while (resumed) {
             delay(if (trailerOn) 45_000 else 6000)
             if (!pager.isScrollInProgress) pager.animateScrollToPage((pager.currentPage + 1) % items.size)
         }

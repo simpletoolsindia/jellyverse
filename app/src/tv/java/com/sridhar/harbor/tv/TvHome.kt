@@ -126,8 +126,9 @@ fun TvHome(onOpen: (String) -> Unit) {
 
     LaunchedEffect(vm.hero) { if (vm.hero.isNotEmpty() && display == null) { display = vm.hero.first(); runCatching { delay(150); watchFocus.requestFocus() } } }
     // Spotlight auto-rotates while the hero buttons have focus.
-    LaunchedEffect(heroFocused, vm.hero.size, trailerOn) {
-        while (heroFocused && vm.hero.size > 1) { delay(if (trailerOn) 45_000 else 8000); heroIndex = (heroIndex + 1) % vm.hero.size; display = vm.hero[heroIndex] }
+    val resumed = com.sridhar.harbor.ui.components.rememberResumed()   // no rotating (and preview churn) under the player
+    LaunchedEffect(heroFocused, vm.hero.size, trailerOn, resumed) {
+        while (resumed && heroFocused && vm.hero.size > 1) { delay(if (trailerOn) 45_000 else 8000); heroIndex = (heroIndex + 1) % vm.hero.size; display = vm.hero[heroIndex] }
     }
 
     var removing by remember { mutableStateOf<BaseItem?>(null) }

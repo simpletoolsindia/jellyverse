@@ -37,6 +37,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.SurroundSound
+import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.key
@@ -143,6 +145,17 @@ fun TvSettings() {
         var parental by remember { mutableStateOf(false) }
         TvButton(stringResource(R.string.parental_title) + " · " + com.sridhar.harbor.ui.parental.parentalSummary(), Icons.Rounded.Lock) { parental = true }
         if (parental) com.sridhar.harbor.ui.parental.ParentalSettingsDialog { parental = false }
+        // Playback: previews compete with the film for the decoder on budget boxes; passthrough's clock stutters on many.
+        val previewMode by container.previewMode.collectAsState()
+        TvButton(stringResource(R.string.previews_title) + " · " + when (previewMode) {
+            "on" -> stringResource(R.string.on_label); "off" -> stringResource(R.string.off_label)
+            else -> stringResource(if (container.previewsOn("auto")) R.string.previews_auto_on else R.string.previews_auto_off)
+        }, Icons.Rounded.Movie) { container.setPreviewMode(when (previewMode) { "auto" -> "on"; "on" -> "off"; else -> "auto" }) }
+        val ctxP = androidx.compose.ui.platform.LocalContext.current
+        val playerPrefs = androidx.compose.runtime.remember { com.sridhar.harbor.ui.player.PlayerPrefs(ctxP) }
+        var passthrough by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(playerPrefs.passthrough) }
+        TvButton(stringResource(R.string.passthrough_title) + " · " + stringResource(if (passthrough) R.string.passthrough_on else R.string.passthrough_off),
+            Icons.Rounded.SurroundSound) { passthrough = !passthrough; playerPrefs.passthrough = passthrough }
         if (container.updater.enabled) {
             val autoUpd by container.updater.autoCheckFlow.collectAsState()
             val ctxU = androidx.compose.ui.platform.LocalContext.current

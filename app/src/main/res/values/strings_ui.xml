@@ -1034,4 +1034,11 @@
     <string name="qr_tv_ready">Your TV is signed in and ready</string>
     <string name="qr_bad">That isn\'t a JellyVerse TV code</string>
     <string name="tv_connect_phone">Connect phone</string>
+    <string name="previews_title">Trailer previews</string>
+    <string name="previews_auto_on">Auto · on</string>
+    <string name="previews_auto_off">Auto · off on this TV for smooth playback</string>
+    <string name="passthrough_title">Dolby / DTS passthrough</string>
+    <string name="passthrough_off">Off · decoded on this TV (smoothest)</string>
+    <string name="passthrough_on">On · for AV receivers / soundbars</string>
+    <string name="play_smoother">Playback was stuttering – switched to a smoother stream</string>
 </resources>
