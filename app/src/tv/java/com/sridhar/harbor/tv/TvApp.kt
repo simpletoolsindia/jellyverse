@@ -49,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -124,10 +125,15 @@ fun TvApp() {
                 }
             }
         }
+        // While the menu is open, dim the page behind it so the two never read as one.
+        val scrim by androidx.compose.animation.core.animateFloatAsState(if (railFocused) 0.72f else 0f, label = "railScrim")
+        if (scrim > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = scrim)))
         // Rail: collapsed icons; expands with labels while it has focus (Hotstar/Google TV style).
         if (current !is TvDest.Detail && current !is TvDest.NowPlaying && current !is TvDest.MusicCollection) Column(
             Modifier.fillMaxHeight().width(railWidth)
-                .background(Brush.horizontalGradient(listOf(Harbor.Ink.copy(alpha = if (railFocused) 0.98f else 0.9f), Harbor.Ink.copy(alpha = if (railFocused) 0.9f else 0f))))
+                // Open: a solid panel with a soft edge; closed: the light fade over content, as before.
+                .background(if (railFocused) Brush.horizontalGradient(listOf(Harbor.Ink, Harbor.Ink, Harbor.Surface))
+                    else Brush.horizontalGradient(listOf(Harbor.Ink.copy(alpha = 0.9f), Harbor.Ink.copy(alpha = 0f))))
                 .onFocusChanged { railFocused = it.hasFocus }.focusGroup()
                 // Fits 8 entries on a 540dp-tall TV screen; scrolls (keeping the focused entry visible) if ever taller.
                 .verticalScroll(rememberScrollState())
