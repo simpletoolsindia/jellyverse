@@ -231,7 +231,7 @@ private fun DPad(client: RemoteClient) {
     Box(
         Modifier.fillMaxWidth(0.82f).aspectRatio(1f).clip(CircleShape)
             .background(Brush.radialGradient(listOf(Harbor.SurfaceHigh, Harbor.Surface)))
-            .border(1.dp, Color.White.copy(alpha = .08f), CircleShape)
+            .border(1.dp, Harbor.line(.08f), CircleShape)
             .semantics { contentDescription = "D-pad" }
             .pointerInput(Unit) {
                 var repeatJob: Job? = null
@@ -263,7 +263,7 @@ private fun DPad(client: RemoteClient) {
         contentAlignment = Alignment.Center,
     ) {
         @Composable fun Arrow(icon: ImageVector, dir: String, align: Alignment) = Box(Modifier.fillMaxSize().padding(14.dp), align) {
-            Icon(icon, dir, tint = if (lit == dir) Harbor.Sky else Color.White.copy(alpha = .75f), modifier = Modifier.size(40.dp))
+            Icon(icon, dir, tint = if (lit == dir) Harbor.Sky else Harbor.Fg.copy(alpha = .75f), modifier = Modifier.size(40.dp))
         }
         Arrow(Icons.Rounded.KeyboardArrowUp, "UP", Alignment.TopCenter)
         Arrow(Icons.Rounded.KeyboardArrowDown, "DOWN", Alignment.BottomCenter)
@@ -281,16 +281,16 @@ private fun DPad(client: RemoteClient) {
 private fun RoundKey(icon: ImageVector, desc: String, big: Boolean = false, active: Boolean = false, onClick: () -> Unit) {
     Box(Modifier.size(if (big) 72.dp else 56.dp).clip(CircleShape).background(if (big || active) Harbor.Violet else Harbor.Surface)
         .clickable(onClick = onClick), Alignment.Center) {
-        Icon(icon, desc, tint = Color.White, modifier = Modifier.size(if (big) 34.dp else 26.dp))
+        Icon(icon, desc, tint = Harbor.Fg, modifier = Modifier.size(if (big) 34.dp else 26.dp))
     }
 }
 
 @Composable
 private fun Rocker(label: String, onUp: () -> Unit, onDown: () -> Unit) {
     Column(Modifier.width(64.dp).clip(RoundedCornerShape(32.dp)).background(Harbor.Surface), horizontalAlignment = Alignment.CenterHorizontally) {
-        IconButton(onUp) { Icon(Icons.Rounded.Add, "$label +", tint = Color.White) }
+        IconButton(onUp) { Icon(Icons.Rounded.Add, "$label +", tint = Harbor.Fg) }
         Text(label, color = Harbor.TextDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-        IconButton(onDown) { Icon(Icons.Rounded.Remove, "$label −", tint = Color.White) }
+        IconButton(onDown) { Icon(Icons.Rounded.Remove, "$label −", tint = Harbor.Fg) }
     }
 }
 
@@ -326,11 +326,11 @@ fun ScanQrButton(modifier: Modifier = Modifier) {
             com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(ctx, opts).startScan()
                 .addOnSuccessListener { code -> if (!client.connectFromQr(code.rawValue.orEmpty())) android.widget.Toast.makeText(ctx, bad, android.widget.Toast.LENGTH_SHORT).show() }
         }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Rounded.QrCodeScanner, null, tint = Color.White, modifier = Modifier.size(30.dp))
+        Icon(Icons.Rounded.QrCodeScanner, null, tint = Harbor.Fg, modifier = Modifier.size(30.dp))
         Spacer(Modifier.width(14.dp))
         Column {
-            Text(stringResource(R.string.qr_scan), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-            Text(stringResource(R.string.qr_hint), color = Color.White.copy(alpha = .85f), fontSize = 12.sp)
+            Text(stringResource(R.string.qr_scan), color = Harbor.Fg, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text(stringResource(R.string.qr_hint), color = Harbor.Fg.copy(alpha = .85f), fontSize = 12.sp)
         }
     }
 }

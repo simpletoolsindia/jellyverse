@@ -39,7 +39,7 @@ fun TvProtected(onOpen: (String) -> Unit, onCancel: () -> Unit) {
         return
     }
     Column(Modifier.fillMaxSize().padding(start = 120.dp, top = 40.dp, end = 40.dp)) {
-        Text(stringResource(R.string.adult_menu_title), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+        Text(stringResource(R.string.adult_menu_title), color = Harbor.Fg, fontSize = 34.sp, fontWeight = FontWeight.Black)
         val list = vm.items
         when {
             list == null && vm.error != null -> Text(vm.error.orEmpty(), color = Harbor.Rose, modifier = Modifier.padding(top = 24.dp))
@@ -53,7 +53,7 @@ fun TvProtected(onOpen: (String) -> Unit, onCancel: () -> Unit) {
                         val w = maxWidth
                         Column {
                             PosterTile(item.seriesName ?: item.name, c.jellyfin.posterUrl(cfg, item, 300), width = w, onFocus = {}) { onOpen(item.id) }
-                            Text(item.seriesName ?: item.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                            Text(item.seriesName ?: item.name, color = Harbor.Fg, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                             Text(listOfNotNull(item.year?.toString(), item.officialRating).joinToString(" · "), color = Harbor.TextDim, fontSize = 12.sp, maxLines = 1)
                         }

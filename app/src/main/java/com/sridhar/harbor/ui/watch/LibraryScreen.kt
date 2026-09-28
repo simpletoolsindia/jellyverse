@@ -1,5 +1,9 @@
 package com.sridhar.harbor.ui.watch
 
+import kotlinx.coroutines.async
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import androidx.compose.runtime.mutableIntStateOf
 import com.sridhar.harbor.L10n
 import com.sridhar.harbor.R
@@ -209,11 +213,34 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
     var loading by mutableStateOf(false); private set
     var smart by mutableStateOf(false); private set
 
+    /** Jellyseerr matches that aren't in the library yet – requestable right from Search. */
+    var seerr by mutableStateOf<List<com.sridhar.harbor.data.seerr.SeerrMedia>>(emptyList()); private set
+    /** tmdb id → request state ("sent" / error text) for the TV's one-press Request. */
+    val requested = androidx.compose.runtime.mutableStateMapOf<Int, String>()
+
     fun search(q: String) = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
-        if (q.length < 2) { results = emptyList(); return@launch }
+        if (q.length < 2) { results = emptyList(); seerr = emptyList(); return@launch }
         loading = true; smart = false
-        results = runCatching { c.jellyfin.fuzzyFind(q) }.getOrDefault(emptyList())
+        kotlinx.coroutines.coroutineScope {
+            val s = async {
+                if (!c.settings.current().seerrReady) emptyList()
+                else runCatching { c.seerr.search(q).results }.getOrDefault(emptyList())
+                    .filter { it.mediaType == "movie" || it.mediaType == "tv" }
+                    .filter { it.status != com.sridhar.harbor.data.seerr.MediaStatus.Available }
+                    .filter { !(c.parental.state.value.enabled && c.parental.state.value.protectAdult) || it.adult != true }
+            }
+            results = runCatching { c.jellyfin.fuzzyFind(q) }.getOrDefault(emptyList())
+            seerr = s.await()
+        }
         loading = false
+    }
+
+    fun request(m: com.sridhar.harbor.data.seerr.SeerrMedia) = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
+        requested[m.id] = "…"
+        runCatching {
+            val seasons = if (m.mediaType == "tv") c.seerr.details("tv", m.id).seasons.map { it.seasonNumber }.filter { it > 0 } else null
+            c.seerr.request(m.mediaType, m.id, seasons)
+        }.onSuccess { requested[m.id] = "sent" }.onFailure { requested[m.id] = it.message ?: "failed" }
     }
 
     fun smartSearch() = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
@@ -225,7 +252,7 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
 
 @OptIn(FlowPreview::class)
 @Composable
-fun SearchScreen(onItem: (String) -> Unit, onBack: () -> Unit) {
+fun SearchScreen(onItem: (String) -> Unit, onBack: () -> Unit, onSeerr: (String, Int) -> Unit = { _, _ -> }) {
     val container = LocalContainer.current
     val cfg = rememberConfig()
     val vm = viewModel { SearchViewModel(container) }
@@ -252,7 +279,7 @@ fun SearchScreen(onItem: (String) -> Unit, onBack: () -> Unit) {
             FilterChip(vm.smart, { vm.smartSearch() }, { Text(if (vm.loading && vm.smart) stringResource(R.string.thinking) else stringResource(R.string.smart_search)) },
                 colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet.copy(.35f)))
         }
-        if (vm.query.length >= 2 && !vm.loading && vm.results.isEmpty())
+        if (vm.query.length >= 2 && !vm.loading && vm.results.isEmpty() && vm.seerr.isEmpty())
             MessageState(stringResource(R.string.no_matches), stringResource(R.string.nothing_in_your_library_matches_1, vm.query), Modifier.padding(pad), icon = Icons.Rounded.Search)
         LazyVerticalGrid(
             GridCells.Adaptive(112.dp), Modifier.fillMaxSize().padding(pad).padding(top = if (vm.query.trim().contains(' ')) 44.dp else 0.dp),
@@ -266,6 +293,38 @@ fun SearchScreen(onItem: (String) -> Unit, onBack: () -> Unit) {
                     width = 200.dp,
                 ) { onItem(item.id) } }
             }
+            // Not in the library: Jellyseerr matches, one tap from a request.
+            if (vm.seerr.isNotEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }, key = "seerr-head") {
+                    Column(Modifier.padding(top = if (vm.results.isEmpty()) 0.dp else 8.dp)) {
+                        Text(stringResource(R.string.search_seerr_title), style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.search_seerr_hint), color = Harbor.TextDim, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                    }
+                }
+                itemsIndexed(vm.seerr, key = { _, m -> "seerr-${m.mediaType}-${m.id}" }) { i, m ->
+                    Box(Modifier.animateItem().enterRise(i)) {
+                        PosterCard(
+                            com.sridhar.harbor.data.seerr.SeerrRepository.tmdb(m.posterPath, "w342"), m.displayTitle,
+                            listOfNotNull(if (m.mediaType == "tv") stringResource(R.string.series) else stringResource(R.string.movie), m.year).joinToString(" · "),
+                            width = 200.dp,
+                            badge = { SeerrBadge(m.status) },
+                        ) { onSeerr(m.mediaType, m.id) }
+                    }
+                }
+            }
         }
     }
+}
+
+/** Corner badge on a Jellyseerr result: requestable, or where its request stands. */
+@Composable
+fun SeerrBadge(status: com.sridhar.harbor.data.seerr.MediaStatus) {
+    val (text, color) = when (status) {
+        com.sridhar.harbor.data.seerr.MediaStatus.Unknown -> stringResource(R.string.search_seerr_request) to Harbor.Violet
+        com.sridhar.harbor.data.seerr.MediaStatus.Pending, com.sridhar.harbor.data.seerr.MediaStatus.Processing -> stringResource(R.string.search_seerr_requested) to Harbor.Amber
+        com.sridhar.harbor.data.seerr.MediaStatus.Partial -> stringResource(R.string.search_seerr_partial) to Harbor.Mint
+        else -> status.label to Harbor.TextDim
+    }
+    Text(text, color = androidx.compose.ui.graphics.Color.White, fontSize = 10.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+        modifier = Modifier.padding(6.dp).clip(RoundedCornerShape(6.dp)).background(color).padding(horizontal = 6.dp, vertical = 2.dp))
 }

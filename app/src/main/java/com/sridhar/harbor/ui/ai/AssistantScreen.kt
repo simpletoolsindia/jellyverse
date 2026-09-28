@@ -206,7 +206,7 @@ private fun ChatRow(item: ChatItem, modifier: Modifier, onNav: (AiNav) -> Unit, 
         }
         is ChatItem.Bot -> Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             AiOrb(26.dp, busy = item.streaming); Spacer(Modifier.width(8.dp))
-            Text(item.text + if (item.streaming) " ▍" else "", color = Color.White.copy(.92f), modifier = Modifier.widthIn(max = 300.dp)
+            Text(item.text + if (item.streaming) " ▍" else "", color = Harbor.Fg.copy(.92f), modifier = Modifier.widthIn(max = 300.dp)
                 .clip(RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp)).background(Harbor.Surface).padding(horizontal = 14.dp, vertical = 10.dp))
         }
         is ChatItem.ToolUse -> {

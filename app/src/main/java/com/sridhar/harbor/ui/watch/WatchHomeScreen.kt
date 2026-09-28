@@ -103,6 +103,8 @@ class WatchHomeViewModel(private val c: AppContainer) : ViewModel() {
     var nextUp by mutableStateOf<List<BaseItem>>(emptyList()); private set
     var views by mutableStateOf<List<BaseItem>>(emptyList()); private set
     var shelves by mutableStateOf<List<LatestShelf>>(emptyList()); private set
+    var top10 by mutableStateOf<List<BaseItem>>(emptyList()); private set
+    var picks by mutableStateOf<List<BaseItem>>(emptyList()); private set
     var userName by mutableStateOf(""); private set
 
     init { load() }
@@ -122,6 +124,8 @@ class WatchHomeViewModel(private val c: AppContainer) : ViewModel() {
                 val h = async { runCatching { c.jellyfin.heroItems() }.getOrDefault(emptyList()) }
                 val r = async { c.jellyfin.resume() }
                 val n = async { runCatching { c.jellyfin.nextUp() }.getOrDefault(emptyList()) }
+                val t = async { runCatching { c.jellyfin.top10() }.getOrDefault(emptyList()) }
+                val p = async { runCatching { c.jellyfin.discoverPicks() }.getOrDefault(emptyList()) }
                 val v = c.jellyfin.views()
                 val latest = v.filter { it.collectionType in setOf("movies", "tvshows", "homevideos", "mixed", null) }
                     .map { view -> async { LatestShelf(view, runCatching { c.jellyfin.latest(view.id) }.getOrDefault(emptyList())) } }
@@ -131,6 +135,7 @@ class WatchHomeViewModel(private val c: AppContainer) : ViewModel() {
                 if (pc.state.value.enabled && pc.adultSeries.isEmpty()) pc.refreshAdultSeries { c.jellyfin.ratedTitles() }
                 val keep: (BaseItem) -> Boolean = { !pc.hideFromHome(it) }
                 hero = h.await().filter(keep); resume = r.await().filter(keep); nextUp = n.await().filter(keep)
+                top10 = t.await().filter(keep).take(10); picks = p.await().filter(keep)
                 shelves = latest.awaitAll().map { it.copy(items = it.items.filter(keep)) }.filter { it.items.isNotEmpty() }
             }
             userName = c.settings.current().jellyfinUser
@@ -161,6 +166,7 @@ fun WatchHomeScreen(
         return
     }
     val vm = viewModel { WatchHomeViewModel(container) }
+    val look = com.sridhar.harbor.ui.theme.Looks.look
     val ctx = LocalContext.current
     val jf = container.jellyfin
     val play: (BaseItem) -> Unit = { PlayerActivity.start(ctx, it.id) }
@@ -188,7 +194,12 @@ fun WatchHomeScreen(
     PullToRefreshBox(vm.refreshing, onRefresh = { vm.load(pull = true) }, modifier = Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 120.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current)) {
             item(key = "hero") {
-                if (vm.hero.isNotEmpty()) HeroPager(vm.hero, onItem, play)
+                if (vm.hero.isNotEmpty()) {
+                    // Billboard (full-bleed hero) on phones; tablets / landscape keep the cinematic wide hero.
+                    if (look.home == com.sridhar.harbor.ui.theme.HomeStyle.Billboard && com.sridhar.harbor.ui.components.widthClass() == com.sridhar.harbor.ui.components.WidthClass.Compact)
+                        BillboardHero(vm.hero, onItem, play)
+                    else HeroPager(vm.hero, onItem, play)
+                }
                 else Spacer(Modifier.statusBarsPadding().height(72.dp))
             }
             // No network (or server unreachable): lead with what's on the device instead of an error.
@@ -197,7 +208,7 @@ fun WatchHomeScreen(
             else if (vm.error != null && vm.resume.isEmpty()) item {
                 MessageState(stringResource(R.string.couldn_t_reach_jellyfin), vm.error, onRetry = { vm.load() })
             }
-            item(key = "libs") {
+            if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Shortcuts)) item(key = "libs") {
                 if (vm.views.isNotEmpty()) LazyRow(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -227,7 +238,7 @@ fun WatchHomeScreen(
             if (vm.loading && vm.hero.isEmpty() && vm.resume.isEmpty() && vm.error == null) item(key = "skeleton") {
                 Column { com.sridhar.harbor.ui.components.SkeletonShelf(260.dp, 16f / 9f, 3); repeat(2) { com.sridhar.harbor.ui.components.SkeletonShelf() } }
             }
-            item(key = "resume") {
+            if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Continue)) item(key = "resume") {
                 Rail(stringResource(R.string.continue_watching), vm.resume, key = { it.id }) { item ->
                     WideCard(
                         jf.thumbUrl(cfg, item), item.seriesName ?: item.name,
@@ -238,13 +249,15 @@ fun WatchHomeScreen(
                 }
             }
             if (!unreachable && downloads.isNotEmpty()) item(key = "device") { DownloadsShelf(downloads, offline = false) }
-            item(key = "nextup") {
+            if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Top10)) item(key = "top10") { Top10Row(vm.top10, onItem) }
+            if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.NextUp)) item(key = "nextup") {
                 Rail(stringResource(R.string.next_up), vm.nextUp, key = { it.id }) { item ->
                     WideCard(jf.thumbUrl(cfg, item), item.seriesName ?: item.name,
                         listOfNotNull(item.episodeLabel, item.name).joinToString(" · "), 0f, width = 220.dp) { onItem(item.id) }
                 }
             }
-            vm.shelves.forEach { shelf ->
+            item(key = "picks") { PosterMarquee(stringResource(R.string.marquee_discover), vm.picks, onItem) }
+            if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Latest)) vm.shelves.forEach { shelf ->
                 item(key = "shelf-${shelf.view.id}") {
                     Rail(stringResource(R.string.new_in_1_s, shelf.view.name), shelf.items, key = { it.id }, action = stringResource(R.string.see_all),
                         onAction = { onLibrary(shelf.view.id, shelf.view.name, shelf.view.collectionType) }) { item ->
@@ -267,9 +280,9 @@ fun WatchHomeScreen(
             Spacer(Modifier.width(10.dp))
             Text(stringResource(R.string.jellyverse), style = MaterialTheme.typography.headlineSmall.copy(brush = Harbor.accentH), fontWeight = FontWeight.Black)
             Spacer(Modifier.weight(1f))
-            IconButton(onRemote, Modifier.glass(RoundedCornerShape(50))) { Icon(Icons.Rounded.SettingsRemote, stringResource(R.string.remote_title), tint = Color.White) }
+            IconButton(onRemote, Modifier.glass(RoundedCornerShape(50))) { Icon(Icons.Rounded.SettingsRemote, stringResource(R.string.remote_title), tint = Harbor.Fg) }
             Spacer(Modifier.width(8.dp))
-            IconButton(onSearch, Modifier.glass(RoundedCornerShape(50))) { Icon(Icons.Rounded.Search, stringResource(R.string.search), tint = Color.White) }
+            IconButton(onSearch, Modifier.glass(RoundedCornerShape(50))) { Icon(Icons.Rounded.Search, stringResource(R.string.search), tint = Harbor.Fg) }
         }
     }
 }
@@ -355,17 +368,17 @@ private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (
                 Text(stringResource(R.string.watch_now), color = Color.White, fontWeight = FontWeight.Bold)
             }
             val fav = current?.let { favs[it.id] ?: (it.userData?.isFavorite == true) } == true
-            Box(Modifier.size(50.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(.14f)).clickable {
+            Box(Modifier.size(50.dp).clip(RoundedCornerShape(12.dp)).background(Harbor.line(.14f)).clickable {
                 current?.let { c -> favs[c.id] = !fav; scope.launch(com.sridhar.harbor.CrashGuard) { runCatching { jf.setFavorite(c.id, !fav) } } }
             }, contentAlignment = Alignment.Center) {
-                Icon(if (fav) Icons.Rounded.Check else Icons.Rounded.Add, stringResource(R.string.watchlist), tint = Color.White)
+                Icon(if (fav) Icons.Rounded.Check else Icons.Rounded.Add, stringResource(R.string.watchlist), tint = Harbor.Fg)
             }
         }
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.Center) {
             repeat(items.size) { i ->
                 val active = i == pager.currentPage
                 Box(Modifier.padding(horizontal = 3.dp).height(5.dp).width(if (active) 18.dp else 5.dp).clip(CircleShape)
-                    .background(if (active) Color.White else Color.White.copy(alpha = .3f)))
+                    .background(if (active) Harbor.Fg else Harbor.line(.3f)))
             }
         }
     }
@@ -415,7 +428,7 @@ private fun WideHero(
                     fontWeight = FontWeight.Black, maxLines = if (short) 1 else 2, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.height(if (short) 4.dp else 10.dp))
                 Text(listOfNotNull(item.year?.toString(), item.genres.take(3).joinToString(" • ").ifBlank { null }, item.officialRating,
-                    item.communityRating?.let { "★ %.1f".format(it) }).joinToString("  ·  "), color = Color.White.copy(.85f), style = MaterialTheme.typography.bodyMedium)
+                    item.communityRating?.let { "★ %.1f".format(it) }).joinToString("  ·  "), color = Harbor.Fg.copy(.85f), style = MaterialTheme.typography.bodyMedium)
                 item.overview?.let {
                     Spacer(Modifier.height(8.dp))
                     Text(it, color = Harbor.TextDim, style = MaterialTheme.typography.bodyMedium, maxLines = if (short) 2 else 3, overflow = TextOverflow.Ellipsis)
@@ -429,10 +442,10 @@ private fun WideHero(
                         Text(stringResource(R.string.watch_now), color = Color.White, fontWeight = FontWeight.Bold)
                     }
                     val fav = favs[item.id] ?: (item.userData?.isFavorite == true)
-                    Box(Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(.14f)).clickable {
+                    Box(Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(Harbor.line(.14f)).clickable {
                         favs[item.id] = !fav; scope.launch(com.sridhar.harbor.CrashGuard) { runCatching { jf.setFavorite(item.id, !fav) } }
                     }, contentAlignment = Alignment.Center) {
-                        Icon(if (fav) Icons.Rounded.Check else Icons.Rounded.Add, stringResource(R.string.watchlist), tint = Color.White)
+                        Icon(if (fav) Icons.Rounded.Check else Icons.Rounded.Add, stringResource(R.string.watchlist), tint = Harbor.Fg)
                     }
                 }
             }
@@ -445,7 +458,7 @@ private fun WideHero(
                 val lift by androidx.compose.animation.core.animateFloatAsState(if (active) 1f else 0f, androidx.compose.animation.core.spring(dampingRatio = .7f), label = "lift")
                 key(item.id) { Box(Modifier.width((if (short) 52.dp else 64.dp) + 20.dp * lift).aspectRatio(2f / 3f).graphicsLayer { alpha = 0.55f + 0.45f * lift }
                     .clip(RoundedCornerShape(10.dp))
-                    .then(if (active) Modifier.border(2.dp, Color.White, RoundedCornerShape(10.dp)) else Modifier)
+                    .then(if (active) Modifier.border(2.dp, Harbor.Fg, RoundedCornerShape(10.dp)) else Modifier)
                     .clickable { scope.launch(com.sridhar.harbor.CrashGuard) { pager.animateScrollToPage(i) } }) {
                     NetImage(jf.posterUrl(cfg, item, 300), Modifier.fillMaxSize(), fallback = item.name)
                 } }

@@ -73,10 +73,10 @@ fun LibraryFilterBar(vm: LibraryViewModel, chip: @Composable (label: String, act
 @Composable
 private fun <T> FacetDialog(title: String, options: List<Pair<T, String>>, selected: T?, loading: Boolean, onPick: (T?) -> Unit, onDismiss: () -> Unit) {
     val first = remember { FocusRequester() }
-    val colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet, selectedLabelColor = Color.White)
+    val colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet, selectedLabelColor = Harbor.Fg)
     Dialog(onDismiss) {
         Column(Modifier.widthIn(max = 560.dp).clip(RoundedCornerShape(20.dp)).background(Harbor.Surface).padding(20.dp).testTag("facet_dialog")) {
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White)
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Harbor.Fg)
             Spacer(Modifier.height(12.dp))
             FlowRow(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected == null, { onPick(null) }, { Text(stringResource(R.string.f_any)) }, colors = colors, modifier = Modifier.focusRequester(first))

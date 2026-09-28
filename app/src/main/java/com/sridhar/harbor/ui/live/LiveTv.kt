@@ -224,7 +224,7 @@ fun LiveTvScreen(onBack: () -> Unit) {
 private fun ChannelRow(ch: Channel, number: Int, fav: Boolean, nn: com.sridhar.harbor.data.iptv.NowNext, onFav: () -> Unit, onPlay: () -> Unit) {
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Harbor.Surface).clickable(onClick = onPlay).padding(10.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(.06f))) {
+        Box(Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(Harbor.line(.06f))) {
             NetImage(ch.logo, Modifier.fillMaxSize().padding(5.dp), contentScale = ContentScale.Fit, fallback = ch.name.take(3))
         }
         Spacer(Modifier.width(12.dp))

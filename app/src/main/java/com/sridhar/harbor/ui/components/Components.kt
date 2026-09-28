@@ -102,7 +102,7 @@ fun Modifier.shimmer(): Modifier = composed {
         drawRect(Harbor.SurfaceHigh)
         drawRect(
             Brush.linearGradient(
-                listOf(Color.Transparent, Color.White.copy(alpha = 0.06f), Color.Transparent),
+                listOf(Color.Transparent, Harbor.line(0.06f), Color.Transparent),
                 start = androidx.compose.ui.geometry.Offset(size.width * x, 0f),
                 end = androidx.compose.ui.geometry.Offset(size.width * (x + 0.6f), size.height),
             )
@@ -111,7 +111,7 @@ fun Modifier.shimmer(): Modifier = composed {
 }
 
 fun Modifier.glass(shape: RoundedCornerShape = RoundedCornerShape(20.dp)) =
-    this.clip(shape).background(Color.White.copy(alpha = 0.06f)).border(1.dp, Color.White.copy(alpha = 0.08f), shape)
+    this.clip(shape).background(Harbor.line(0.06f)).border(1.dp, Harbor.line(0.08f), shape)
 
 @Composable
 fun NetImage(url: String?, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop, fallback: String? = null, alignment: Alignment = Alignment.Center) {
@@ -120,7 +120,7 @@ fun NetImage(url: String?, modifier: Modifier = Modifier, contentScale: ContentS
         model = url, contentDescription = null, contentScale = contentScale, modifier = modifier, alignment = alignment,
         loading = { Box(Modifier.fillMaxSize().shimmer()) },
         error = {
-            Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF1C1F27), Color(0xFF16181F)))),
+            Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Harbor.SurfaceHigh, Harbor.Surface))),
                 contentAlignment = Alignment.Center) {
                 if (fallback != null) Text(fallback, style = MaterialTheme.typography.labelLarge, color = Harbor.TextDim,
                     modifier = Modifier.padding(8.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
@@ -173,7 +173,7 @@ fun WideCard(imageUrl: String?, title: String, subtitle: String?, progress: Floa
 fun ProgressStrip(progress: Float, modifier: Modifier = Modifier) {
     val animated = animateFloatAsState(progress.coerceIn(0f, 1f), spring(stiffness = Spring.StiffnessLow), label = "strip")
     Box(modifier.fillMaxWidth().height(4.dp).drawBehind {
-        drawRect(Color.White.copy(alpha = 0.18f))
+        drawRect(Harbor.line(0.18f))
         drawRect(Harbor.accentH, size = size.copy(width = size.width * animated.value))
     })
 }
@@ -184,7 +184,7 @@ fun GradientProgress(progress: Float, modifier: Modifier = Modifier, height: Dp 
     val animated = animateFloatAsState(progress.coerceIn(0f, 1f), spring(stiffness = Spring.StiffnessLow), label = "progress")
     Box(modifier.fillMaxWidth().height(height).drawBehind {
         val r = CornerRadius(size.height / 2)
-        drawRoundRect(Color.White.copy(alpha = 0.08f), cornerRadius = r)
+        drawRoundRect(Harbor.line(0.08f), cornerRadius = r)
         val w = size.width * animated.value
         if (w > 0f) drawRoundRect(brush, size = size.copy(width = w.coerceAtLeast(size.height)), cornerRadius = r)
     })
@@ -249,7 +249,7 @@ fun Pill(text: String, color: Color, modifier: Modifier = Modifier, icon: ImageV
 fun GradientButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, enabled: Boolean = true) {
     Button(
         onClick = onClick, enabled = enabled, modifier = modifier.height(52.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, disabledContainerColor = Color.White.copy(.08f)),
+        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, disabledContainerColor = Harbor.line(.08f)),
         contentPadding = PaddingValues(0.dp), shape = RoundedCornerShape(16.dp),
     ) {
         Box(

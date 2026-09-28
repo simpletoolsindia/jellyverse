@@ -63,13 +63,13 @@ fun DownloadsBanner() {
                     .width(280.dp)
                     .shadow(12.dp, RoundedCornerShape(12.dp))
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF1A1D26))
+                    .background(Harbor.SurfaceHigh)
                     .border(1.dp, Harbor.Violet.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
                     .padding(16.dp)
             ) {
                 Text(
                     text = "Downloading...",
-                    color = Color.White,
+                    color = Harbor.Fg,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )

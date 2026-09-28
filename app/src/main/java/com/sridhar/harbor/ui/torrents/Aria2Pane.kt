@@ -181,7 +181,7 @@ fun Aria2Pane(switcher: @Composable () -> Unit) {
             }
             item {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp).fillMaxWidth().clip(RoundedCornerShape(24.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFF1C1F27), Color(0xFF16181F)))).border(1.dp, Color.White.copy(.07f), RoundedCornerShape(24.dp))) {
+                    .background(Brush.linearGradient(listOf(Harbor.SurfaceHigh, Harbor.Surface))).border(1.dp, Harbor.line(.07f), RoundedCornerShape(24.dp))) {
                     Box(Modifier.fillMaxWidth().height(130.dp)) {
                         @Suppress("UNUSED_EXPRESSION") vm.tick
                         SpeedSparkline(vm.history.toList(), vm.upHistory.toList(), Modifier.fillMaxSize())

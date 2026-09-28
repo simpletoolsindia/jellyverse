@@ -76,8 +76,8 @@ fun UpdatePrompt() {
             }
             if (info.notes.isNotBlank()) {
                 Text(stringResource(R.string.update_whats_new), color = Harbor.TextDim, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 18.dp, bottom = 6.dp))
-                Box(Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = .04f)).verticalScroll(rememberScrollState()).padding(12.dp)) {
-                    Text(info.notes.replace("**", ""), fontSize = 14.sp, color = Color.White.copy(alpha = .85f))
+                Box(Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(14.dp)).background(Harbor.line(.04f)).verticalScroll(rememberScrollState()).padding(12.dp)) {
+                    Text(info.notes.replace("**", ""), fontSize = 14.sp, color = Harbor.Fg.copy(alpha = .85f))
                 }
             }
             Spacer(Modifier.size(18.dp))

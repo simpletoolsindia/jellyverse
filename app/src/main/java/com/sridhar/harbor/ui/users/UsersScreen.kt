@@ -180,7 +180,7 @@ private fun EditUserSheet(u: SeerrUser, isSelf: Boolean, onDismiss: () -> Unit, 
                 val lockedByAdmin = bit != Permission.ADMIN && perms and Permission.ADMIN != 0L
                 Row(Modifier.fillMaxWidth().clickable(enabled = !lockedByAdmin && !(isSelf && bit == Permission.ADMIN)) { perms = perms xor bit }.padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text(label, Modifier.weight(1f), color = if (lockedByAdmin) Harbor.TextDim else androidx.compose.ui.graphics.Color.White)
+                    Text(label, Modifier.weight(1f), color = if (lockedByAdmin) Harbor.TextDim else com.sridhar.harbor.ui.theme.Harbor.Fg)
                     Switch(on || lockedByAdmin, { perms = perms xor bit }, enabled = !lockedByAdmin && !(isSelf && bit == Permission.ADMIN))
                 }
             }

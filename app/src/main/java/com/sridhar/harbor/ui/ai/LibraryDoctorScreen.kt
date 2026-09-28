@@ -252,7 +252,7 @@ fun LibraryDoctorScreen(onBack: () -> Unit) {
             LazyColumn(Modifier.navigationBarsPadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { Text(stringResource(R.string.choose_the_right_match), style = MaterialTheme.typography.titleLarge); Text(live.item.name, color = Harbor.TextDim, fontSize = 12.sp) }
                 itemsIndexed(live.candidates) { idx, c ->
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (idx == live.chosen) Harbor.Violet.copy(.2f) else Color.White.copy(.04f))
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (idx == live.chosen) Harbor.Violet.copy(.2f) else Harbor.line(.04f))
                         .clickable { vm.choose(live, idx); alternatives = null }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.width(56.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(8.dp))) { NetImage(c.result.imageUrl, Modifier.fillMaxSize(), fallback = c.result.name) }
                         Spacer(Modifier.width(10.dp))
@@ -294,11 +294,11 @@ fun LibraryDoctorScreen(onBack: () -> Unit) {
 private fun ScanHero(vm: DoctorViewModel) {
     val (done, total) = vm.progress
     val frac by animateFloatAsState(if (total > 0) done.toFloat() / total else 0f, spring(), label = "scan")
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Brush.linearGradient(listOf(Color(0xFF1C1F27), Color(0xFF16181F)))).padding(16.dp),
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Brush.linearGradient(listOf(Harbor.SurfaceHigh, Harbor.Surface))).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize()) {
-                drawArc(Color.White.copy(.08f), -90f, 360f, false, style = Stroke(7.dp.toPx(), cap = StrokeCap.Round))
+                drawArc(Harbor.line(.08f), -90f, 360f, false, style = Stroke(7.dp.toPx(), cap = StrokeCap.Round))
                 drawArc(Brush.sweepGradient(listOf(Harbor.Violet, Harbor.Coral, Harbor.Violet)), -90f, 360f * frac, false, style = Stroke(7.dp.toPx(), cap = StrokeCap.Round))
             }
             Text(if (total > 0) "$done/$total" else "–", fontSize = 13.sp, fontWeight = FontWeight.Black)
@@ -323,7 +323,7 @@ private fun ScoreRing(score: Float) {
     val color = when { score >= 0.8f -> Harbor.Mint; score >= 0.55f -> Harbor.Amber; else -> Harbor.Rose }
     Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
-            drawArc(Color.White.copy(.08f), -90f, 360f, false, style = Stroke(3.dp.toPx()))
+            drawArc(Harbor.line(.08f), -90f, 360f, false, style = Stroke(3.dp.toPx()))
             drawArc(color, -90f, 360f * score, false, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
         }
         Text("${(score * 100).toInt()}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = color)
@@ -336,7 +336,7 @@ private fun IssueCard(
     onApply: () -> Unit, onAlternatives: () -> Unit, onEdit: () -> Unit, onSkip: () -> Unit,
 ) {
     val best = issue.best
-    val border = when (issue.status) { FixStatus.Applied -> Harbor.Mint; FixStatus.Failed -> Harbor.Rose; else -> Color.White.copy(.06f) }
+    val border = when (issue.status) { FixStatus.Applied -> Harbor.Mint; FixStatus.Failed -> Harbor.Rose; else -> Harbor.line(.06f) }
     Column(modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Harbor.Surface)
         .border(1.dp, border, RoundedCornerShape(20.dp)).padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -370,7 +370,7 @@ private fun IssueCard(
                     Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.doctor_applying), color = Harbor.Sky, fontSize = 12.sp)
                 }
                 else -> {
-                    if (best != null) Text(stringResource(when { best.kind == issue.item.type -> R.string.apply; best.kind == "Series" -> R.string.doctor_move_to_tv; else -> R.string.doctor_move_to_movies }), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    if (best != null) Text(stringResource(when { best.kind == issue.item.type -> R.string.apply; best.kind == "Series" -> R.string.doctor_move_to_tv; else -> R.string.doctor_move_to_movies }), color = Harbor.Fg, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                         modifier = Modifier.clip(RoundedCornerShape(50)).background(Harbor.accentH).pressable(onClick = onApply).padding(horizontal = 16.dp, vertical = 7.dp))
                     if (issue.candidates.size > 1) TextButton(onAlternatives) { Icon(Icons.Rounded.SwapHoriz, null, modifier = Modifier.size(16.dp)); Text(stringResource(R.string.s_1_s_more, issue.candidates.size - 1)) }
                     TextButton(onEdit) { Icon(Icons.Rounded.Edit, null, modifier = Modifier.size(16.dp)); Text(stringResource(R.string.fix_title)) }

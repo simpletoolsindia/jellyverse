@@ -59,7 +59,7 @@ fun LanguagePicker(modifier: Modifier = Modifier, showTitle: Boolean = true) {
                     // TV: a clear white ring on the focused chip (Material's default is nearly invisible on dark).
                     modifier = Modifier.testTag("lang_${o.tag.ifEmpty { "system" }}")
                         .onFocusChanged { focused = it.isFocused },
-                    border = if (focused) androidx.compose.foundation.BorderStroke(3.dp, Color.White) else null,
+                    border = if (focused) androidx.compose.foundation.BorderStroke(3.dp, Harbor.Fg) else null,
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet, selectedLabelColor = Color.White),
                 )
             }

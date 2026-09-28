@@ -245,6 +245,19 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
         ).items.filter { it.backdropTags.isNotEmpty() }
     }
 
+    /** Home "Top 10": the best-rated films and shows in the library. */
+    suspend fun top10(): List<BaseItem> {
+        val (a, c) = api()
+        return a.items(c.jellyfinUserId, types = "Movie,Series", sortBy = "CommunityRating,SortName", sortOrder = "Descending", limit = 14)
+            .items.filter { (it.communityRating ?: 0f).toFloat() > 0f }
+    }
+
+    /** Home marquee: a random, unwatched mix to discover. */
+    suspend fun discoverPicks(): List<BaseItem> {
+        val (a, c) = api()
+        return a.items(c.jellyfinUserId, types = "Movie,Series", sortBy = "Random", limit = 24, filters = "IsUnplayed").items
+    }
+
     suspend fun libraryItems(): List<LibraryItem> { val (a, c) = api(); return a.libraryItems(c.jellyfinUserId).items }
 
     /** Parsed results plus the raw JSON needed for Apply. */

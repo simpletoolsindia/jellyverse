@@ -186,7 +186,12 @@ fun LikeButton(liked: Boolean, size: androidx.compose.ui.unit.Dp = 26.dp, onTogg
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun NowPlayingScreen(onClose: () -> Unit, onAlbum: (String) -> Unit, onArtist: (List<String>, String) -> Unit) {
+fun NowPlayingScreen(onClose: () -> Unit, onAlbum: (String) -> Unit, onArtist: (List<String>, String) -> Unit) =
+    // Album-colour artwork screen: always dark, like the video player.
+    com.sridhar.harbor.ui.theme.ForceDark { NowPlayingBody(onClose, onAlbum, onArtist) }
+
+@Composable
+private fun NowPlayingBody(onClose: () -> Unit, onAlbum: (String) -> Unit, onArtist: (List<String>, String) -> Unit) {
     val c = LocalContainer.current
     val engine = c.musicEngine
     val s by engine.state.collectAsState()

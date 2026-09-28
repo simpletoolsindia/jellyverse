@@ -1,5 +1,6 @@
 package com.sridhar.harbor.tv
 
+import androidx.compose.foundation.layout.widthIn
 import com.sridhar.harbor.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
@@ -70,7 +71,7 @@ fun TvSetup() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     com.sridhar.harbor.ui.components.HarborLogo(64.dp)
                     Spacer(Modifier.width(16.dp))
-                    Text(stringResource(R.string.jellyverse_tv), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
+                    Text(stringResource(R.string.jellyverse_tv), color = Harbor.Fg, fontSize = 34.sp, fontWeight = FontWeight.Black)
                 }
                 Text(stringResource(R.string.your_jellyfin_library_beautifully_on_the), color = Harbor.TextDim, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
                 Spacer(Modifier.height(22.dp))
@@ -83,7 +84,7 @@ fun TvSetup() {
             Column(Modifier.width(460.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 TvField(stringResource(R.string.jellyfin_server), vm.jfUrl, KeyboardType.Uri) { vm.jfUrl = it }
                 if (!usePassword) {
-                    Text(stringResource(R.string.quick_connect), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.quick_connect), color = Harbor.Fg, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     com.sridhar.harbor.ui.quickconnect.QuickConnectPanel(vm.jfUrl, big = false)
                     TvButton(stringResource(R.string.use_password_instead), Icons.AutoMirrored.Rounded.Login) { usePassword = true }
                 } else {
@@ -121,7 +122,7 @@ private fun TvField(label: String, value: String, type: KeyboardType = KeyboardT
         keyboardOptions = KeyboardOptions(keyboardType = type, imeAction = androidx.compose.ui.text.input.ImeAction.Next, showKeyboardOnFocus = false),
         keyboardActions = androidx.compose.foundation.text.KeyboardActions(onNext = { fm.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }),
         visualTransformation = if (secret) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
-        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.White, unfocusedContainerColor = Harbor.Surface, focusedContainerColor = Harbor.SurfaceHigh))
+        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Harbor.Fg, unfocusedContainerColor = Harbor.Surface, focusedContainerColor = Harbor.SurfaceHigh))
 }
 
 @Composable
@@ -131,10 +132,10 @@ fun TvSettings() {
     val scope = rememberCoroutineScope()
     // Scrolls with D-pad focus so every option below the fold stays reachable.
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 120.dp, top = 48.dp, end = 64.dp, bottom = 64.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(stringResource(R.string.settings), color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Black)
+        Text(stringResource(R.string.settings), color = Harbor.Fg, fontSize = 40.sp, fontWeight = FontWeight.Black)
         Column(Modifier.clip(RoundedCornerShape(20.dp)).background(Harbor.Surface).padding(24.dp)) {
             Text(stringResource(R.string.jellyfin), color = Harbor.TextDim, fontSize = 14.sp)
-            Text(cfg.jellyfinUrl, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text(cfg.jellyfinUrl, color = Harbor.Fg, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Text(stringResource(R.string.signed_in_as_1_s, cfg.jellyfinUser), color = Harbor.Mint, fontSize = 15.sp)
         }
         Text(stringResource(R.string.player_options_subtitles_audio_quality_speed),
@@ -145,6 +146,7 @@ fun TvSettings() {
         var parental by remember { mutableStateOf(false) }
         TvButton(stringResource(R.string.parental_title) + " · " + com.sridhar.harbor.ui.parental.parentalSummary(), Icons.Rounded.Lock) { parental = true }
         if (parental) com.sridhar.harbor.ui.parental.ParentalSettingsDialog { parental = false }
+        com.sridhar.harbor.ui.components.AppearancePicker(Modifier.padding(vertical = 8.dp).widthIn(max = 720.dp), tv = true)
         // Playback: previews compete with the film for the decoder on budget boxes; passthrough's clock stutters on many.
         val previewMode by container.previewMode.collectAsState()
         TvButton(stringResource(R.string.previews_title) + " · " + when (previewMode) {
@@ -186,14 +188,14 @@ private fun PairPhoneDialog(onDismiss: () -> Unit) {
     androidx.compose.runtime.LaunchedEffect(Unit) { runCatching { kotlinx.coroutines.delay(100); focus.requestFocus() } }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(Modifier.clip(RoundedCornerShape(28.dp)).background(Harbor.Surface).padding(36.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text("📱 " + stringResource(R.string.remote_pair_phone), color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+            Text("📱 " + stringResource(R.string.remote_pair_phone), color = Harbor.Fg, fontSize = 28.sp, fontWeight = FontWeight.Black)
             PhoneQrCard(big = true)
             Text(stringResource(R.string.qr_or_manual), color = Harbor.TextDim, fontSize = 15.sp)
             listOf(R.string.remote_step1, R.string.remote_step2, R.string.remote_step3).forEachIndexed { i, r ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).background(Harbor.Violet), Alignment.Center) { Text("${i + 1}", color = Color.White, fontWeight = FontWeight.Bold) }
                     Spacer(Modifier.width(14.dp))
-                    Text(stringResource(r), color = Color.White.copy(alpha = .9f), fontSize = 18.sp)
+                    Text(stringResource(r), color = Harbor.Fg.copy(alpha = .9f), fontSize = 18.sp)
                 }
             }
             if (ip != null) Column(Modifier.clip(RoundedCornerShape(16.dp)).background(Harbor.Ink).padding(18.dp)) {
@@ -222,7 +224,7 @@ fun PhoneQrCard(big: Boolean) {
         Box(Modifier.size(if (big) 200.dp else 150.dp).clip(RoundedCornerShape(12.dp))) { com.sridhar.harbor.ui.components.QrCode(p, Modifier.fillMaxSize()) }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.width(if (big) 220.dp else 170.dp)) {
-            Text("📱 " + stringResource(R.string.qr_title), color = Color.White, fontWeight = FontWeight.Bold, fontSize = if (big) 22.sp else 17.sp)
+            Text("📱 " + stringResource(R.string.qr_title), color = Harbor.Fg, fontWeight = FontWeight.Bold, fontSize = if (big) 22.sp else 17.sp)
             Spacer(Modifier.height(6.dp))
             Text(stringResource(R.string.qr_hint), color = Harbor.TextDim, fontSize = if (big) 16.sp else 13.sp)
             if (paired > 0) Text("✓ " + stringResource(R.string.qr_connected), color = Harbor.Mint, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
@@ -237,12 +239,12 @@ fun TvConnectPhone() {
     Row(Modifier.fillMaxSize().padding(start = 132.dp, end = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(40.dp)) {
         PhoneQrCard(big = true)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(stringResource(R.string.qr_or_manual), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.qr_or_manual), color = Harbor.Fg, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             listOf(R.string.remote_step1, R.string.remote_step2, R.string.remote_step3).forEachIndexed { i, r ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(30.dp).clip(RoundedCornerShape(50)).background(Harbor.Violet), Alignment.Center) { Text("${i + 1}", color = Color.White, fontWeight = FontWeight.Bold) }
                     Spacer(Modifier.width(12.dp))
-                    Text(stringResource(r), color = Color.White.copy(alpha = .9f), fontSize = 15.sp, modifier = Modifier.weight(1f))
+                    Text(stringResource(r), color = Harbor.Fg.copy(alpha = .9f), fontSize = 15.sp, modifier = Modifier.weight(1f))
                 }
             }
             if (ip != null) Text(stringResource(R.string.remote_not_listed) + "  " + ip, color = Harbor.Sky, fontSize = 16.sp)

@@ -142,9 +142,9 @@ private fun ReleaseRow(r: ArrRelease, modifier: Modifier, onClick: () -> Unit) {
         .clickable { if (r.rejected) showWhy = !showWhy else onClick() }.padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(r.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, maxLines = 2,
-                overflow = TextOverflow.Ellipsis, color = if (r.rejected) Harbor.TextDim else Color.White)
+                overflow = TextOverflow.Ellipsis, color = if (r.rejected) Harbor.TextDim else Harbor.Fg)
             Spacer(Modifier.width(8.dp))
-            Box(Modifier.size(38.dp).clip(CircleShape).background(if (r.rejected) Color.White.copy(.06f) else Harbor.Violet.copy(.25f)).clickable(onClick = onClick),
+            Box(Modifier.size(38.dp).clip(CircleShape).background(if (r.rejected) Harbor.line(.06f) else Harbor.Violet.copy(.25f)).clickable(onClick = onClick),
                 contentAlignment = Alignment.Center) {
                 Icon(if (r.rejected) Icons.Rounded.Block else Icons.Rounded.Download, stringResource(R.string.grab), tint = if (r.rejected) Harbor.Rose else Harbor.VioletSoft, modifier = Modifier.size(20.dp))
             }

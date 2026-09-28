@@ -74,7 +74,7 @@ fun Modifier.tvFocusable(
         .onFocusChanged { if (it.isFocused != focused) { focused = it.isFocused; if (it.isFocused) onFocus() } }
         .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onClick)
         .drawBehind {
-            if (ring.value > 0f) drawRoundRect(Color.White.copy(alpha = ring.value), cornerRadius = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()),
+            if (ring.value > 0f) drawRoundRect(Harbor.Fg.copy(alpha = ring.value), cornerRadius = androidx.compose.ui.geometry.CornerRadius(14.dp.toPx()),
                 style = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx()),
                 topLeft = androidx.compose.ui.geometry.Offset(-3.dp.toPx(), -3.dp.toPx()),
                 size = androidx.compose.ui.geometry.Size(size.width + 6.dp.toPx(), size.height + 6.dp.toPx()))
@@ -115,7 +115,7 @@ fun LandscapeTile(title: String, subtitle: String?, image: String?, width: Dp = 
                 Text(title, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 subtitle?.let { Text(it, color = Color.White.copy(.75f), fontSize = 12.sp, maxLines = 1) }
             }
-            if (progress > 0f) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(4.dp).background(Color.White.copy(.25f))) {
+            if (progress > 0f) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(4.dp).background(Harbor.line(.25f))) {
                 Box(Modifier.fillMaxWidth(progress).height(4.dp).background(Harbor.accentH))
             }
         }
@@ -126,7 +126,7 @@ fun LandscapeTile(title: String, subtitle: String?, image: String?, width: Dp = 
 fun <T> TvRow(title: String, items: List<T>, key: (T) -> Any, content: @Composable (T) -> Unit) {
     if (items.isEmpty()) return
     Column(Modifier.padding(bottom = 22.dp)) {
-        Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 48.dp, bottom = 12.dp))
+        Text(title, color = Harbor.Fg, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 48.dp, bottom = 12.dp))
         LazyRow(contentPadding = PaddingValues(horizontal = 48.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             itemsIndexed(items, key = { _, it -> key(it) }) { i, it -> Box(Modifier.animateItem().enterRise(i)) { content(it) } }
         }
@@ -140,12 +140,12 @@ fun TvButton(text: String, icon: ImageVector?, primary: Boolean = false, modifie
         modifier.onFocusChanged { focused = it.isFocused }
             .graphicsLayer { val s = if (focused) 1.06f else 1f; scaleX = s; scaleY = s }
             .clip(RoundedCornerShape(12.dp))
-            .background(when { focused -> Brush.horizontalGradient(listOf(Color.White, Color.White)); primary -> Harbor.accentH; else -> Brush.horizontalGradient(listOf(Color.White.copy(.14f), Color.White.copy(.14f))) })
+            .background(when { focused -> Brush.horizontalGradient(listOf(Color.White, Color.White)); primary -> Harbor.accentH; else -> Brush.horizontalGradient(listOf(Harbor.line(.14f), Harbor.line(.14f))) })
             .clickable(onClick = onClick).padding(horizontal = 22.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) { Icon(icon, null, tint = if (focused) Color.Black else Color.White, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(8.dp)) }
-        Text(text, color = if (focused) Color.Black else Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, softWrap = false)
+        if (icon != null) { Icon(icon, null, tint = if (focused) Color.Black else if (primary) Color.White else Harbor.Fg, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(8.dp)) }
+        Text(text, color = if (focused) Color.Black else if (primary) Color.White else Harbor.Fg, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, softWrap = false)
     }
 }
 
@@ -170,8 +170,8 @@ fun AmbientBackdrop(url: String?, drift: Boolean = false, preview: com.sridhar.h
 fun MetaLine(parts: List<String?>) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
         parts.filterNotNull().filter { it.isNotBlank() }.forEachIndexed { i, p ->
-            if (i > 0) Box(Modifier.size(4.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(.5f)))
-            Text(p, color = Color.White.copy(.85f), fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false)
+            if (i > 0) Box(Modifier.size(4.dp).clip(RoundedCornerShape(50)).background(Harbor.Fg.copy(.5f)))
+            Text(p, color = Harbor.Fg.copy(.85f), fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false)
         }
     }
 }

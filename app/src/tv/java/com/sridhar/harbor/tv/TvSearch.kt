@@ -80,18 +80,43 @@ fun TvSearch(onOpen: (String) -> Unit) {
                     }, singleLine = true, shape = RoundedCornerShape(16.dp),
                         placeholder = { Text(stringResource(R.string.search_movies_shows)) }, leadingIcon = { Icon(Icons.Rounded.Search, null) },
                         colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Harbor.Surface, focusedContainerColor = Harbor.SurfaceHigh,
-                            focusedBorderColor = Color.White, unfocusedBorderColor = Color.Transparent))
+                            focusedBorderColor = Harbor.Fg, unfocusedBorderColor = Color.Transparent))
                     Spacer(Modifier.width(14.dp))
                     TvButton(stringResource(R.string.voice), Icons.Rounded.Mic) {
                         runCatching { voice.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)) }
                     }
                 }
-                Text(if (vm.query.length >= 2) stringResource(R.string.s_1_s_results, vm.results.size) else stringResource(R.string.something_new_to_watch), color = Color.White, fontSize = 22.sp,
+                Text(if (vm.query.length >= 2) stringResource(R.string.s_1_s_results, vm.results.size) else stringResource(R.string.something_new_to_watch), color = Harbor.Fg, fontSize = 22.sp,
                     fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 28.dp))
             }
         }
         items(shown, key = { it.id }) { item ->
             PosterTile(item.name, jf.posterUrl(cfg, item, 320), width = 170.dp, onFocus = {}) { onOpen(item.seriesId ?: item.id) }
+        }
+        // Not in the library: Jellyseerr matches – OK sends the request (all seasons for a series).
+        if (vm.query.length >= 2 && vm.seerr.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Column(Modifier.padding(top = 12.dp)) {
+                    Text(stringResource(R.string.search_seerr_title), color = Harbor.Fg, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.search_seerr_tv_hint), color = Harbor.TextDim, fontSize = 15.sp)
+                }
+            }
+            items(vm.seerr, key = { "seerr-${it.mediaType}-${it.id}" }) { m ->
+                val state = vm.requested[m.id]
+                val requested = state == "sent" || m.status == com.sridhar.harbor.data.seerr.MediaStatus.Pending || m.status == com.sridhar.harbor.data.seerr.MediaStatus.Processing
+                Column {
+                    PosterTile(m.displayTitle, com.sridhar.harbor.data.seerr.SeerrRepository.tmdb(m.posterPath, "w342"), width = 170.dp, onFocus = {}) {
+                        if (!requested && state != "…") vm.request(m)
+                    }
+                    Text(when {
+                        state == "…" -> "…"
+                        requested -> stringResource(R.string.search_seerr_sent)
+                        state != null -> state
+                        else -> stringResource(R.string.search_seerr_request) + " · " + (m.year ?: "")
+                    }, color = if (requested) Harbor.Mint else if (state != null) Harbor.Rose else Harbor.Sky, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 4.dp), maxLines = 1)
+                }
+            }
         }
     }
 }

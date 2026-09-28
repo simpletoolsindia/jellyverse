@@ -1,5 +1,7 @@
 package com.sridhar.harbor.ui.nav
 
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Settings
@@ -144,13 +146,14 @@ private data class Tab(val route: Any, @androidx.annotation.StringRes val labelR
     val label: String get() = com.sridhar.harbor.L10n.s(labelRes)
 }
 
+// Most-used first: the bar shows the first four, the rest live under More.
 private val allTabs = listOf(
     Tab(WatchRoute, com.sridhar.harbor.R.string.tab_watch, Icons.Rounded.PlayCircle, Icons.Outlined.PlayCircle),
     Tab(MusicRoute, com.sridhar.harbor.R.string.tab_music, Icons.Rounded.MusicNote, Icons.Outlined.MusicNote),
     Tab(DiscoverRoute, com.sridhar.harbor.R.string.tab_discover, Icons.Rounded.Explore, Icons.Outlined.Explore),
+    Tab(TorrentsRoute, com.sridhar.harbor.R.string.tab_torrents, Icons.Rounded.SwapVert, Icons.Outlined.SwapVert),
     Tab(RequestsRoute, com.sridhar.harbor.R.string.tab_requests, Icons.Rounded.Inbox, Icons.Outlined.Inbox),
     Tab(ManageRoute, com.sridhar.harbor.R.string.tab_manage, Icons.Rounded.Tune, Icons.Outlined.Tune),
-    Tab(TorrentsRoute, com.sridhar.harbor.R.string.tab_torrents, Icons.Rounded.SwapVert, Icons.Outlined.SwapVert),
     Tab(LabRoute, com.sridhar.harbor.R.string.tab_lab, Icons.Rounded.Dns, Icons.Outlined.Dns),
     Tab(ProfileRoute, com.sridhar.harbor.R.string.settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
 )
@@ -298,7 +301,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                     onRemote = { nav.navigate(RemoteRoute) },
                 )
             }}
-            composable<SearchRoute> { SearchScreen(onItem = { nav.navigate(ItemRoute(it)) }, onBack = { nav.popBackStack() }) }
+            composable<SearchRoute> { SearchScreen(onItem = { nav.navigate(ItemRoute(it)) }, onBack = { nav.popBackStack() }, onSeerr = { t, id -> nav.navigate(SeerrRoute(t, id)) }) }
             composable<LibraryRoute> {
                 val r = it.toRoute<LibraryRoute>()
                 LibraryScreen(r.id, r.name, r.collectionType, onItem = { id -> nav.navigate(ItemRoute(id)) }, onBack = { nav.popBackStack() })
@@ -427,59 +430,74 @@ private fun NavHostController.switchTab(route: Any) = navigate(route) {
     restoreState = true
 }
 
+/**
+ * Material 3 navigation bar: at most four destinations plus "More" (M3 recommends 3–5), each with its label
+ * always visible and the pill indicator on the selected one. Everything else – and the AI assistant – lives in
+ * the More sheet, so the bar stays readable on every phone.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun FloatingNavBar(tabs: List<Tab>, selected: Int, onSelect: (Int) -> Unit, onAssistant: () -> Unit) {
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
-    Box(
-        Modifier.fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(Color.Transparent, Harbor.Ink.copy(alpha = .9f))))
-            .navigationBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        val barMax = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp.minus(24.dp).coerceAtMost(520.dp)
-        // Width the selected pill gets (weights 2.4 vs 1, minus the AI orb and padding) – its label only shows if it fits whole.
-        val activeW = (barMax - 12.dp - 50.dp) * (2.4f / (tabs.size - 1 + 2.4f))
-        val measurer = androidx.compose.ui.text.rememberTextMeasurer()
-        val labelStyle = androidx.compose.ui.text.TextStyle(fontWeight = FontWeight.Bold, fontSize = 13.sp)
-        val density = androidx.compose.ui.platform.LocalDensity.current
-        Row(
-            Modifier.widthIn(max = 520.dp).fillMaxWidth()
-                .shadow(24.dp, RoundedCornerShape(28.dp), ambientColor = Color.Black, spotColor = Color.Black)
-                .clip(RoundedCornerShape(28.dp)).background(Color(0xF516181F))
-                .border(1.dp, Color.White.copy(alpha = .08f), RoundedCornerShape(28.dp))
-                .padding(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            tabs.forEachIndexed { i, tab ->
-                val active = i == selected
-                // One transition per tab keeps weight, tint and label in lockstep.
-                val t = updateTransition(active, label = "tab-${tab.label}")
-                val weight by t.animateFloat({ spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow) }, label = "w") { if (it) 2.4f else 1f }
-                val tint by t.animateColor(label = "tint") { if (it) Color.White else Harbor.TextDim }
-                val pill by t.animateFloat(label = "pill") { if (it) 1f else 0f }
-                Row(
-                    Modifier.weight(weight).height(46.dp).clip(RoundedCornerShape(23.dp))
-                        .drawBehind { if (pill > 0f) drawRect(Color.White, alpha = 0.12f * pill) }
-                        .pressable(0.9f) { if (!active) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onSelect(i) },
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Selected icon fills in with a small spring "pop".
-                    val pop by t.animateFloat({ spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium) }, label = "pop") { if (it) 1.12f else 1f }
-                    Icon(if (active) tab.icon else tab.idleIcon, tab.label, tint = tint, modifier = Modifier.size(22.dp).graphicsLayer { scaleX = pop; scaleY = pop })
-                    val fits = androidx.compose.runtime.remember(tab.label, activeW, density) {
-                        with(density) { measurer.measure(tab.label, labelStyle).size.width.toDp() } + 22.dp + 6.dp + 20.dp <= activeW
-                    }
-                    t.AnimatedVisibility({ it && fits }, enter = fadeIn(tween(180, 80)) + expandHorizontally(), exit = fadeOut(tween(90)) + shrinkHorizontally()) {
-                        Text(tab.label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, softWrap = false,
-                            modifier = Modifier.padding(start = 6.dp))
-                    }
+    val primaryCount = if (tabs.size <= 5) tabs.size else 4
+    val primary = tabs.take(primaryCount)
+    val overflow = tabs.drop(primaryCount)
+    var moreOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    val itemColors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+        selectedIconColor = Harbor.VioletSoft, selectedTextColor = Harbor.Fg,
+        indicatorColor = Harbor.Violet.copy(alpha = 0.18f),
+        unselectedIconColor = Harbor.TextDim, unselectedTextColor = Harbor.TextDim,
+    )
+    androidx.compose.material3.NavigationBar(containerColor = Harbor.Surface, tonalElevation = 0.dp,
+        modifier = Modifier.border(androidx.compose.foundation.BorderStroke(1.dp, Harbor.line(0.06f)))) {
+        primary.forEachIndexed { i, tab ->
+            val active = i == selected
+            NavigationBarItem(
+                selected = active,
+                onClick = { if (!active) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onSelect(i) },
+                icon = { Icon(if (active) tab.icon else tab.idleIcon, null) },
+                label = { Text(tab.label, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium) },
+                colors = itemColors,
+            )
+        }
+        val moreActive = selected >= primaryCount
+        NavigationBarItem(
+            selected = moreActive,
+            onClick = { moreOpen = true },
+            icon = {
+                if (moreActive) Icon(overflow.getOrNull(selected - primaryCount)?.icon ?: Icons.Rounded.Apps, null)
+                else Icon(Icons.Rounded.Apps, null)
+            },
+            label = { Text(if (moreActive) overflow.getOrNull(selected - primaryCount)?.label ?: com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.tab_more)
+                else com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.tab_more), maxLines = 1, softWrap = false,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, fontWeight = if (moreActive) FontWeight.Bold else FontWeight.Medium) },
+            colors = itemColors,
+        )
+    }
+    if (moreOpen) androidx.compose.material3.ModalBottomSheet(onDismissRequest = { moreOpen = false }, containerColor = Harbor.Surface) {
+        androidx.compose.foundation.layout.Column(Modifier.navigationBarsPadding().padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+            // The assistant first: it can take you anywhere.
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Harbor.Violet.copy(alpha = 0.12f))
+                .clickable { moreOpen = false; onAssistant() }.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                com.sridhar.harbor.ui.ai.AiOrb(40.dp)
+                Spacer(Modifier.width(14.dp))
+                androidx.compose.foundation.layout.Column {
+                    Text(com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.jellyverse_ai), fontWeight = FontWeight.Bold)
+                    Text(com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.more_ai_hint), color = Harbor.TextDim, fontSize = 13.sp)
                 }
             }
-            // AI lives in the bar (not floating over content) – nothing on screen hides behind it.
-            Box(Modifier.padding(start = 4.dp).clip(androidx.compose.foundation.shape.CircleShape).pressable(0.88f, onClick = onAssistant)
-                .semantics { contentDescription = com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.jellyverse_ai); role = androidx.compose.ui.semantics.Role.Button }) {
-                com.sridhar.harbor.ui.ai.AiOrb(46.dp)
+            Spacer(Modifier.height(12.dp))
+            overflow.forEachIndexed { j, tab ->
+                val active = selected == primaryCount + j
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                    .background(if (active) Harbor.Violet.copy(alpha = 0.12f) else Color.Transparent)
+                    .clickable { moreOpen = false; onSelect(primaryCount + j) }.padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Icon(if (active) tab.icon else tab.idleIcon, null, tint = if (active) Harbor.VioletSoft else Harbor.Fg)
+                    Spacer(Modifier.width(18.dp))
+                    Text(tab.label, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium, fontSize = 16.sp)
+                }
             }
         }
     }
@@ -492,8 +510,8 @@ private fun FloatingNavRail(tabs: List<Tab>, selected: Int, onSelect: (Int) -> U
     androidx.compose.foundation.layout.Column(
         Modifier.fillMaxHeight().statusBarsPadding().navigationBarsPadding().padding(start = 10.dp, top = 8.dp, bottom = 8.dp).width(64.dp)
             .shadow(24.dp, RoundedCornerShape(28.dp), ambientColor = Color.Black, spotColor = Color.Black)
-            .clip(RoundedCornerShape(28.dp)).background(Color(0xF516181F))
-            .border(1.dp, Color.White.copy(alpha = .08f), RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(28.dp)).background(Harbor.Surface.copy(alpha = 0.96f))
+            .border(1.dp, Harbor.line(.08f), RoundedCornerShape(28.dp))
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly,

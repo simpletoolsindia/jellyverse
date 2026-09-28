@@ -176,7 +176,7 @@ private fun DiscoverSheet(onDismiss: () -> Unit) {
                         Text(st.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         androidx.compose.material3.IconButton({ if (!kept) c.radio.save(st) }, enabled = !kept) {
                             Icon(if (kept) androidx.compose.material.icons.Icons.Rounded.Check else Icons.Rounded.Add, stringResource(R.string.radio_add),
-                                tint = if (kept) Harbor.Mint else Color.White)
+                                tint = if (kept) Harbor.Mint else Harbor.Fg)
                         }
                     }
                 }

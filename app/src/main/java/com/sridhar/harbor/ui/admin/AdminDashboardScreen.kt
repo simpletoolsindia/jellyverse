@@ -283,7 +283,7 @@ private fun TabStrip(selected: AdminTab, onSelect: (AdminTab) -> Unit) {
                 modifier = Modifier.testTag("tab_${t.name}").onGloballyPositioned { c ->
                     centers[t.ordinal] = (c.positionInParent().x + c.size.width / 2f).toInt()
                 },
-                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet, selectedLabelColor = Color.White),
+                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet, selectedLabelColor = Harbor.Fg),
             )
         }
     }

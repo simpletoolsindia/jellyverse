@@ -75,7 +75,7 @@ private fun TvGridContent(view: BaseItem, onOpen: (String) -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(30.dp)) {
             item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
                 Column {
-                    Text(view.name, color = Color.White, fontSize = 38.sp, fontWeight = FontWeight.Black)
+                    Text(view.name, color = Harbor.Fg, fontSize = 38.sp, fontWeight = FontWeight.Black)
                     Text(focused?.let { listOfNotNull(it.name, it.year?.toString()).joinToString(" · ") } ?: stringResource(R.string.s_1_s_titles, vm.total), color = Harbor.TextDim, fontSize = 16.sp)
                     Row(Modifier.padding(top = 16.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         LibSort.entries.forEach { s -> Chip(s.label, vm.sort == s) { vm.selectSort(s) } }
@@ -92,7 +92,7 @@ private fun TvGridContent(view: BaseItem, onOpen: (String) -> Unit) {
                     Column {
                         PosterTile(item.name, jf.posterUrl(cfg, item, 320), width = cellWidth, progress = item.progress,
                             badge = item.userData?.unplayedCount?.takeIf { it > 0 }?.toString(), onFocus = { focused = item }) { onOpen(item.id) }
-                        Text(item.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                        Text(item.name, color = Harbor.Fg, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                         Text(listOfNotNull(item.year?.toString(), item.officialRating, item.communityRating?.let { "★ %.1f".format(it) }).joinToString(" · "),
                             color = Harbor.TextDim, fontSize = 12.sp, maxLines = 1)
@@ -109,8 +109,8 @@ private fun TvGridContent(view: BaseItem, onOpen: (String) -> Unit) {
 @Composable
 fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
-    Text(label, maxLines = 1, softWrap = false, color = if (focused) Color.Black else Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+    Text(label, maxLines = 1, softWrap = false, color = if (focused) Color.Black else Harbor.Fg, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
         modifier = Modifier.clip(RoundedCornerShape(50))
-            .background(when { focused -> Color.White; selected -> Harbor.Violet; else -> Color.White.copy(.1f) })
+            .background(when { focused -> Color.White; selected -> Harbor.Violet; else -> Harbor.line(.1f) })
             .onFocusChanged { focused = it.isFocused }.clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp))
 }

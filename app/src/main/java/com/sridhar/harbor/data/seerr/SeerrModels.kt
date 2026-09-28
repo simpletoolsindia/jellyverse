@@ -38,6 +38,7 @@ data class SeerrMedia(
     val releaseDate: String? = null,
     val firstAirDate: String? = null,
     val mediaInfo: MediaInfo? = null,
+    val adult: Boolean? = null,
 ) {
     val displayTitle get() = title ?: name ?: ""
     val year get() = (releaseDate ?: firstAirDate)?.take(4)

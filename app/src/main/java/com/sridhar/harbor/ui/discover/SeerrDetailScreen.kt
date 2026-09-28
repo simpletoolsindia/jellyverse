@@ -184,7 +184,7 @@ fun SeerrDetailScreen(type: String, id: Int, onOpen: (String, Int) -> Unit, onBa
                     d.tagline?.takeIf { it.isNotBlank() }?.let {
                         Spacer(Modifier.height(8.dp)); Text(it, style = MaterialTheme.typography.titleMedium, color = Harbor.VioletSoft)
                     }
-                    d.overview?.let { Spacer(Modifier.height(8.dp)); Text(it, color = Color.White.copy(alpha = .85f)) }
+                    d.overview?.let { Spacer(Modifier.height(8.dp)); Text(it, color = Harbor.Fg.copy(alpha = .85f)) }
                     if (d.genres.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { d.genres.forEach { Pill(it.name, Harbor.VioletSoft) } }
@@ -217,7 +217,7 @@ fun SeerrDetailScreen(type: String, id: Int, onOpen: (String, Int) -> Unit, onBa
             item { Rail(stringResource(R.string.you_might_also_like), vm.recs, key = { "${it.mediaType}-${it.id}" }) { SeerrPoster(it.copy(mediaType = if (it.mediaType.isBlank()) type else it.mediaType), onOpen = onOpen) } }
         }
         IconButton(onBack, Modifier.statusBarsPadding().padding(12.dp).glass(RoundedCornerShape(50))) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Color.White)
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Harbor.Fg)
         }
     }
 

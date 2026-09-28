@@ -163,14 +163,14 @@ fun TvApp() {
                 val selected = r.dest == current
                 Row(
                     Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp))
-                        .background(when { focused -> Color.White; selected -> Color.White.copy(.12f); else -> Color.Transparent })
+                        .background(when { focused -> Color.White; selected -> Harbor.line(.12f); else -> Color.Transparent })
                         .focusRequester(railFocus.getOrPut(r.dest) { androidx.compose.ui.focus.FocusRequester() })
                         .onFocusChanged { focused = it.isFocused }.clickable { go(r.dest) }.padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(r.icon, r.label, tint = if (focused) Color.Black else if (selected) Color.White else Harbor.TextDim, modifier = Modifier.size(26.dp))
+                    Icon(r.icon, r.label, tint = if (focused) Color.Black else if (selected) Harbor.Fg else Harbor.TextDim, modifier = Modifier.size(26.dp))
                     AnimatedVisibility(railFocused, enter = fadeIn() + expandHorizontally(), exit = fadeOut() + shrinkHorizontally()) {
-                        Text(r.label, color = if (focused) Color.Black else Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.padding(start = 16.dp))
+                        Text(r.label, color = if (focused) Color.Black else Harbor.Fg, fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.padding(start = 16.dp))
                     }
                 }
             }

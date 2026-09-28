@@ -113,6 +113,8 @@ fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () 
         Spacer(Modifier.height(16.dp))
         com.sridhar.harbor.ui.ai.ModelCard()
         Spacer(Modifier.height(24.dp))
+        com.sridhar.harbor.ui.components.AppearancePicker(Modifier.fillMaxWidth())
+        Spacer(Modifier.height(24.dp))
         com.sridhar.harbor.ui.components.LanguagePicker(Modifier.fillMaxWidth())
         Spacer(Modifier.height(24.dp))
         Text(stringResource(R.string.alerts_privacy), style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)
@@ -204,7 +206,7 @@ private fun ServiceRow(name: String, url: String, ok: Boolean, detail: String?, 
 private fun MenuRow(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Brush.linearGradient(listOf(Harbor.Violet.copy(.3f), Harbor.Coral.copy(.3f)))),
-            contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color.White) }
+            contentAlignment = Alignment.Center) { Icon(icon, null, tint = Harbor.Fg) }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.SemiBold); Text(subtitle, color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall) }
         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Harbor.TextDim)

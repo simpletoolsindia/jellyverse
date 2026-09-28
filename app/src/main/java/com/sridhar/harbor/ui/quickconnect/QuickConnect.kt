@@ -107,9 +107,9 @@ fun QuickConnectPanel(serverUrl: String, big: Boolean = false, onSignedIn: () ->
                 is QcState.Waiting -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(horizontalArrangement = Arrangement.spacedBy(if (big) 12.dp else 8.dp)) {
                         s.code.forEach { ch ->
-                            Box(Modifier.size(box, box * 1.25f).clip(RoundedCornerShape(if (big) 18.dp else 12.dp)).background(Color.White.copy(.06f))
+                            Box(Modifier.size(box, box * 1.25f).clip(RoundedCornerShape(if (big) 18.dp else 12.dp)).background(Harbor.line(.06f))
                                 .border(1.5.dp, Harbor.Violet.copy(.6f), RoundedCornerShape(if (big) 18.dp else 12.dp)), contentAlignment = Alignment.Center) {
-                                Text(ch.toString(), fontSize = digitSize, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = Color.White)
+                                Text(ch.toString(), fontSize = digitSize, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = Harbor.Fg)
                             }
                         }
                     }
@@ -157,7 +157,7 @@ fun AuthorizeDeviceDialog(onDismiss: () -> Unit) {
                     Text(stringResource(R.string.enter_the_6_digit_code_shown), color = Harbor.TextDim, fontSize = 13.sp)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(code, { code = it.filter(Char::isDigit).take(6) }, singleLine = true, shape = RoundedCornerShape(14.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 28.sp, fontFamily = FontFamily.Monospace, letterSpacing = 8.sp, color = Color.White),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 28.sp, fontFamily = FontFamily.Monospace, letterSpacing = 8.sp, color = Harbor.Fg),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword))
                 }
                 status?.let { Text(it, color = if (ok) Harbor.Mint else Harbor.Rose, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }

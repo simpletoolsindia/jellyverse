@@ -95,16 +95,16 @@ fun TvMusicHome(onCollection: (String, String) -> Unit, onNowPlaying: () -> Unit
     LazyColumn(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(lerp(tint, Harbor.Ink, .55f), Harbor.Ink, Harbor.Ink))), contentPadding = PaddingValues(top = 40.dp, bottom = 60.dp)) {
         // Rows (TvRow) carry their own 48dp inset; everything else lines up with them.
         item {
-            Text(stringResource(R.string.tv_music), color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 48.dp))
+            Text(stringResource(R.string.tv_music), color = Harbor.Fg, fontSize = 40.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 48.dp))
             Spacer(Modifier.height(20.dp))
         }
         if (song != null) item {
-            Row(Modifier.padding(horizontal = 48.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color.White.copy(.06f)).padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(horizontal = 48.dp).fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Harbor.line(.06f)).padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
                 CoverArt(heroArt, song.coverTitle, Modifier.size(150.dp), RoundedCornerShape(12.dp))
                 Spacer(Modifier.width(28.dp))
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) { EqualizerBars(s.playing, color = Harbor.Sky); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.now_playing), color = Harbor.Sky, fontSize = 14.sp) }
-                    Text(song.displayTitle, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(song.displayTitle, color = Harbor.Fg, fontSize = 30.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(song.displayArtist, color = Harbor.TextDim, fontSize = 18.sp, maxLines = 1)
                     Spacer(Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -163,7 +163,7 @@ fun TvMusicCollection(kind: String, id: String, onNowPlaying: () -> Unit) {
         Column(Modifier.width(340.dp)) {
             CoverArt(art, vm.title, Modifier.size(300.dp), RoundedCornerShape(14.dp))
             Spacer(Modifier.height(20.dp))
-            Text(vm.title, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black, maxLines = 2)
+            Text(vm.title, color = Harbor.Fg, fontSize = 30.sp, fontWeight = FontWeight.Black, maxLines = 2)
             Text(vm.subtitle, color = Harbor.TextDim, fontSize = 15.sp, maxLines = 2)
             Spacer(Modifier.height(20.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -176,11 +176,11 @@ fun TvMusicCollection(kind: String, id: String, onNowPlaying: () -> Unit) {
             itemsIndexed(vm.songs, key = { i, x -> "$i${x.id}" }) { i, song ->
                 val current = s.current?.id == song.id
                 Row(Modifier.fillMaxWidth().tvFocusable(RoundedCornerShape(10.dp), focusedScale = 1.02f) { vm.play(i); onNowPlaying() }
-                    .clip(RoundedCornerShape(10.dp)).background(Color.White.copy(if (current) .10f else .04f)).padding(horizontal = 18.dp, vertical = 12.dp),
+                    .clip(RoundedCornerShape(10.dp)).background(Harbor.Fg.copy(if (current) .10f else .04f)).padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.width(36.dp)) { if (current) EqualizerBars(s.playing, color = Harbor.Sky) else Text("${i + 1}", color = Harbor.TextDim, fontSize = 16.sp) }
                     Column(Modifier.weight(1f)) {
-                        Text(song.displayTitle, color = if (current) Harbor.Sky else Color.White, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(song.displayTitle, color = if (current) Harbor.Sky else Harbor.Fg, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(song.displayArtist, color = Harbor.TextDim, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text(MusicText.duration(song.duration), color = Harbor.TextDim, fontSize = 14.sp)
@@ -194,7 +194,10 @@ fun TvMusicCollection(kind: String, id: String, onNowPlaying: () -> Unit) {
 
 /** Big-screen player: artwork left, live synced lyrics right, remote-friendly controls. */
 @Composable
-fun TvNowPlaying() {
+fun TvNowPlaying() = com.sridhar.harbor.ui.theme.ForceDark { TvNowPlayingBody() }
+
+@Composable
+private fun TvNowPlayingBody() {
     val c = LocalContainer.current
     val cfg = rememberConfig()
     val engine = c.musicEngine
@@ -224,10 +227,10 @@ fun TvNowPlaying() {
                 Spacer(Modifier.width(12.dp)); EqualizerBars(s.playing, Modifier.size(22.dp), Color.White)
             } else {
             val frac = if (s.durationMs > 0) (pos.toFloat() / s.durationMs).coerceIn(0f, 1f) else 0f
-            Box(Modifier.width(artSize).height(5.dp).clip(RoundedCornerShape(3.dp)).background(Color.White.copy(.25f))) { Box(Modifier.fillMaxWidth(frac).height(5.dp).background(Color.White)) }
+            Box(Modifier.width(artSize).height(5.dp).clip(RoundedCornerShape(3.dp)).background(Harbor.line(.25f))) { Box(Modifier.fillMaxWidth(frac).height(5.dp).background(Color.White)) }
             Row(Modifier.width(artSize).padding(top = 6.dp)) {
-                Text(MusicText.duration((pos / 1000).toInt()), color = Color.White.copy(.7f), fontSize = 13.sp); Spacer(Modifier.weight(1f))
-                Text(MusicText.duration((s.durationMs / 1000).toInt()), color = Color.White.copy(.7f), fontSize = 13.sp)
+                Text(MusicText.duration((pos / 1000).toInt()), color = Harbor.Fg.copy(.7f), fontSize = 13.sp); Spacer(Modifier.weight(1f))
+                Text(MusicText.duration((s.durationMs / 1000).toInt()), color = Harbor.Fg.copy(.7f), fontSize = 13.sp)
             }
             }
             Spacer(Modifier.height(18.dp))
@@ -243,11 +246,11 @@ fun TvNowPlaying() {
         Spacer(Modifier.width(64.dp))
         val lines = Lyrics.clean(lyrics?.line.orEmpty())
         if (lines.isEmpty()) Column(Modifier.weight(1f)) {
-            if (s.upNext.isNotEmpty()) Text(stringResource(if (song.streamUrl != null) R.string.radio_title else R.string.mu_next_in_queue), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 12.dp))
+            if (s.upNext.isNotEmpty()) Text(stringResource(if (song.streamUrl != null) R.string.radio_title else R.string.mu_next_in_queue), color = Harbor.Fg, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 12.dp))
             Spacer(Modifier.height(12.dp))
             // Remote-friendly: each entry takes focus and OK jumps straight to it (switches station for radio).
             s.upNext.take(7).forEachIndexed { j, n ->
-                Text("${n.displayTitle}  ·  ${n.displayArtist}", color = Color.White.copy(.8f), fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                Text("${n.displayTitle}  ·  ${n.displayArtist}", color = Harbor.Fg.copy(.8f), fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(vertical = 2.dp).tvFocusable(RoundedCornerShape(10.dp), focusedScale = 1.03f) { engine.jumpTo(s.index + 1 + j) }.padding(horizontal = 12.dp, vertical = 6.dp))
             }
         } else {
@@ -257,7 +260,7 @@ fun TvNowPlaying() {
             LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = list, contentPadding = PaddingValues(vertical = 80.dp)) {
                 itemsIndexed(lines) { i, l ->
                     Text(l.value, fontSize = 34.sp, lineHeight = 44.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(vertical = 8.dp),
-                        color = when { i == active -> Color.White; active < 0 -> Color.White.copy(.85f); i < active -> Color.White.copy(.35f); else -> Color.White.copy(.5f) })
+                        color = when { i == active -> Harbor.Fg; active < 0 -> Harbor.Fg.copy(.85f); i < active -> Harbor.Fg.copy(.35f); else -> Harbor.Fg.copy(.5f) })
                 }
             }
         }
@@ -269,7 +272,7 @@ fun TvNowPlaying() {
 @Composable
 private fun TvIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, on: Boolean = false, big: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val size = if (big) 76.dp else 56.dp
-    Box(modifier.size(size).tvFocusable(RoundedCornerShape(50), onClick = onClick).clip(RoundedCornerShape(50)).background(if (big) Color.White else Color.White.copy(.08f)), Alignment.Center) {
+    Box(modifier.size(size).tvFocusable(RoundedCornerShape(50), onClick = onClick).clip(RoundedCornerShape(50)).background(if (big) Harbor.Fg else Harbor.line(.08f)), Alignment.Center) {
         Icon(icon, null, tint = if (big) Color.Black else if (on) Harbor.Sky else Color.White, modifier = Modifier.size(if (big) 40.dp else 28.dp))
     }
 }
@@ -292,7 +295,7 @@ private fun TvRadioRow(onNowPlaying: () -> Unit) {
                 else Icon(androidx.compose.material.icons.Icons.Rounded.Radio, null, tint = Color.White, modifier = Modifier.size(64.dp))
             }
             Spacer(Modifier.height(8.dp))
-            Text(st.name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(st.name, color = Harbor.Fg, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(if (live) stringResource(R.string.radio_live) else stringResource(R.string.radio_station), color = if (live) Harbor.Mint else Harbor.TextDim, fontSize = 13.sp)
         }
     }

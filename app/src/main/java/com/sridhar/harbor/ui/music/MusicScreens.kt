@@ -124,15 +124,15 @@ fun MusicHomeScreen(nav: MusicNav) {
         item {
             Row(Modifier.statusBarsPadding().padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(greet) + " " + greetEmoji, fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                IconButton(nav.search) { Icon(Icons.Rounded.Search, stringResource(R.string.search), tint = Color.White) }
-                IconButton(nav.library) { Icon(Icons.Rounded.LibraryMusic, stringResource(R.string.library), tint = Color.White) }
+                IconButton(nav.search) { Icon(Icons.Rounded.Search, stringResource(R.string.search), tint = Harbor.Fg) }
+                IconButton(nav.library) { Icon(Icons.Rounded.LibraryMusic, stringResource(R.string.library), tint = Harbor.Fg) }
             }
         }
         item {
             Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(R.string.all, R.string.mu_albums, R.string.mu_playlists).forEachIndexed { i, r ->
                     FilterChip(filter == i, { filter = i }, label = { Text(stringResource(r)) },
-                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet, selectedLabelColor = Color.White, containerColor = Harbor.SurfaceHigh))
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet, selectedLabelColor = Harbor.Fg, containerColor = Harbor.SurfaceHigh))
                 }
             }
         }
@@ -228,7 +228,7 @@ private fun MixCard(m: Mix, onClick: () -> Unit) {
     val (a, b) = remember(m.key) { seedColors(m.key + "mix") }
     Column(Modifier.width(148.dp).pressable(onClick = onClick).testTag("mix_${m.key}")) {
         Box(Modifier.size(148.dp).clip(RoundedCornerShape(6.dp)).background(Brush.linearGradient(listOf(a, b)))) {
-            Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(.18f), modifier = Modifier.size(120.dp).align(Alignment.BottomEnd).graphicsLayer { translationX = 30f; translationY = 20f; rotationZ = -18f })
+            Icon(Icons.Rounded.MusicNote, null, tint = Harbor.line(.18f), modifier = Modifier.size(120.dp).align(Alignment.BottomEnd).graphicsLayer { translationX = 30f; translationY = 20f; rotationZ = -18f })
             Text(m.title, color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp, lineHeight = 20.sp, modifier = Modifier.align(Alignment.TopStart).padding(12.dp), maxLines = 3)
             Box(Modifier.align(Alignment.BottomStart).padding(10.dp).width(28.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color.White))
         }
@@ -361,7 +361,7 @@ fun CollectionScreen(kind: String, id: String, nav: MusicNav) {
         }
         // Pinned title bar fades in as the header scrolls away.
         Row(Modifier.fillMaxWidth().background(tint.copy(alpha = collapse)).statusBarsPadding().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(nav.back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Color.White) }
+            IconButton(nav.back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Harbor.Fg) }
             Text(vm.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).graphicsLayer { alpha = collapse })
         }
     }
@@ -433,7 +433,7 @@ fun MusicSearchScreen(nav: MusicNav) {
     var actionsFor by remember { mutableStateOf<Song?>(null) }
     Column(Modifier.fillMaxSize().background(Harbor.Ink).statusBarsPadding()) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(nav.back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Color.White) }
+            IconButton(nav.back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Harbor.Fg) }
             TextField(vm.query, vm::onQuery, Modifier.weight(1f).testTag("music_search"), placeholder = { Text(stringResource(R.string.mu_search_hint)) }, singleLine = true,
                 leadingIcon = { Icon(Icons.Rounded.Search, null) }, shape = RoundedCornerShape(8.dp),
                 colors = TextFieldDefaults.colors(focusedContainerColor = Color.White, unfocusedContainerColor = Color.White, focusedTextColor = Color.Black, unfocusedTextColor = Color.Black,
@@ -480,13 +480,13 @@ fun MusicLibraryScreen(nav: MusicNav) {
     var creating by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(Harbor.Ink).statusBarsPadding()) {
         Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(nav.back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Color.White) }
+            IconButton(nav.back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Harbor.Fg) }
             Text(stringResource(R.string.mu_your_library), fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            IconButton({ creating = true }) { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, stringResource(R.string.mu_create_playlist), tint = Color.White) }
+            IconButton({ creating = true }) { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, stringResource(R.string.mu_create_playlist), tint = Harbor.Fg) }
         }
         Row(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(R.string.mu_playlists, R.string.mu_albums, R.string.mu_artists).forEachIndexed { i, r ->
-                FilterChip(tab == i, { tab = i }, label = { Text(stringResource(r)) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet, selectedLabelColor = Color.White, containerColor = Harbor.SurfaceHigh))
+                FilterChip(tab == i, { tab = i }, label = { Text(stringResource(r)) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet, selectedLabelColor = Harbor.Fg, containerColor = Harbor.SurfaceHigh))
             }
         }
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 170.dp)) {

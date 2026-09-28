@@ -1,5 +1,7 @@
 package com.sridhar.harbor.tv
 
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -104,8 +106,8 @@ private fun ClockGreeting(name: String) {
     val h = now.get(java.util.Calendar.HOUR_OF_DAY)
     val greet = when (h) { in 5..11 -> L10n.s(R.string.good_morning); in 12..16 -> L10n.s(R.string.good_afternoon); in 17..21 -> L10n.s(R.string.good_evening); else -> L10n.s(R.string.late_night_movie) } + " " + when (h) { in 5..11 -> "☀️"; in 12..16 -> "🌤️"; in 17..21 -> "🌙"; else -> "🍿" }
     Column(horizontalAlignment = Alignment.End) {
-        Text(java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(now.time), color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-        Text("$greet, ${name.substringBefore('@').replaceFirstChar { it.uppercase() }}", color = Color.White.copy(.7f), fontSize = 14.sp)
+        Text(java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(now.time), color = Harbor.Fg, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        Text("$greet, ${name.substringBefore('@').replaceFirstChar { it.uppercase() }}", color = Harbor.Fg.copy(.7f), fontSize = 14.sp)
     }
 }
 
@@ -123,6 +125,8 @@ fun TvHome(onOpen: (String) -> Unit) {
     // A trailer playing holds the spotlight (Hotstar-style), up to 45 s, then rotation resumes.
     var trailerOn by remember { mutableStateOf(false) }
     val watchFocus = remember { FocusRequester() }
+    val look = com.sridhar.harbor.ui.theme.Looks.look
+    val billboard = look.home == com.sridhar.harbor.ui.theme.HomeStyle.Billboard
 
     LaunchedEffect(vm.hero) { if (vm.hero.isNotEmpty() && display == null) { display = vm.hero.first(); runCatching { delay(150); watchFocus.requestFocus() } } }
     // Spotlight auto-rotates while the hero buttons have focus.
@@ -137,7 +141,7 @@ fun TvHome(onOpen: (String) -> Unit) {
         LaunchedEffect(r) { runCatching { kotlinx.coroutines.delay(100); focusRemove.requestFocus() } }
         androidx.compose.ui.window.Dialog(onDismissRequest = { removing = null }) {
             Column(Modifier.clip(RoundedCornerShape(24.dp)).background(Harbor.Surface).padding(32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(r.seriesName ?: r.name, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text(r.seriesName ?: r.name, color = Harbor.Fg, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Text(stringResource(R.string.resume_remove_hint), color = Harbor.TextDim, fontSize = 16.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     TvButton(stringResource(R.string.resume_remove), Icons.Rounded.Delete, primary = true, modifier = Modifier.focusRequester(focusRemove)) {
@@ -167,13 +171,13 @@ fun TvHome(onOpen: (String) -> Unit) {
                         val logo = jf.logoUrl(cfg, item)
                         Box(Modifier.height(96.dp).fillMaxWidth(), contentAlignment = Alignment.BottomStart) {
                             if (logo != null) Box(Modifier.width(340.dp).fillMaxHeight()) { NetImage(logo, Modifier.fillMaxSize(), contentScale = ContentScale.Fit, fallback = item.name, alignment = Alignment.BottomStart) }
-                            else Text(item.seriesName ?: item.name, color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 40.sp)
+                            else Text(item.seriesName ?: item.name, color = Harbor.Fg, fontSize = 36.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 40.sp)
                         }
                         Spacer(Modifier.height(12.dp))
                         MetaLine(listOf(item.year?.toString(), item.communityRating?.let { "★ %.1f".format(it) }, formatRuntime(item.runtimeMinutes),
                             item.genres.firstOrNull(), item.episodeLabel))
                         Spacer(Modifier.height(12.dp))
-                        Text(item.overview.orEmpty(), color = Color.White.copy(.8f), fontSize = 15.sp, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 22.sp)
+                        Text(item.overview.orEmpty(), color = Harbor.Fg.copy(.8f), fontSize = 15.sp, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 22.sp)
                     }
                 }
                 Spacer(Modifier.height(16.dp))
@@ -184,23 +188,30 @@ fun TvHome(onOpen: (String) -> Unit) {
                     TvButton(stringResource(R.string.details), Icons.Rounded.Info) { display?.let { onOpen(it.seriesId ?: it.id) } }
                 }
             }
-            if (vm.hero.size > 1) TvMarquee(vm.hero, heroIndex, rotating = heroFocused && !trailerOn,
+            // Billboard: the backdrop and title own the top; Spotlight adds the poster strip beside them.
+            if (vm.hero.size > 1 && !billboard) TvMarquee(vm.hero, heroIndex, rotating = heroFocused && !trailerOn,
                 onFocus = { i -> heroIndex = i; display = vm.hero[i] }, onOpen = { onOpen(it.seriesId ?: it.id) })
             }
             LazyColumn(Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(top = 18.dp, bottom = 48.dp)) {
-                item(key = "resume") {
+                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Continue)) item(key = "resume") {
                     TvRow(stringResource(R.string.continue_watching_2), vm.resume, key = { it.id }) { it2 ->
                         LandscapeTile(it2.seriesName ?: it2.name, it2.episodeLabel ?: it2.year?.toString(), jf.thumbUrl(cfg, it2, 600), progress = it2.progress,
                             onFocus = { display = it2 }, onMenu = { removing = it2 }) { PlayerActivity.start(ctx, it2.id) }
                     }
                 }
-                item(key = "next") {
+                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Top10) && vm.top10.isNotEmpty()) item(key = "top10") {
+                    TvTop10Row(vm.top10, onFocus = { display = it }) { onOpen(it.seriesId ?: it.id) }
+                }
+                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.NextUp)) item(key = "next") {
                     TvRow(stringResource(R.string.next_up_2), vm.nextUp, key = { it.id }) { it2 ->
                         LandscapeTile(it2.seriesName ?: it2.name, listOfNotNull(it2.episodeLabel, it2.name).joinToString(" · "), jf.thumbUrl(cfg, it2, 600),
                             onFocus = { display = it2 }) { PlayerActivity.start(ctx, it2.id) }
                     }
                 }
-                vm.shelves.forEach { shelf ->
+                if (vm.picks.size >= 6) item(key = "picks") {
+                    TvGlideRow(stringResource(R.string.marquee_discover), vm.picks, onFocus = { display = it }) { onOpen(it.seriesId ?: it.id) }
+                }
+                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Latest)) vm.shelves.forEach { shelf ->
                     item(key = "shelf-${shelf.view.id}") {
                         TvRow(stringResource(R.string.latest_1_s, shelf.view.name), shelf.items, key = { it.id }) { it2 ->
                             PosterTile(it2.seriesName ?: it2.name, jf.posterUrl(cfg, it2, 300),
@@ -244,7 +255,7 @@ private fun TvMarquee(items: List<BaseItem>, active: Int, rotating: Boolean, onF
         if (rotating) progress.animateTo(1f, tween(8000, easing = androidx.compose.animation.core.LinearEasing))
     }
     Column(Modifier.width(470.dp)) {
-        Text(stringResource(R.string.spotlight).uppercase(), color = Color.White.copy(.6f), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+        Text(stringResource(R.string.spotlight).uppercase(), color = Harbor.Fg.copy(.6f), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
         Spacer(Modifier.height(10.dp))
         androidx.compose.foundation.lazy.LazyRow(state = list, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom,
             contentPadding = PaddingValues(end = 24.dp)) {
@@ -266,6 +277,55 @@ private fun TvMarquee(items: List<BaseItem>, active: Int, rotating: Boolean, onF
                         if (on && rotating) Box(Modifier.fillMaxHeight().fillMaxWidth(progress.value).background(Harbor.Sky))
                     }
                 }
+            }
+        }
+    }
+}
+
+
+/** Numbered Top 10: big outlined rank beside each poster; focus lifts the poster. */
+@Composable
+private fun TvTop10Row(items: List<BaseItem>, onFocus: (BaseItem) -> Unit, onOpen: (BaseItem) -> Unit) {
+    val cfg = rememberConfig()
+    val jf = LocalContainer.current.jellyfin
+    Column(Modifier.padding(bottom = 22.dp)) {
+        Text(stringResource(R.string.top10_title), color = Harbor.Fg, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 48.dp, bottom = 12.dp))
+        androidx.compose.foundation.lazy.LazyRow(contentPadding = PaddingValues(horizontal = 40.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(items.size, key = { items[it].id }) { i ->
+                val item = items[i]
+                Box(Modifier.width(if (i == 9) 250.dp else 220.dp).height(210.dp)) {
+                    Text("${i + 1}", modifier = Modifier.align(Alignment.BottomStart).offset(y = 30.dp),
+                        style = androidx.compose.ui.text.TextStyle(fontSize = 170.sp, fontWeight = FontWeight.Black, letterSpacing = (-14).sp,
+                            color = Harbor.Fg.copy(alpha = .85f), drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 6f)))
+                    Box(Modifier.align(Alignment.BottomEnd)) {
+                        PosterTile(item.name, jf.posterUrl(cfg, item, 300), width = 130.dp, onFocus = { onFocus(item) }) { onOpen(item) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Poster marquee that glides by itself until the remote moves into it, then behaves like a normal row. */
+@Composable
+private fun TvGlideRow(title: String, items: List<BaseItem>, onFocus: (BaseItem) -> Unit, onOpen: (BaseItem) -> Unit) {
+    val cfg = rememberConfig()
+    val jf = LocalContainer.current.jellyfin
+    val state = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = items.size * 40)
+    var inside by remember { mutableStateOf(false) }
+    val resumed = com.sridhar.harbor.ui.components.rememberResumed()
+    LaunchedEffect(inside, resumed) {
+        if (inside || !resumed) return@LaunchedEffect
+        delay(1500)
+        while (true) state.animateScrollBy(200f, tween(4000, easing = androidx.compose.animation.core.LinearEasing))
+    }
+    Column(Modifier.padding(bottom = 22.dp)) {
+        Text(title, color = Harbor.Fg, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 48.dp, bottom = 12.dp))
+        androidx.compose.foundation.lazy.LazyRow(Modifier.onFocusChanged { inside = it.hasFocus }, state = state,
+            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            items(items.size * 80) { i ->
+                val item = items[i % items.size]
+                PosterTile(item.name, jf.posterUrl(cfg, item, 300), width = 140.dp, onFocus = { onFocus(item) }) { onOpen(item) }
             }
         }
     }

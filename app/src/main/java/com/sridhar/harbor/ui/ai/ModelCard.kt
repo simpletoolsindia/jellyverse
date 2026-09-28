@@ -68,8 +68,8 @@ fun ModelCard(modifier: Modifier = Modifier) {
     val llm = LocalContainer.current.llm
     val state by llm.state.collectAsState()
     LaunchedEffect(state) { while (state is ModelState.Downloading) { delay(1000); llm.refreshDownload() } }
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Brush.linearGradient(listOf(Color(0xFF1C1F27), Color(0xFF16181F))))
-        .border(1.dp, Color.White.copy(.08f), RoundedCornerShape(22.dp)).padding(16.dp)) {
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Brush.linearGradient(listOf(Harbor.SurfaceHigh, Harbor.Surface)))
+        .border(1.dp, Harbor.line(.08f), RoundedCornerShape(22.dp)).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AiOrb(44.dp, busy = state is ModelState.Downloading || state is ModelState.Loading)
             Spacer(Modifier.width(12.dp))

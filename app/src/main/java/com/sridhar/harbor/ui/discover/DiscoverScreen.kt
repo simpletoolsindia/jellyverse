@@ -191,7 +191,7 @@ private fun SpotlightCard(m: SeerrMedia, onClick: () -> Unit) {
             Text(m.displayTitle, style = MaterialTheme.typography.titleLarge, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box(Modifier.align(Alignment.TopEnd).padding(10.dp)) { StatusBadge(m.status) }
-        if (m.status != MediaStatus.Unknown) Text(m.status.label, color = Color.White, fontWeight = FontWeight.SemiBold,
+        if (m.status != MediaStatus.Unknown) Text(m.status.label, color = Harbor.Fg, fontWeight = FontWeight.SemiBold,
             style = MaterialTheme.typography.labelSmall, modifier = Modifier.align(Alignment.TopStart).padding(10.dp)
                 .clip(RoundedCornerShape(50)).background(Color.Black.copy(alpha = .5f)).padding(horizontal = 8.dp, vertical = 3.dp))
     }

@@ -64,7 +64,7 @@ fun OfflineBanner() {
             exit = slideOutVertically { -it * 2 } + fadeOut()) {
             AnimatedContent(online, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "net") { up ->
                 Row(Modifier.shadow(18.dp, RoundedCornerShape(50)).clip(RoundedCornerShape(50))
-                    .background(if (up) Color(0xFF12301F) else Color(0xFF1A1D26))
+                    .background(if (up) Color(0xFF12301F) else Harbor.SurfaceHigh)
                     .border(1.dp, (if (up) Harbor.Mint else Harbor.Sky).copy(alpha = .35f), RoundedCornerShape(50))
                     .padding(start = 6.dp, end = 18.dp, top = 4.dp, bottom = 4.dp)
                     .semantics { liveRegion = LiveRegionMode.Polite },
@@ -73,7 +73,7 @@ fun OfflineBanner() {
                     else AdriftJelly(Modifier.size(40.dp))
                     Spacer(Modifier.width(8.dp))
                     Column {
-                        Text(stringResource(if (up) R.string.net_back else R.string.net_offline), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(stringResource(if (up) R.string.net_back else R.string.net_offline), color = Harbor.Fg, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         if (!up) Text(stringResource(R.string.net_waiting), color = Harbor.TextDim, fontSize = 12.sp)
                     }
                 }

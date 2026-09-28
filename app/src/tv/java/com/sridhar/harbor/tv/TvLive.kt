@@ -70,7 +70,7 @@ fun TvLive() {
     if (playlists.isEmpty() || adding) {
         Row(Modifier.fillMaxSize().padding(56.dp), horizontalArrangement = Arrangement.spacedBy(56.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.width(320.dp)) {
-                Text(stringResource(R.string.live_tv), color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Black)
+                Text(stringResource(R.string.live_tv), color = Harbor.Fg, fontSize = 44.sp, fontWeight = FontWeight.Black)
                 Text(stringResource(R.string.add_an_m3u_playlist_or_xtream), color = Harbor.TextDim, fontSize = 16.sp)
                 if (adding) TvButton(stringResource(R.string.cancel), null, modifier = Modifier.padding(top = 20.dp)) { adding = false }
             }
@@ -109,14 +109,14 @@ fun TvLive() {
             Row(Modifier.fillMaxWidth().height(150.dp).background(Brush.horizontalGradient(listOf(Harbor.Violet.copy(.25f), Color.Transparent))).padding(24.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 focused?.let { ch ->
-                    Box(Modifier.size(96.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(.08f))) {
+                    Box(Modifier.size(96.dp).clip(RoundedCornerShape(18.dp)).background(Harbor.line(.08f))) {
                         NetImage(ch.logo, Modifier.fillMaxSize().padding(8.dp), contentScale = ContentScale.Fit, fallback = ch.name.take(3))
                     }
                     Spacer(Modifier.width(20.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(ch.name, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(ch.name, color = Harbor.Fg, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val nn = vm.nowNext(ch)
-                        nn.now?.let { Text(stringResource(R.string.now_1_s, it.title), color = Color.White.copy(.85f), fontSize = 16.sp, maxLines = 1); GradientProgress(it.progress, height = 4.dp, modifier = Modifier.width(360.dp).padding(vertical = 6.dp)) }
+                        nn.now?.let { Text(stringResource(R.string.now_1_s, it.title), color = Harbor.Fg.copy(.85f), fontSize = 16.sp, maxLines = 1); GradientProgress(it.progress, height = 4.dp, modifier = Modifier.width(360.dp).padding(vertical = 6.dp)) }
                             ?: Text(ch.group, color = Harbor.TextDim, fontSize = 16.sp)
                         nn.next?.let { Text(stringResource(R.string.next_1_s_2_s_2, DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it.start)), it.title), color = Harbor.TextDim, fontSize = 14.sp, maxLines = 1) }
                     }

@@ -74,7 +74,7 @@ fun CastPicker(onDismiss: () -> Unit, onPicked: (String) -> Unit) {
                     Text("Looking for Chromecasts on your Wi-Fi…", color = Harbor.TextDim)
                 }
                 devices.forEach { d ->
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color.White.copy(.05f)).clickable { onPicked(d.name) }.padding(12.dp),
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Harbor.line(.05f)).clickable { onPicked(d.name) }.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Tv, null, tint = Harbor.Sky); Spacer(Modifier.width(12.dp))
                         Column { Text(d.name, fontWeight = FontWeight.SemiBold); d.description?.let { Text(it, fontSize = 11.sp, color = Harbor.TextDim) } }
@@ -102,7 +102,7 @@ fun CastMiniBar(modifier: Modifier = Modifier) {
                     Text("${s.device} · ${formatClock(s.positionMs)} / ${formatClock(s.durationMs)}", fontSize = 11.sp, color = Harbor.TextDim, maxLines = 1)
                 }
                 IconButton({ cast.seekBy(-10_000) }) { Icon(Icons.Rounded.Replay10, "Back 10s") }
-                IconButton({ cast.togglePlay() }) { Icon(if (s.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/pause", tint = Color.White) }
+                IconButton({ cast.togglePlay() }) { Icon(if (s.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play/pause", tint = Harbor.Fg) }
                 IconButton({ cast.seekBy(30_000) }) { Icon(Icons.Rounded.Forward30, "Forward 30s") }
                 IconButton({ cast.disconnect() }) { Icon(Icons.Rounded.Close, "Stop casting", tint = Harbor.TextDim) }
             }

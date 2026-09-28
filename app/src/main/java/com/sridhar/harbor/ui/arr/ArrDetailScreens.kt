@@ -157,7 +157,7 @@ fun ArrMovieScreen(id: Int, onBack: () -> Unit) {
                                     }
                                 }
                             }
-                            m.overview?.let { Text(it, color = Color.White.copy(.85f)) }
+                            m.overview?.let { Text(it, color = Harbor.Fg.copy(.85f)) }
                             if (m.genres.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { m.genres.forEach { Pill(it, Harbor.VioletSoft) } }
                             m.youTubeTrailerId?.takeIf { it.isNotBlank() }?.let { yt ->
                                 TextButton({ ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=$yt"))) }) {
@@ -227,7 +227,7 @@ fun ArrSeriesScreen(id: Int, onBack: () -> Unit) {
                         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             MonitorRow(s.monitored) { vm.setMonitored(it) }
                             GradientButton(stringResource(R.string.search_all_monitored), { vm.searchAll() }, Modifier.fillMaxWidth(), icon = Icons.Rounded.Search)
-                            s.overview?.let { Text(it, color = Color.White.copy(.85f), maxLines = 5, overflow = TextOverflow.Ellipsis) }
+                            s.overview?.let { Text(it, color = Harbor.Fg.copy(.85f), maxLines = 5, overflow = TextOverflow.Ellipsis) }
                         }
                     }
                     s.seasons.sortedByDescending { it.seasonNumber }.forEach { season ->
@@ -295,7 +295,7 @@ private fun DetailScaffold(onBack: () -> Unit, snack: SnackbarHostState, content
     Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
         content()
         IconButton(onBack, Modifier.statusBarsPadding().padding(12.dp).glass(RoundedCornerShape(50))) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Color.White)
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Harbor.Fg)
         }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(24.dp))
     }

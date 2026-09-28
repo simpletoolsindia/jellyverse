@@ -43,11 +43,11 @@ class PlayerActivity : ComponentActivity() {
         // Hardware volume keys adjust media volume while the player is open (phones and TV remotes).
         volumeControlStream = android.media.AudioManager.STREAM_MUSIC
         setContent {
-            HarborTheme {
+            com.sridhar.harbor.ui.theme.ForceDark { HarborTheme {
                 com.sridhar.harbor.ui.components.ProvideContainer((application as com.sridhar.harbor.HarborApp).container) {
                     PlayerScreen(vm, inPip.value, onBack = { finish() }, onPip = ::enterPip)
                 }
-            }
+            } }
         }
     }
 

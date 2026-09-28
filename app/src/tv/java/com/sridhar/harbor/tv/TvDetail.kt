@@ -95,7 +95,7 @@ fun TvDetail(id: String, onOpen: (String) -> Unit) {
                     MetaLine(listOf(item.year?.toString(), item.communityRating?.let { "★ %.1f".format(it) }, formatRuntime(item.runtimeMinutes), item.officialRating,
                         item.genres.take(3).joinToString(" · ").ifBlank { null }))
                     Spacer(Modifier.height(14.dp))
-                    Text((focusedEp ?: item).overview.orEmpty(), color = Color.White.copy(.82f), fontSize = 17.sp, maxLines = 3, modifier = Modifier.width(560.dp), overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
+                    Text((focusedEp ?: item).overview.orEmpty(), color = Harbor.Fg.copy(.82f), fontSize = 17.sp, maxLines = 3, modifier = Modifier.width(560.dp), overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
                     Spacer(Modifier.height(24.dp))
                     val target = if (item.type == "Series") vm.nextUp ?: vm.episodes.firstOrNull() else item
                     val resume = (target?.userData?.positionTicks ?: 0) > 0
@@ -142,7 +142,7 @@ fun TvDetail(id: String, onOpen: (String) -> Unit) {
                 TvRow(stringResource(R.string.cast), item.people.filter { it.type == "Actor" }.take(15), key = { it.id + it.role }) { p ->
                     Column(Modifier.width(120.dp)) {
                         PosterTile(p.name, jf.personUrl(cfg, p), width = 120.dp, onFocus = {}) {}
-                        Text(p.name, color = Color.White, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 6.dp))
+                        Text(p.name, color = Harbor.Fg, fontSize = 13.sp, maxLines = 1, modifier = Modifier.padding(top = 6.dp))
                         Text(p.role.orEmpty(), color = Harbor.TextDim, fontSize = 12.sp, maxLines = 1)
                     }
                 }

@@ -357,7 +357,7 @@ private fun Field(
         trailingIcon = if (password) ({
             IconButton({ reveal = !reveal }) { Icon(if (reveal) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility, null) }
         }) else null,
-        colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = Color.White.copy(alpha = .12f)),
+        colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = Harbor.line(.12f)),
     )
 }
 

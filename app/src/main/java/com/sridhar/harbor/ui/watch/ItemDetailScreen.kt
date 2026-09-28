@@ -269,14 +269,14 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit) {
                             ActionIcon(Icons.Rounded.Replay, stringResource(R.string.start_over)) { PlayerActivity.start(ctx, item.id, fromStart = true) }
                         val played = item.userData?.played == true
                         ActionIcon(if (played) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
-                            if (played) stringResource(R.string.watched_2) else stringResource(R.string.mark_watched), if (played) Harbor.Mint else Color.White) { vm.togglePlayed() }
+                            if (played) stringResource(R.string.watched_2) else stringResource(R.string.mark_watched), if (played) Harbor.Mint else Harbor.Fg) { vm.togglePlayed() }
                         val fav = item.userData?.isFavorite == true
                         ActionIcon(if (fav) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, stringResource(R.string.favorite),
-                            if (fav) Harbor.Rose else Color.White) { vm.toggleFavorite() }
+                            if (fav) Harbor.Rose else Harbor.Fg) { vm.toggleFavorite() }
                         // Parental lock: needs the PIN to change, and then to play.
                         val locked = parental.locked.contains(item.id)
                         ActionIcon(if (locked) Icons.Rounded.Lock else Icons.Rounded.LockOpen, stringResource(if (locked) R.string.unlock_title else R.string.lock_title),
-                            if (locked) Harbor.Amber else Color.White) {
+                            if (locked) Harbor.Amber else Harbor.Fg) {
                             lockTarget = item.id to !locked
                             lockStep = when { !parental.enabled -> 1; !container.parental.isUnlocked() -> 2; else -> 3 }
                         }
@@ -297,7 +297,7 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit) {
                     }
                     var expanded by remember { mutableStateOf(false) }
                     item.overview?.let {
-                        Text(it, color = Color.White.copy(alpha = .85f), maxLines = if (expanded) Int.MAX_VALUE else 4,
+                        Text(it, color = Harbor.Fg.copy(alpha = .85f), maxLines = if (expanded) Int.MAX_VALUE else 4,
                             overflow = TextOverflow.Ellipsis, modifier = Modifier.animateContentSize().clickable { expanded = !expanded })
                     }
                     if (item.genres.isNotEmpty()) {
@@ -352,7 +352,7 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit) {
             }
         }
         IconButton(onBack, Modifier.statusBarsPadding().padding(12.dp).glass(RoundedCornerShape(50))) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Color.White)
+            Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back), tint = Harbor.Fg)
         }
         if (vm.isAdmin && item != null) AdminItemMenu(
             name = item.name,
@@ -369,7 +369,7 @@ private fun AdminItemMenu(name: String, onRefresh: () -> Unit, onDelete: () -> U
     var open by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf(false) }
     Box(modifier) {
-        IconButton({ open = true }, Modifier.glass(RoundedCornerShape(50)).testTag("item_admin_menu")) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.admin_actions), tint = Color.White) }
+        IconButton({ open = true }, Modifier.glass(RoundedCornerShape(50)).testTag("item_admin_menu")) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.admin_actions), tint = Harbor.Fg) }
         androidx.compose.material3.DropdownMenu(open, { open = false }) {
             androidx.compose.material3.DropdownMenuItem({ Text(stringResource(R.string.refresh_metadata)) }, { open = false; onRefresh() })
             androidx.compose.material3.DropdownMenuItem({ Text(stringResource(R.string.delete_from_server), color = Harbor.Rose) }, { open = false; confirm = true })
@@ -385,7 +385,7 @@ private fun AdminItemMenu(name: String, onRefresh: () -> Unit, onDelete: () -> U
 }
 
 @Composable
-private fun androidx.compose.foundation.layout.RowScope.ActionIcon(icon: ImageVector, label: String, tint: Color = Color.White, onClick: () -> Unit) {
+private fun androidx.compose.foundation.layout.RowScope.ActionIcon(icon: ImageVector, label: String, tint: Color = Harbor.Fg, onClick: () -> Unit) {
     // Equal share of the row on every width; labels wrap between words, never mid-word ("Downlo-ad").
     Column(
         Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(horizontal = 4.dp, vertical = 6.dp),

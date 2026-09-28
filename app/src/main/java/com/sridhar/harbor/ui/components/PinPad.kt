@@ -93,7 +93,7 @@ fun PinDialog(title: String, subtitle: String? = null, onDismiss: () -> Unit, on
                     val filled = i < pin.length
                     val sc by animateFloatAsState(if (filled) 1f else 0.7f, spring(dampingRatio = 0.4f), label = "dot")
                     Box(Modifier.size(16.dp).graphicsLayer { scaleX = sc; scaleY = sc }.clip(CircleShape)
-                        .background(if (filled) (if (error != null) Harbor.Rose else Harbor.Sky) else Color.White.copy(alpha = .15f)))
+                        .background(if (filled) (if (error != null) Harbor.Rose else Harbor.Sky) else Harbor.line(.15f)))
                 }
             }
             Text(error.orEmpty(), color = Harbor.Rose, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp).height(18.dp))
@@ -141,13 +141,13 @@ private fun PinKey(k: Char, size: androidx.compose.ui.unit.Dp, modifier: Modifie
     var focused by remember { mutableStateOf(false) }
     Box(
         modifier.size(size).onFocusChanged { focused = it.isFocused }.clip(CircleShape)
-            .background(if (focused) Harbor.Violet else Color.White.copy(alpha = .07f))
+            .background(if (focused) Harbor.Violet else Harbor.line(.07f))
             .border(if (focused) 2.dp else 0.dp, Color.White.copy(alpha = if (focused) 0.9f else 0f), CircleShape)
             .clickable(onClick = onClick),
         Alignment.Center,
     ) {
-        if (k == '⌫') Icon(Icons.AutoMirrored.Rounded.Backspace, stringResource(R.string.pin_delete), tint = Color.White)
-        else Text(k.toString(), fontSize = 24.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+        if (k == '⌫') Icon(Icons.AutoMirrored.Rounded.Backspace, stringResource(R.string.pin_delete), tint = Harbor.Fg)
+        else Text(k.toString(), fontSize = 24.sp, fontWeight = FontWeight.SemiBold, color = Harbor.Fg)
     }
 }
 

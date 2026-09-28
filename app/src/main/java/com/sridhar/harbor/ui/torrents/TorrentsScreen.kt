@@ -140,7 +140,7 @@ fun TorrentsScreen(onSetup: () -> Unit) {
         if (cfg.qbitReady && cfg.aria2Ready) Row(Modifier.clip(RoundedCornerShape(50)).background(Harbor.Surface).padding(4.dp)) {
             listOf("qbit" to "qBittorrent", "aria2" to "aria2").forEach { (k, label) ->
                 val active = client == k
-                Text(label, color = if (active) Color.White else Harbor.TextDim, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                Text(label, color = if (active) Harbor.Fg else Harbor.TextDim, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                     modifier = Modifier.clip(RoundedCornerShape(50)).background(if (active) Harbor.accentH else SolidColor(Color.Transparent))
                         .clickable { client = k }.padding(horizontal = 16.dp, vertical = 8.dp))
             }
@@ -294,8 +294,8 @@ private fun QbitScreen(onSetup: () -> Unit, switcher: @Composable () -> Unit) {
 private fun SpeedDashboard(vm: TorrentsViewModel, onLimits: () -> Unit) {
     val tr = vm.transfer
     Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(24.dp))
-        .background(Brush.linearGradient(listOf(Color(0xFF1C1F27), Color(0xFF16181F))))
-        .border(1.dp, Color.White.copy(alpha = .07f), RoundedCornerShape(24.dp))) {
+        .background(Brush.linearGradient(listOf(Harbor.SurfaceHigh, Harbor.Surface)))
+        .border(1.dp, Harbor.line(.07f), RoundedCornerShape(24.dp))) {
         Box(Modifier.fillMaxWidth().height(150.dp)) {
             @Suppress("UNUSED_EXPRESSION") vm.historyVersion  // recompose graph on new samples
             Sparkline(vm.dlHistory.toList(), vm.ulHistory.toList(), Modifier.fillMaxSize())
@@ -314,7 +314,7 @@ private fun SpeedDashboard(vm: TorrentsViewModel, onLimits: () -> Unit) {
                     color = when (tr.connectionStatus) { "connected" -> Harbor.Mint; "firewalled" -> Harbor.Amber; else -> Harbor.Rose },
                 )
             }
-            val turtleBg by animateColorAsState(if (vm.altSpeed) Harbor.Mint.copy(alpha = .2f) else Color.White.copy(alpha = .06f), label = "t")
+            val turtleBg by animateColorAsState(if (vm.altSpeed) Harbor.Mint.copy(alpha = .2f) else Harbor.line(.06f), label = "t")
             Row(Modifier.clip(RoundedCornerShape(50)).background(turtleBg).clickable { vm.toggleAlt() }.padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Text("🐢", fontSize = 14.sp); Spacer(Modifier.width(4.dp))
@@ -339,7 +339,7 @@ private fun SpeedStat(icon: ImageVector, label: String, speed: Long, limit: Long
         }
         val parts = formatSpeed(speed).split(" ")
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(parts[0], fontSize = 30.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Default, color = Color.White)
+            Text(parts[0], fontSize = 30.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Default, color = Harbor.Fg)
             Spacer(Modifier.width(4.dp))
             Text(parts.getOrElse(1) { "" }, color = Harbor.TextDim, modifier = Modifier.padding(bottom = 5.dp))
         }
@@ -385,7 +385,7 @@ private fun TorrentCard(t: Torrent, selected: Boolean, selectionMode: Boolean, m
         Modifier.padding(horizontal = 20.dp, vertical = 6.dp).fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(if (selected) Harbor.Violet.copy(alpha = .18f) else Harbor.Surface)
-            .border(1.dp, if (selected) Harbor.Violet else Color.White.copy(alpha = .05f), RoundedCornerShape(20.dp))
+            .border(1.dp, if (selected) Harbor.Violet else Harbor.line(.05f), RoundedCornerShape(20.dp))
             .then(modifier).padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.Top) {
@@ -400,7 +400,7 @@ private fun TorrentCard(t: Torrent, selected: Boolean, selectionMode: Boolean, m
             }
             Spacer(Modifier.width(8.dp))
             if (selectionMode) Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.CheckCircle, null,
-                tint = if (selected) Harbor.Violet else Color.White.copy(alpha = .15f), modifier = Modifier.size(28.dp))
+                tint = if (selected) Harbor.Violet else Harbor.line(.15f), modifier = Modifier.size(28.dp))
             else Box(Modifier.size(40.dp).clip(CircleShape).background(color.copy(alpha = .15f)).clickable(onClick = onToggle), contentAlignment = Alignment.Center) {
                 Icon(if (t.isStopped) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, if (t.isStopped) stringResource(R.string.resume) else stringResource(R.string.pause), tint = color)
             }
@@ -536,9 +536,9 @@ private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onToggl
 }
 
 @Composable
-private fun SheetAction(icon: ImageVector, label: String, tint: Color = Color.White, onClick: () -> Unit) {
+private fun SheetAction(icon: ImageVector, label: String, tint: Color = Harbor.Fg, onClick: () -> Unit) {
     Column(Modifier.clip(RoundedCornerShape(16.dp)).clickable(onClick = onClick).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .07f)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Harbor.line(.07f)), contentAlignment = Alignment.Center) {
             Icon(icon, label, tint = tint)
         }
         Spacer(Modifier.height(4.dp)); Text(label, style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)

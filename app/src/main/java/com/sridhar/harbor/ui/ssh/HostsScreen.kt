@@ -111,7 +111,7 @@ private fun HostCard(
     Row(modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Harbor.Surface).pressable(0.97f, onClick = onConnect).padding(14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(tint, tint.copy(alpha = .5f)))), contentAlignment = Alignment.Center) {
-            Text(h.name.take(2).uppercase(), fontWeight = FontWeight.Black, color = Color.White)
+            Text(h.name.take(2).uppercase(), fontWeight = FontWeight.Black, color = Harbor.Fg)
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {

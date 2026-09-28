@@ -19,6 +19,7 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
         instance = this
         CrashGuard.install(this)
         L10n.init(this)
+        com.sridhar.harbor.ui.theme.Looks.init(this, BuildConfig.FLAVOR == "tv")
         com.sridhar.harbor.net.NetworkMonitor.init(this)
         container = AppContainer(this)
         container.cast.init()

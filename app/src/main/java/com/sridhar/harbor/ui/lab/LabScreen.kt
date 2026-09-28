@@ -255,7 +255,7 @@ private fun StatusBanner(warnings: List<String>, error: String?) {
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(if (good) stringResource(R.string.all_systems_healthy) else stringResource(R.string.s_1_s_thing_s_need_attention, warnings.size + (if (error != null) 1 else 0)), fontWeight = FontWeight.Bold, color = color)
-                if (!good) (listOfNotNull(error) + warnings).take(6).forEach { Text("• $it", fontSize = 12.sp, color = Color.White.copy(.85f)) }
+                if (!good) (listOfNotNull(error) + warnings).take(6).forEach { Text("• $it", fontSize = 12.sp, color = Harbor.Fg.copy(.85f)) }
             }
         }
     }
@@ -272,7 +272,7 @@ private fun RingGauge(label: String, fraction: Float, value: String, sub: String
                 val stroke = 9.dp.toPx()
                 val inset = stroke / 2
                 val arcSize = androidx.compose.ui.geometry.Size(this.size.width - stroke, this.size.height - stroke)
-                drawArc(Color.White.copy(alpha = .07f), 135f, 270f, false, Offset(inset, inset), arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+                drawArc(Harbor.line(.07f), 135f, 270f, false, Offset(inset, inset), arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
                 drawArc(Brush.sweepGradient(listOf(Harbor.Violet, color, Harbor.Violet)), 135f, 270f * sweep.value, false, Offset(inset, inset), arcSize,
                     style = Stroke(stroke, cap = StrokeCap.Round))
             }
@@ -288,7 +288,7 @@ private fun RingGauge(label: String, fraction: Float, value: String, sub: String
 @Composable
 private fun LiveCard(vm: LabViewModel, s: SystemSnapshot) {
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp))
-        .background(Brush.linearGradient(listOf(Color(0xFF1C1F27), Color(0xFF16181F)))).padding(16.dp)) {
+        .background(Brush.linearGradient(listOf(Harbor.SurfaceHigh, Harbor.Surface))).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.live), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             Legend(Harbor.Violet, "CPU"); Spacer(Modifier.width(10.dp)); Legend(Harbor.Coral, "RAM")
@@ -296,7 +296,7 @@ private fun LiveCard(vm: LabViewModel, s: SystemSnapshot) {
         Spacer(Modifier.height(8.dp))
         val cpu = vm.cpuHistory.toList(); val mem = vm.memHistory.toList()
         Canvas(Modifier.fillMaxWidth().height(90.dp)) {
-            listOf(0.25f, 0.5f, 0.75f).forEach { y -> drawLine(Color.White.copy(.05f), Offset(0f, size.height * y), Offset(size.width, size.height * y)) }
+            listOf(0.25f, 0.5f, 0.75f).forEach { y -> drawLine(Harbor.line(.05f), Offset(0f, size.height * y), Offset(size.width, size.height * y)) }
             fun line(v: List<Float>, c: Color) {
                 if (v.size < 2) return
                 val step = size.width / 39f; val x0 = size.width - (v.size - 1) * step
@@ -373,7 +373,7 @@ private fun ContainerRow(c: ContainerInfo, busy: Boolean, modifier: Modifier, on
             Column(horizontalAlignment = Alignment.End, modifier = Modifier.width(64.dp)) {
                 Text("%.1f%%".format(cpu), fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 Box(Modifier.width(56.dp).height(3.dp).drawBehind {
-                    drawRoundRect(Color.White.copy(.08f), cornerRadius = CornerRadius(2f))
+                    drawRoundRect(Harbor.line(.08f), cornerRadius = CornerRadius(2f))
                     drawRoundRect(levelColor(cpu / 100f), size = size.copy(width = size.width * (cpu / 100f).coerceIn(0.02f, 1f)), cornerRadius = CornerRadius(2f))
                 })
             }

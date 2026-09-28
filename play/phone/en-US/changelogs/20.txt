@@ -1,0 +1,1 @@
+JellyVerse 2.9.0: make it yours – five colour themes (Blue Bird, Red Blaster, Emerald Wave, Sunset Gold, Violet Dream), dark / light / system mode, and a Billboard or Spotlight Home with a Top 10 row. New Material 3 tab bar with a More menu, and Jellyseerr results right in Search.
