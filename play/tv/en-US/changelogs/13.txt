@@ -1,0 +1,1 @@
+JellyVerse TV 2.7: 'Pair a phone' in Settings with step-by-step help • every Settings option reachable with the remote • Back during loading leaves the player straight away • tidier sidebar • shimmering placeholders while Home loads, smoother animations • fixes.

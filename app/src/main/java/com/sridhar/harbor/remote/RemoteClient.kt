@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -75,6 +77,36 @@ class RemoteClient(private val context: Context) {
         }
         discovery = l
         runCatching { m.discoverServices(RemoteProtocol.SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, l) }.onFailure { discovery = null }
+    }
+
+    /**
+     * Fallback when mDNS is blocked (common on home routers): probe this phone's /24 subnet for the remote port.
+     * ~254 short TCP connects in parallel batches; finishes in a few seconds and only talks to the local network.
+     */
+    fun scanSubnet() = scope.launch {
+        val me = RemoteServer.localIp() ?: return@launch
+        val prefix = me.substringBeforeLast('.')
+        kotlinx.coroutines.coroutineScope {
+            (1..254).map { "$prefix.$it" }.filter { it != me }.chunked(48).forEach { batch ->
+                batch.map { host ->
+                    async {
+                        val ok = runCatching { Socket().use { it.connect(InetSocketAddress(host, RemoteProtocol.PORT), 350); true } }.getOrDefault(false)
+                        if (ok) {
+                            val name = runCatching { hello(host) }.getOrNull() ?: "JellyVerse TV · $host"
+                            val tv = TvDevice(name, host, RemoteProtocol.PORT)
+                            _tvs.value = (_tvs.value.filterNot { it.host == host } + tv).sortedBy { it.name }
+                        }
+                    }
+                }.awaitAll()
+            }
+        }
+    }
+
+    /** Reads the TV's greeting to show its real name. */
+    private fun hello(host: String): String? = Socket().use { s ->
+        s.connect(InetSocketAddress(host, RemoteProtocol.PORT), 800); s.soTimeout = 800
+        val line = BufferedReader(InputStreamReader(s.getInputStream())).readLine() ?: return null
+        com.sridhar.harbor.data.HarborJson.parseToJsonElement(line).jsonObject["name"]?.jsonPrimitive?.content
     }
 
     fun stopDiscovery() { discovery?.let { d -> runCatching { nsd?.stopServiceDiscovery(d) } }; discovery = null }

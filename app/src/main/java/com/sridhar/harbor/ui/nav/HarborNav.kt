@@ -327,6 +327,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                         is com.sridhar.harbor.data.ai.AiNav.Seerr -> nav.navigate(SeerrRoute(target.type, target.id))
                         is com.sridhar.harbor.data.ai.AiNav.Play -> com.sridhar.harbor.ui.player.PlayerActivity.start(ctx, target.id)
                         is com.sridhar.harbor.data.ai.AiNav.Cast -> Unit
+                        is com.sridhar.harbor.data.ai.AiNav.Route -> container.navRequests.tryEmit(target.dest)
                     }
                 })
             }}

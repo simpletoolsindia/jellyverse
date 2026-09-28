@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.sridhar.harbor.ui.components.enterRise
 import androidx.compose.runtime.collectAsState
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Lock
@@ -80,7 +81,7 @@ fun TvDetail(id: String, onOpen: (String) -> Unit) {
         AmbientBackdrop(jf.backdropUrl(cfg, focusedEp ?: item, if (container.lowRam) 1280 else 1920), preview = if (focusedEp == null) item else null)
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 64.dp, bottom = 48.dp)) {
             item {
-                Column(Modifier.padding(start = 64.dp, end = 300.dp)) {
+                Column(Modifier.padding(start = 64.dp, end = 300.dp).enterRise(0)) {
                     val logo = jf.logoUrl(cfg, item)
                     if (logo != null) NetImage(logo, Modifier.width(420.dp).height(140.dp), contentScale = ContentScale.Fit, fallback = item.name)
                     else Text(item.name, color = Color.White, fontSize = 52.sp, fontWeight = FontWeight.Black, lineHeight = 56.sp)

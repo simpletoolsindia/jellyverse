@@ -30,6 +30,8 @@ sealed interface AiNav {
     data class Seerr(val type: String, val id: Int) : AiNav
     data class Play(val id: String) : AiNav
     data class Cast(val id: String, val device: String?) : AiNav
+    /** Any app destination by name (music, nowplaying, remote, live, …) – handled via the app's nav requests. */
+    data class Route(val dest: String) : AiNav
 }
 
 data class AiCard(val title: String, val subtitle: String?, val image: String?, val nav: AiNav)
@@ -210,7 +212,87 @@ class Assistant(private val c: AppContainer) {
             val p = c.seerr.requests("pending", 0, 10).results
             ToolResult(if (p.isEmpty()) "No pending requests." else "${p.size} pending request(s).", nav = AiNav.Requests)
         },
-        AiTool("open", "screen", "open a screen: lab, terminal, downloads, manage, discover, requests, doctor") { a ->
+        AiTool("play_music", "query", "play songs, an artist or an album from my music (Navidrome); empty = shuffle everything") { a ->
+            if (c.config.value?.navidromeReady != true) return@AiTool ToolResult("Music isn't set up yet – add Navidrome in Settings.")
+            val q = a.str("query")
+            val songs = if (q.isBlank()) c.music.randomSongs(50) else {
+                val r = c.music.search(q)
+                when {
+                    r.artist.isNotEmpty() && r.artist.first().name.contains(q, true) -> c.music.topSongs(r.artist.first().name, 30)
+                    r.album.isNotEmpty() && r.album.first().name.contains(q, true) -> c.music.album(r.album.first().id).songs
+                    else -> r.song
+                }
+            }
+            if (songs.isEmpty()) ToolResult("No music matches \"$q\".")
+            else { c.musicEngine.play(songs, source = q.ifBlank { "Shuffle" }, shuffle = q.isBlank()); ToolResult("Playing ${songs.first().displayTitle} – ${songs.first().displayArtist}.", nav = AiNav.Route("nowplaying")) }
+        },
+        AiTool("music_control", "action", "control music: pause, resume, next, previous, shuffle, stop") { a ->
+            val e = c.musicEngine
+            val st = e.state.value
+            if (st.current == null) return@AiTool ToolResult("Nothing is playing.")
+            when (a.str("action").lowercase()) {
+                "pause", "stop" -> { if (st.playing) e.toggle(); ToolResult("Paused.") }
+                "resume", "play", "continue" -> { if (!st.playing) e.toggle(); ToolResult("Playing.") }
+                "next", "skip" -> { e.next(); ToolResult("Next song.") }
+                "previous", "back" -> { e.previous(); ToolResult("Previous song.") }
+                "shuffle" -> { e.setShuffle(true); ToolResult("Shuffle on.") }
+                else -> ToolResult("Try pause, resume, next, previous or shuffle.")
+            }
+        },
+        AiTool("now_playing", "", "which song is playing right now") { _ ->
+            val s = c.musicEngine.state.value.current ?: return@AiTool ToolResult("Nothing is playing.")
+            ToolResult("${s.displayTitle} – ${s.displayArtist}" + (s.displayAlbum?.let { " (from $it)" } ?: ""), nav = AiNav.Route("nowplaying"))
+        },
+        AiTool("play_radio", "station", "play an FM / internet radio station, e.g. 'Sooriyan FM'; empty = any Tamil FM") { a ->
+            val q = a.str("station").lowercase().replace("fm", "").trim()
+            val all = c.radio.stations.value
+            val st = if (q.isBlank()) all.firstOrNull() else all.firstOrNull { it.name.lowercase().contains(q) }
+                ?: all.maxByOrNull { s -> q.split(' ').count { w -> w.length > 2 && s.name.lowercase().contains(w) } }?.takeIf { s -> q.split(' ').any { w -> w.length > 2 && s.name.lowercase().contains(w) } }
+            if (st == null) ToolResult("No station called \"${a.str("station")}\". Your stations: " + all.take(8).joinToString { it.name })
+            else { c.musicEngine.play(listOf(st.toSong()), source = st.name); ToolResult("Tuning in to ${st.name}.", nav = AiNav.Route("nowplaying")) }
+        },
+        AiTool("sleep_timer", "minutes", "stop music after N minutes (0 = cancel)") { a ->
+            val m = a.num("minutes")?.toInt() ?: 30
+            c.musicEngine.sleepIn(m.takeIf { it > 0 })
+            ToolResult(if (m > 0) "Music will stop in $m minutes." else "Sleep timer off.")
+        },
+        AiTool("mark_watched", "title", "mark a movie/episode as watched") { a ->
+            val hit = c.jellyfin.fuzzyFind(a.str("title"), minScore = 0.8f).firstOrNull() ?: return@AiTool ToolResult("Couldn't find \"${a.str("title")}\".")
+            c.jellyfin.setPlayed(hit.id, true); ToolResult("Marked ${hit.name} as watched.")
+        },
+        AiTool("add_favorite", "title", "add a movie/series to favourites / my list") { a ->
+            val hit = c.jellyfin.fuzzyFind(a.str("title"), minScore = 0.8f).firstOrNull() ?: return@AiTool ToolResult("Couldn't find \"${a.str("title")}\".")
+            c.jellyfin.setFavorite(hit.id, true); ToolResult("Added ${hit.name} to favourites ♥.")
+        },
+        AiTool("remove_from_continue", "title", "remove a title from Continue watching") { a ->
+            val q = a.str("title")
+            val hit = c.jellyfin.resume().firstOrNull { (it.seriesName ?: it.name).contains(q, true) || it.name.contains(q, true) }
+                ?: return@AiTool ToolResult("\"$q\" isn't in Continue watching.")
+            c.jellyfin.removeFromResume(hit.id); ToolResult("Removed ${hit.seriesName ?: hit.name} from Continue watching.")
+        },
+        AiTool("library_stats", "", "how many movies, shows and episodes are in my library") { _ ->
+            val all = c.jellyfin.ratedTitles()
+            ToolResult("${all.count { it.type == "Movie" }} movies and ${all.count { it.type == "Series" }} series in your library.")
+        },
+        AiTool("scan_library", "", "scan Jellyfin for newly added files") { _ ->
+            c.jellyfin.refreshLibrary(); ToolResult("Library scan started – new titles will appear in a few minutes.")
+        },
+        AiTool("check_update", "", "check if a new JellyVerse version is available") { _ ->
+            if (!c.updater.enabled) return@AiTool ToolResult("This build is updated through the Play Store.")
+            c.updater.check(userInitiated = true)
+            when (val st = c.updater.state.value) {
+                is com.sridhar.harbor.update.UpdateState.Available -> ToolResult("Version ${st.info.version} is available – see the update popup.")
+                is com.sridhar.harbor.update.UpdateState.Failed -> ToolResult("Couldn't check: ${st.message}")
+                else -> ToolResult("You're on the latest version (${c.updater.currentVersion}).")
+            }
+        },
+        AiTool("open", "screen", "open a screen: lab, terminal, downloads, manage, discover, requests, doctor, music, live tv, remote, settings") { a ->
+            when (a.str("screen").lowercase()) {
+                "music", "songs" -> return@AiTool ToolResult("Opening Music.", nav = AiNav.Route("music"))
+                "live", "live tv", "iptv", "tv channels" -> return@AiTool ToolResult("Opening Live TV.", nav = AiNav.Route("live"))
+                "remote", "tv remote" -> return@AiTool ToolResult("Opening the TV remote.", nav = AiNav.Route("remote"))
+                "now playing", "player" -> return@AiTool ToolResult("Opening Now playing.", nav = AiNav.Route("nowplaying"))
+            }
             val nav = when (a.str("screen").lowercase()) {
                 "lab", "health", "server" -> AiNav.Lab; "terminal", "ssh", "shell" -> AiNav.Terminal
                 "downloads", "torrents", "aria2" -> AiNav.Downloads; "manage", "sonarr", "radarr" -> AiNav.Manage

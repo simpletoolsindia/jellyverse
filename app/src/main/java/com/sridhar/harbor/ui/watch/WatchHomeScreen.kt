@@ -223,6 +223,10 @@ fun WatchHomeScreen(
                     }
                 }
             }
+            // First load: shimmering shelves instead of an empty page.
+            if (vm.loading && vm.hero.isEmpty() && vm.resume.isEmpty() && vm.error == null) item(key = "skeleton") {
+                Column { com.sridhar.harbor.ui.components.SkeletonShelf(260.dp, 16f / 9f, 3); repeat(2) { com.sridhar.harbor.ui.components.SkeletonShelf() } }
+            }
             item(key = "resume") {
                 Rail(stringResource(R.string.continue_watching), vm.resume, key = { it.id }) { item ->
                     WideCard(

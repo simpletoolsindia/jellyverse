@@ -102,6 +102,8 @@ fun RemoteScreen(onBack: () -> Unit) {
     val state by client.state.collectAsState()
     val tvs by client.tvs.collectAsState()
     DisposableEffect(Unit) { client.startDiscovery(); onDispose { client.stopDiscovery() } }
+    // mDNS often doesn't cross routers / phone Wi-Fi isolation – after 3 s with nothing found, scan the subnet too.
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(3000); if (client.tvs.value.isEmpty()) client.scanSubnet() }
     // Reconnect to the last TV automatically.
     LaunchedEffect(Unit) { if (state is RemoteState.Idle) client.lastTv()?.let { client.connect(it) } }
 

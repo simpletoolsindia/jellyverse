@@ -27,6 +27,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.mutableStateOf
@@ -117,7 +120,8 @@ fun TvSettings() {
     val container = LocalContainer.current
     val cfg = rememberConfig()
     val scope = rememberCoroutineScope()
-    Column(Modifier.fillMaxSize().padding(64.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    // Scrolls with D-pad focus so every option below the fold stays reachable.
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 120.dp, top = 48.dp, end = 64.dp, bottom = 64.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(stringResource(R.string.settings), color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Black)
         Column(Modifier.clip(RoundedCornerShape(20.dp)).background(Harbor.Surface).padding(24.dp)) {
             Text(stringResource(R.string.jellyfin), color = Harbor.TextDim, fontSize = 14.sp)
@@ -144,11 +148,37 @@ fun TvSettings() {
                 scope.launch(com.sridhar.harbor.CrashGuard) { container.updater.check(userInitiated = true) }
             }
         }
-        com.sridhar.harbor.remote.RemoteServer.localIp()?.let { ip ->
-            Text("📱 " + stringResource(R.string.remote_tv_address, ip), color = Harbor.TextDim, fontSize = 15.sp)
-        }
+        var pairing by remember { mutableStateOf(false) }
+        val phones by com.sridhar.harbor.remote.RemoteServer.connected.collectAsState()
+        TvButton("📱  " + stringResource(R.string.remote_pair_phone) + if (phones > 0) " · " + stringResource(R.string.remote_phones_connected, phones) else "", null) { pairing = true }
+        if (pairing) PairPhoneDialog { pairing = false }
         com.sridhar.harbor.ui.components.LanguagePicker()
         Text(stringResource(R.string.jellyverse_tv_1_s, com.sridhar.harbor.BuildConfig.VERSION_NAME), color = Harbor.TextDim, fontSize = 13.sp)
         com.sridhar.harbor.ui.components.MadeWithLove()
+    }
+}
+
+/** Step-by-step card for pairing a phone as remote & keyboard; shows this TV's address for manual connect. */
+@Composable
+private fun PairPhoneDialog(onDismiss: () -> Unit) {
+    val ip = remember { com.sridhar.harbor.remote.RemoteServer.localIp() }
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    androidx.compose.runtime.LaunchedEffect(Unit) { runCatching { kotlinx.coroutines.delay(100); focus.requestFocus() } }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(Modifier.clip(RoundedCornerShape(28.dp)).background(Harbor.Surface).padding(36.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("📱 " + stringResource(R.string.remote_pair_phone), color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+            listOf(R.string.remote_step1, R.string.remote_step2, R.string.remote_step3).forEachIndexed { i, r ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).background(Harbor.Violet), Alignment.Center) { Text("${i + 1}", color = Color.White, fontWeight = FontWeight.Bold) }
+                    Spacer(Modifier.width(14.dp))
+                    Text(stringResource(r), color = Color.White.copy(alpha = .9f), fontSize = 18.sp)
+                }
+            }
+            if (ip != null) Column(Modifier.clip(RoundedCornerShape(16.dp)).background(Harbor.Ink).padding(18.dp)) {
+                Text(stringResource(R.string.remote_not_listed), color = Harbor.TextDim, fontSize = 14.sp)
+                Text(ip, color = Harbor.Sky, fontSize = 34.sp, fontWeight = FontWeight.Black)
+            }
+            TvButton(stringResource(R.string.done), null, primary = true, modifier = Modifier.focusRequester(focus)) { onDismiss() }
+        }
     }
 }

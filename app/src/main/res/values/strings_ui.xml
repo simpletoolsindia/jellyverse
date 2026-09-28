@@ -1015,4 +1015,14 @@
     <string name="update_notif_body">Tap to see what\'s new and update</string>
     <string name="on_label">On</string>
     <string name="off_label">Off</string>
+    <string name="radio_discover">Find more Tamil FM</string>
+    <string name="radio_discover_title">Tamil radio stations</string>
+    <string name="radio_discover_hint">Live list from Radio Browser – tap to listen, ＋ to keep it</string>
+    <string name="radio_discover_none">Couldn\'t load stations – check your connection</string>
+    <string name="remote_pair_phone">Pair a phone</string>
+    <string name="remote_phones_connected">%1$d connected</string>
+    <string name="remote_step1">Connect your phone to the same Wi-Fi as this TV</string>
+    <string name="remote_step2">On the phone open JellyVerse → Settings → TV remote</string>
+    <string name="remote_step3">Pick this TV and enter the 4-digit code shown here</string>
+    <string name="remote_not_listed">TV not listed on the phone? Enter this address:</string>
 </resources>

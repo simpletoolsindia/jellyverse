@@ -1015,4 +1015,14 @@
     <string name="update_notif_body">புதியவற்றைப் பார்த்து புதுப்பிக்கத் தட்டவும்</string>
     <string name="on_label">இயக்கம்</string>
     <string name="off_label">முடக்கம்</string>
+    <string name="radio_discover">மேலும் தமிழ் FM</string>
+    <string name="radio_discover_title">தமிழ் ரேடியோ நிலையங்கள்</string>
+    <string name="radio_discover_hint">Radio Browser நேரடி பட்டியல் – கேட்க தட்டவும், சேமிக்க ＋</string>
+    <string name="radio_discover_none">நிலையங்களை ஏற்ற முடியவில்லை – இணைப்பைச் சரிபார்க்கவும்</string>
+    <string name="remote_pair_phone">போனை இணை</string>
+    <string name="remote_phones_connected">%1$d இணைந்துள்ளது</string>
+    <string name="remote_step1">இந்த TV உள்ள அதே Wi-Fi-இல் போனை இணைக்கவும்</string>
+    <string name="remote_step2">போனில் JellyVerse → அமைப்புகள் → TV ரிமோட்</string>
+    <string name="remote_step3">இந்த TV-ஐத் தேர்ந்தெடுத்து இங்கே காட்டப்படும் 4 இலக்க குறியீட்டை உள்ளிடவும்</string>
+    <string name="remote_not_listed">போனில் TV தெரியவில்லையா? இந்த முகவரியை உள்ளிடவும்:</string>
 </resources>

@@ -217,6 +217,7 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit) {
                         // Parallax: backdrop drifts slower than the list
                         val off = if (list.firstVisibleItemIndex == 0) list.firstVisibleItemScrollOffset.toFloat() else 0f
                         translationY = off * 0.5f
+                        val z = 1f + (off / 4000f).coerceIn(0f, 0.12f); scaleX = z; scaleY = z
                         alpha = 1f - (off / 900f).coerceIn(0f, 0.6f)
                     })
                     Box(Modifier.fillMaxSize().background(Harbor.scrimBottom()))

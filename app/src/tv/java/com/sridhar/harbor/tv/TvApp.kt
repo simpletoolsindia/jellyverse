@@ -49,6 +49,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -123,11 +128,16 @@ fun TvApp() {
         if (current !is TvDest.Detail && current !is TvDest.NowPlaying && current !is TvDest.MusicCollection) Column(
             Modifier.fillMaxHeight().width(railWidth)
                 .background(Brush.horizontalGradient(listOf(Harbor.Ink.copy(alpha = if (railFocused) 0.98f else 0.9f), Harbor.Ink.copy(alpha = if (railFocused) 0.9f else 0f))))
-                .onFocusChanged { railFocused = it.hasFocus }.focusGroup().padding(vertical = 40.dp, horizontal = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .onFocusChanged { railFocused = it.hasFocus }.focusGroup()
+                // Fits 8 entries on a 540dp-tall TV screen; scrolls (keeping the focused entry visible) if ever taller.
+                .verticalScroll(rememberScrollState())
+                // Left inside the sidebar has nowhere to go – swallow it so focus never jumps to the last entry.
+                .onPreviewKeyEvent { it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && it.key == androidx.compose.ui.input.key.Key.DirectionLeft }
+                .padding(vertical = 24.dp, horizontal = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            com.sridhar.harbor.ui.components.HarborLogo(56.dp)
-            Spacer(Modifier.height(40.dp))
+            com.sridhar.harbor.ui.components.HarborLogo(44.dp)
+            Spacer(Modifier.height(18.dp))
             // Only services that are set up get a rail entry; 18+ appears once parental control is on.
             val cfgRail = com.sridhar.harbor.ui.components.rememberConfig()
             val parental by com.sridhar.harbor.ui.components.LocalContainer.current.parental.state.collectAsState()
@@ -135,7 +145,7 @@ fun TvApp() {
                 var focused by remember { mutableStateOf(false) }
                 val selected = r.dest == current
                 Row(
-                    Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(14.dp))
+                    Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp))
                         .background(when { focused -> Color.White; selected -> Color.White.copy(.12f); else -> Color.Transparent })
                         .onFocusChanged { focused = it.isFocused }.clickable { go(r.dest) }.padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,

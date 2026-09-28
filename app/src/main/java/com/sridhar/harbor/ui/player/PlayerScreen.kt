@@ -109,6 +109,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -198,7 +199,8 @@ fun PlayerScreen(vm: PlayerViewModel, inPip: Boolean, onBack: () -> Unit, onPip:
         delay(60)
         runCatching { if (shownForFocus && panel == null && isTv) playFocus.requestFocus() else if (panel == null) rootFocus.requestFocus() }
     }
-    androidx.activity.compose.BackHandler(enabled = panel != null || (controls && isTv && !locked)) {
+    // Back hides controls only when they're really on screen – while loading it must leave the player at once.
+    androidx.activity.compose.BackHandler(enabled = panel != null || (controls && isTv && !locked && (ui.firstFrame || ui.error != null))) {
         if (panel != null) panel = null else controls = false
     }
 
@@ -487,7 +489,8 @@ fun PlayerScreen(vm: PlayerViewModel, inPip: Boolean, onBack: () -> Unit, onPip:
                             color = Harbor.TextDim, fontSize = 13.sp, modifier = Modifier.clickable { showRemaining = !showRemaining })
                     }
                     ScrubArea(ui, scrubMs, onScrub = { scrubMs = it.takeIf { v -> v >= 0 }; interaction++ }, onCommit = { vm.seekTo(it); scrubMs = null })
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // One line of chips that scrolls sideways when the phone is narrow (portrait) – never wraps.
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
                         // Language quick controls: CC toggles subtitles, the audio chip opens the language list.
                         if (!ui.live) {
                             val sub = ui.text.firstOrNull { it.selected }
@@ -833,7 +836,7 @@ private fun TextChip(icon: ImageVector?, text: String, onClick: () -> Unit) {
     Row(Modifier.padding(end = 8.dp).focusRing(RoundedCornerShape(50)).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .12f)).clickable(onClick = onClick)
         .padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)) }
-        Text(text, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
     }
 }
 

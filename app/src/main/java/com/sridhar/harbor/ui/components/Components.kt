@@ -322,7 +322,10 @@ fun Modifier.dpadFieldNav(): Modifier = composed {
 @Composable
 fun MadeWithLove(modifier: Modifier = Modifier) {
     val uri = androidx.compose.ui.platform.LocalUriHandler.current
-    Row(modifier.clip(RoundedCornerShape(50)).clickable { runCatching { uri.openUri("https://simpletools.in") } }.padding(horizontal = 12.dp, vertical = 6.dp),
+    // TVs usually have no browser – there the credit is plain text and never takes remote focus.
+    val tv = androidx.compose.ui.platform.LocalContext.current.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+    Row(modifier.clip(RoundedCornerShape(50)).then(if (tv) Modifier else Modifier.clickable { runCatching { uri.openUri("https://simpletools.in") } })
+        .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.made_with), color = Harbor.TextDim, fontSize = 12.sp)
         Text("❤", color = Harbor.Rose, fontSize = 12.sp)
@@ -347,6 +350,20 @@ private fun Collage(collectionId: String, modifier: Modifier, fallback: String?)
                 androidx.compose.foundation.layout.Row(Modifier.weight(1f).fillMaxWidth()) {
                     row.forEach { u -> NetImage(u, Modifier.weight(1f).fillMaxHeight()) }
                 }
+            }
+        }
+    }
+}
+
+/** Placeholder shelf (title bar + card outlines) that shimmers while a row loads – feels faster than a spinner. */
+@Composable
+fun SkeletonShelf(cardWidth: Dp = 124.dp, aspect: Float = 2f / 3f, count: Int = 6, modifier: Modifier = Modifier) {
+    Column(modifier.padding(vertical = 10.dp)) {
+        Box(Modifier.padding(horizontal = 20.dp).width(160.dp).height(18.dp).clip(RoundedCornerShape(6.dp)).shimmer())
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            repeat(count) { i ->
+                Box(Modifier.enterRise(i).width(cardWidth).aspectRatio(aspect).clip(RoundedCornerShape(14.dp)).shimmer())
             }
         }
     }

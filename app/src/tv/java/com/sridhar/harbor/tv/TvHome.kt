@@ -149,7 +149,10 @@ fun TvHome(onOpen: (String) -> Unit) {
     }
     Box(Modifier.fillMaxSize()) {
         AmbientBackdrop(display?.let { jf.backdropUrl(cfg, it, if (container.lowRam) 1280 else 1920) }, drift = !container.lowRam, preview = display, onTrailer = { trailerOn = it })
-        if (vm.loading && vm.hero.isEmpty()) com.sridhar.harbor.ui.components.JellyLoader(Modifier.align(Alignment.Center), color = Harbor.VioletSoft)
+        if (vm.loading && vm.hero.isEmpty()) Column(Modifier.fillMaxSize().padding(start = 120.dp, top = 360.dp)) {
+            com.sridhar.harbor.ui.components.SkeletonShelf(300.dp, 16f / 9f, 5)
+            com.sridhar.harbor.ui.components.SkeletonShelf(150.dp, 2f / 3f, 8)
+        }
         Box(Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 40.dp)) { ClockGreeting(cfg.jellyfinUser) }
         Column(Modifier.fillMaxSize()) {
             // Info panel – follows the focused title
