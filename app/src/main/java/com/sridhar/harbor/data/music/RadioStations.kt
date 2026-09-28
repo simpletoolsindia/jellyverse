@@ -28,9 +28,13 @@ class RadioStations(context: Context, private val http: OkHttpClient) {
 
     /** First run: preload popular Tamil FM stations (removable like any other). */
     private fun seeded(list: List<RadioStation>): List<RadioStation> {
-        if (prefs.getBoolean("seeded_tamil_v1", false)) return list
-        val merged = list + TAMIL_FM.filterNot { s -> list.any { it.url == s.url } }
-        prefs.edit().putBoolean("seeded_tamil_v1", true).putString("stations", HarborJson.encodeToString(ser, merged)).apply()
+        // Each seed batch is added once; stations a user removed are not re-added by an older batch.
+        var merged = list
+        val e = prefs.edit()
+        if (!prefs.getBoolean("seeded_tamil_v1", false)) { merged = merged + TAMIL_FM.filterNot { s -> merged.any { it.url == s.url } }; e.putBoolean("seeded_tamil_v1", true) }
+        if (!prefs.getBoolean("seeded_tamilnadu_v2", false)) { merged = TAMILNADU_FM + merged.filterNot { s -> TAMILNADU_FM.any { it.url == s.url } }; e.putBoolean("seeded_tamilnadu_v2", true) }
+        if (merged !== list) e.putString("stations", HarborJson.encodeToString(ser, merged))
+        e.apply()
         return merged
     }
 
@@ -79,6 +83,17 @@ class RadioStations(context: Context, private val http: OkHttpClient) {
     }
 
     companion object {
+        /** Tamil Nadu FM stations – listed first in the Radio row. */
+        val TAMILNADU_FM = listOf(
+            RadioStation(id = "tn-suryan", name = "Suryan FM 93.5 Chennai", url = "http://radios.crabdance.com:8002/1"),
+            RadioStation(id = "tn-radiocity", name = "Radio City 91.1 Chennai", url = "http://radios.crabdance.com:8002/5"),
+            RadioStation(id = "tn-bigfm", name = "Big FM Tamil", url = "https://stream.zeno.fm/r2gn1pgm4qruv"),
+            RadioStation(id = "tn-hellofm", name = "Hello FM 106.4 Chennai", url = "http://radios.crabdance.com:8002/3"),
+            RadioStation(id = "tn-airgold", name = "AIR FM Gold Chennai", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio021/chunklist.m3u8"),
+            RadioStation(id = "tn-vividh", name = "Vividh Bharati Chennai", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio024/chunklist.m3u8"),
+            RadioStation(id = "tn-chennailive", name = "Chennai Live", url = "http://c2.radioboss.fm:8332/stream"),
+        )
+
         val TAMIL_FM = listOf(
         RadioStation(id = "tamil-0", name = "AIR Kodaikanal FM", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio051/chunklist.m3u8"),
         RadioStation(id = "tamil-1", name = "AIR Madurai FM", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio126/chunklist.m3u8"),
