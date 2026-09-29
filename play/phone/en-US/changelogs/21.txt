@@ -1,0 +1,1 @@
+JellyVerse 2.10.0: Recommended for you – personal picks and "Because you watched" rows, worked out on your phone from your Jellyfin history. Choose from 22 on-device AI models (Qwen 3, Gemma 4, Phi-4, DeepSeek-R1…). Softer new look: glowing Home card, glass buttons, floating tab bar.

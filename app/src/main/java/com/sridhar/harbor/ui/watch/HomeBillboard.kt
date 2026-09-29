@@ -1,5 +1,7 @@
 package com.sridhar.harbor.ui.watch
 
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.shadow
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.RepeatMode
@@ -77,8 +79,9 @@ import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
 /**
- * Billboard Home hero: one full-bleed poster at a time (swipe or auto-advance), slow Ken Burns drift, the title
- * and genres over a fade into the page, and My List · Play · Info underneath.
+ * Billboard Home hero, 2026 "soft UI" style: the page glows with the colour of the current title, and the title
+ * sits in a floating rounded card – textless backdrop art with the logo on top (no doubled titles), glass pill
+ * buttons, swipe or auto-advance. Each page is clipped, so neighbours never bleed into the card.
  */
 @Composable
 fun BillboardHero(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (BaseItem) -> Unit) {
@@ -91,64 +94,79 @@ fun BillboardHero(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (Base
     LaunchedEffect(pager, items.size, resumed) {
         while (resumed && items.size > 1) {
             delay(7000)
-            if (!pager.isScrollInProgress) pager.animateScrollToPage((pager.currentPage + 1) % items.size, animationSpec = tween(900))
+            if (!pager.isScrollInProgress) pager.animateScrollToPage((pager.currentPage + 1) % items.size, animationSpec = tween(700))
         }
     }
-    val conf = LocalConfiguration.current
-    val heroH = minOf(conf.screenHeightDp * 0.72f, conf.screenWidthDp * 1.45f).coerceAtLeast(380f).dp
-    val drift by rememberInfiniteTransition(label = "kb").animateFloat(1.03f, 1.12f,
+    val current = items.getOrNull(pager.currentPage) ?: return
+    // Ambient glow: the artwork's own colour washes the top of the page, then fades into the background.
+    val glow = com.sridhar.harbor.ui.music.rememberArtColor(jf.backdropUrl(cfg, current, 300), current.name)
+    val glowAnim by androidx.compose.animation.animateColorAsState(glow, tween(900), label = "glow")
+    val drift by rememberInfiniteTransition(label = "kb").animateFloat(1.02f, 1.09f,
         infiniteRepeatable(tween(16_000, easing = LinearEasing), RepeatMode.Reverse), label = "z")
-    Box(Modifier.fillMaxWidth().height(heroH).clipToBounds()) {
-        HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
-            val item = items[page]
-            val off = ((pager.currentPage - page) + pager.currentPageOffsetFraction)
-            Box(Modifier.fillMaxSize().clickable { onItem(item.id) }.graphicsLayer {
-                // Parallax: the image moves at half speed and dims as it leaves.
-                translationX = off * size.width * 0.5f; alpha = 1f - 0.5f * off.absoluteValue.coerceIn(0f, 1f)
-            }) {
-                NetImage(jf.posterUrl(cfg, item, 1000), Modifier.fillMaxSize().graphicsLayer { scaleX = drift; scaleY = drift }, fallback = item.name)
-            }
-        }
-        // Readable top (status bar, top bar) and a long fade into the page.
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = .55f), 0.18f to Color.Transparent, 0.5f to Color.Transparent,
-            0.82f to Harbor.Ink.copy(alpha = .85f), 1f to Harbor.Ink)))
-        val item = items.getOrNull(pager.currentPage) ?: return@Box
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally) {
-            androidx.compose.animation.AnimatedContent(item, contentKey = { it.id }, label = "billboardTitle",
-                transitionSpec = { (androidx.compose.animation.fadeIn(tween(500)) + androidx.compose.animation.slideInVertically { it / 4 }) togetherWith androidx.compose.animation.fadeOut(tween(200)) }) { it ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    val logo = jf.logoUrl(cfg, it)
-                    if (logo != null) NetImage(logo, Modifier.width(240.dp).height(80.dp), contentScale = ContentScale.Fit, fallback = it.name)
-                    else Text(it.name, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Black, maxLines = 2,
-                        overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, color = Harbor.Fg)
-                    Spacer(Modifier.height(8.dp))
-                    Text(it.genres.take(3).joinToString("  •  ").ifBlank { it.year?.toString().orEmpty() },
-                        color = Harbor.Fg.copy(alpha = .85f), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+    Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(0f to glowAnim.copy(alpha = if (com.sridhar.harbor.ui.theme.Looks.isDark) .55f else .35f),
+        0.75f to Harbor.Ink.copy(alpha = 0f)))) {
+        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 64.dp)) {
+            HorizontalPager(pager, Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp) { page ->
+                val item = items[page]
+                val off = ((pager.currentPage - page) + pager.currentPageOffsetFraction)
+                Box(
+                    Modifier.fillMaxWidth().aspectRatio(0.8f)
+                        .graphicsLayer { val s = 1f - 0.05f * off.absoluteValue.coerceIn(0f, 1f); scaleX = s; scaleY = s }
+                        .shadow(24.dp, RoundedCornerShape(30.dp), ambientColor = glowAnim, spotColor = glowAnim)
+                        .clip(RoundedCornerShape(30.dp)).clickable { onItem(item.id) },
+                ) {
+                    // Parallax inside the clipped card: the art moves slower than the card.
+                    NetImage(jf.backdropUrl(cfg, item, 1280), Modifier.fillMaxSize().graphicsLayer {
+                        translationX = off * size.width * 0.25f; scaleX = drift; scaleY = drift
+                    }, fallback = item.name)
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.35f to Color.Transparent, 1f to Color.Black.copy(alpha = .88f))))
+                    Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(20.dp)) {
+                        val logo = jf.logoUrl(cfg, item)
+                        if (logo != null) NetImage(logo, Modifier.width(210.dp).height(72.dp), contentScale = ContentScale.Fit, alignment = Alignment.BottomStart, fallback = item.name)
+                        else Text(item.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, color = Color.White,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Spacer(Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            (listOfNotNull(item.year?.toString(), item.communityRating?.let { "★ %.1f".format(it) }) + item.genres.take(2)).forEach { t ->
+                                Text(t, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = .16f)).padding(horizontal = 10.dp, vertical = 4.dp))
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(Modifier.weight(1f).height(48.dp).clip(CircleShape).background(Color.White)
+                                .pressable { if (item.type == "Movie") onPlay(item) else onItem(item.id) },
+                                horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(26.dp)); Spacer(Modifier.width(4.dp))
+                                Text(stringResource(R.string.play), color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            }
+                            val fav = favs[item.id] ?: (item.userData?.isFavorite == true)
+                            GlassCircle(if (fav) Icons.Rounded.Check else Icons.Rounded.Add, stringResource(R.string.my_list)) {
+                                favs[item.id] = !fav; scope.launch(com.sridhar.harbor.CrashGuard) { runCatching { jf.setFavorite(item.id, !fav) } }
+                            }
+                            GlassCircle(Icons.Outlined.Info, stringResource(R.string.more_info)) { onItem(item.id) }
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(14.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(26.dp)) {
-                val fav = favs[item.id] ?: (item.userData?.isFavorite == true)
-                SmallAction(if (fav) Icons.Rounded.Check else Icons.Rounded.Add, stringResource(R.string.my_list)) {
-                    favs[item.id] = !fav; scope.launch(com.sridhar.harbor.CrashGuard) { runCatching { jf.setFavorite(item.id, !fav) } }
-                }
-                Row(Modifier.height(46.dp).clip(RoundedCornerShape(8.dp)).background(Color.White)
-                    .pressable { if (item.type == "Movie") onPlay(item) else onItem(item.id) }.padding(horizontal = 26.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(28.dp)); Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.play), color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                }
-                SmallAction(Icons.Outlined.Info, stringResource(R.string.more_info)) { onItem(item.id) }
-            }
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 repeat(items.size) { i ->
                     val active = i == pager.currentPage
-                    Box(Modifier.height(4.dp).width(if (active) 16.dp else 4.dp).clip(CircleShape).background(if (active) Harbor.Violet else Harbor.line(.3f)))
+                    val w by androidx.compose.animation.core.animateDpAsState(if (active) 18.dp else 6.dp, label = "dot")
+                    Box(Modifier.padding(horizontal = 3.dp).height(6.dp).width(w).clip(CircleShape).background(if (active) Harbor.Fg else Harbor.line(.25f)))
                 }
             }
         }
+    }
+}
+
+/** Frosted round button used on artwork. */
+@Composable
+private fun GlassCircle(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
+    Box(Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = .18f))
+        .border(1.dp, Color.White.copy(alpha = .28f), CircleShape).pressable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(icon, label, tint = Color.White, modifier = Modifier.size(24.dp))
     }
 }
 

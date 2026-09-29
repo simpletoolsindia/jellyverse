@@ -20,8 +20,8 @@ android {
         applicationId = "com.sridhar.jellyverse"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20
-        versionName = "2.9.0"
+        versionCode = 21
+        versionName = "2.10.0"
         // Play Store builds (-Pstore) ship without preloaded IPTV directories – "bring your own playlist" per Play policy.
         buildConfigField("boolean", "PRELOAD_IPTV", if (project.hasProperty("store")) "false" else "true")
         // GitHub builds update themselves from GitHub Releases; Play builds are updated by Play only.
@@ -74,10 +74,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += listOf("-opt-in=androidx.compose.material3.ExperimentalMaterial3Api")
     }
     buildFeatures { compose = true; buildConfig = true }
     // Self-update permission + FileProvider only in sideload builds.
@@ -155,8 +151,8 @@ dependencies {
     implementation("androidx.fragment:fragment-ktx:1.8.5")
     "tvImplementation"("androidx.tvprovider:tvprovider:1.0.0")
 
-    // On-device LLM (Qwen2.5-0.5B via MediaPipe LLM Inference)
-    implementation("com.google.mediapipe:tasks-genai:0.10.24")
+    // On-device LLMs (Qwen3, Gemma 4, Phi-4, …) via Google's LiteRT-LM runtime (.litertlm models)
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.17.1")
 
     // ---- Local (JVM) unit tests: src/test ----
     testImplementation("junit:junit:4.13.2")
@@ -182,6 +178,13 @@ dependencies {
 // Harbor TV is a pure media player: drop the on-device LLM native libs from the TV build.
 androidComponents {
     onVariants(selector().withFlavor("form" to "tv")) { v ->
-        v.packaging.jniLibs.excludes.addAll(listOf("**/libllm_inference_engine_jni.so", "**/libmediapipe_tasks_text_jni.so"))
+        v.packaging.jniLibs.excludes.addAll(listOf("**/liblitertlm_jni.so"))
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        freeCompilerArgs.add("-opt-in=androidx.compose.material3.ExperimentalMaterial3Api")
     }
 }

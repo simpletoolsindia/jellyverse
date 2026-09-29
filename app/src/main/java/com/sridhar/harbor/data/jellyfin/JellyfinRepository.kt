@@ -258,6 +258,13 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
         return a.items(c.jellyfinUserId, types = "Movie,Series", sortBy = "Random", limit = 24, filters = "IsUnplayed").items
     }
 
+    /** Every film and show with the metadata and watch history the recommender needs (one request). */
+    suspend fun recoCorpus(): List<BaseItem> {
+        val (a, c) = api()
+        return a.items(c.jellyfinUserId, types = "Movie,Series", limit = 6000, sortBy = "SortName",
+            fields = "Genres,Tags,Studios,People,Overview,OfficialRating,PremiereDate", imageTypeLimit = 1).items
+    }
+
     suspend fun libraryItems(): List<LibraryItem> { val (a, c) = api(); return a.libraryItems(c.jellyfinUserId).items }
 
     /** Parsed results plus the raw JSON needed for Apply. */

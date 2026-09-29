@@ -18,8 +18,10 @@
 -dontwarn com.sun.jna.**
 -dontwarn org.newsclub.net.unix.**
 -keepclassmembers class com.sridhar.harbor.ui.ssh.TerminalBridge { @android.webkit.JavascriptInterface <methods>; }
--keep class com.google.mediapipe.** { *; }
--dontwarn com.google.mediapipe.**
+# LiteRT-LM: native code calls back into these classes (callbacks, messages, configs) by name, and Gson
+# serialises its message/tool types – keep them whole.
+-keep class com.google.ai.edge.litertlm.** { *; }
+-dontwarn com.google.ai.edge.litertlm.**
 -keep class com.google.protobuf.** { *; }
 -dontwarn com.google.protobuf.**
 -keep class com.sridhar.harbor.cast.CastOptionsProvider { *; }

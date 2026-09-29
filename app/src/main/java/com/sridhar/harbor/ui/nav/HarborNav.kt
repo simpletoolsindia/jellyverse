@@ -1,5 +1,6 @@
 package com.sridhar.harbor.ui.nav
 
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.ui.graphics.graphicsLayer
@@ -443,37 +444,44 @@ private fun FloatingNavBar(tabs: List<Tab>, selected: Int, onSelect: (Int) -> Un
     val primary = tabs.take(primaryCount)
     val overflow = tabs.drop(primaryCount)
     var moreOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
-    val itemColors = androidx.compose.material3.NavigationBarItemDefaults.colors(
-        selectedIconColor = Harbor.VioletSoft, selectedTextColor = Harbor.Fg,
-        indicatorColor = Harbor.Violet.copy(alpha = 0.18f),
-        unselectedIconColor = Harbor.TextDim, unselectedTextColor = Harbor.TextDim,
-    )
-    androidx.compose.material3.NavigationBar(containerColor = Harbor.Surface, tonalElevation = 0.dp,
-        modifier = Modifier.border(androidx.compose.foundation.BorderStroke(1.dp, Harbor.line(0.06f)))) {
-        primary.forEachIndexed { i, tab ->
-            val active = i == selected
-            NavigationBarItem(
-                selected = active,
-                onClick = { if (!active) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onSelect(i) },
-                icon = { Icon(if (active) tab.icon else tab.idleIcon, null) },
-                label = { Text(tab.label, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium) },
-                colors = itemColors,
-            )
+    // Floating frosted capsule (2026 soft-UI): content scrolls under it, labels stay visible, the selected tab
+    // gets a tinted pill that springs between items.
+    val moreActive = selected >= primaryCount
+    val slots = primary.size + 1
+    val sel = if (moreActive) primary.size else selected.coerceAtLeast(0)
+    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.layout.BoxWithConstraints(
+            Modifier.widthIn(max = 520.dp).fillMaxWidth().height(64.dp)
+                .shadow(28.dp, RoundedCornerShape(32.dp), ambientColor = Color.Black.copy(alpha = .5f), spotColor = Color.Black.copy(alpha = .5f))
+                .clip(RoundedCornerShape(32.dp))
+                .background(Brush.verticalGradient(listOf(Harbor.SurfaceHigh.copy(alpha = .94f), Harbor.Surface.copy(alpha = .94f))))
+                .border(1.dp, Harbor.line(.10f), RoundedCornerShape(32.dp)),
+        ) {
+            val slotW = maxWidth / slots
+            val x by androidx.compose.animation.core.animateDpAsState(slotW * sel, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow), label = "tabPill")
+            Box(Modifier.offset(x = x).width(slotW).fillMaxHeight().padding(6.dp).clip(RoundedCornerShape(26.dp)).background(Harbor.Violet.copy(alpha = .20f)))
+            Row(Modifier.fillMaxSize()) {
+                (primary.indices.toList() + listOf(-1)).forEach { i ->
+                    val isMore = i == -1
+                    val active = if (isMore) moreActive else i == selected
+                    val tab = if (isMore) (if (moreActive) overflow.getOrNull(selected - primaryCount) else null) else primary[i]
+                    val icon = when { isMore && tab == null -> Icons.Rounded.Apps; active -> tab!!.icon; else -> tab!!.idleIcon }
+                    val label = if (isMore && tab == null) com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.tab_more) else tab!!.label
+                    val tint by androidx.compose.animation.animateColorAsState(if (active) Harbor.VioletSoft else Harbor.TextDim, label = "tabTint")
+                    androidx.compose.foundation.layout.Column(
+                        Modifier.weight(1f).fillMaxHeight().pressable(0.9f) {
+                            if (isMore) moreOpen = true
+                            else { if (!active) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onSelect(i) }
+                        }.semantics { contentDescription = label; role = androidx.compose.ui.semantics.Role.Tab },
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(icon, null, tint = tint, modifier = Modifier.size(23.dp))
+                        Text(label, color = if (active) Harbor.Fg else Harbor.TextDim, fontSize = 11.sp, maxLines = 1, softWrap = false,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
+                    }
+                }
+            }
         }
-        val moreActive = selected >= primaryCount
-        NavigationBarItem(
-            selected = moreActive,
-            onClick = { moreOpen = true },
-            icon = {
-                if (moreActive) Icon(overflow.getOrNull(selected - primaryCount)?.icon ?: Icons.Rounded.Apps, null)
-                else Icon(Icons.Rounded.Apps, null)
-            },
-            label = { Text(if (moreActive) overflow.getOrNull(selected - primaryCount)?.label ?: com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.tab_more)
-                else com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.tab_more), maxLines = 1, softWrap = false,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, fontWeight = if (moreActive) FontWeight.Bold else FontWeight.Medium) },
-            colors = itemColors,
-        )
     }
     if (moreOpen) androidx.compose.material3.ModalBottomSheet(onDismissRequest = { moreOpen = false }, containerColor = Harbor.Surface) {
         androidx.compose.foundation.layout.Column(Modifier.navigationBarsPadding().padding(horizontal = 16.dp).padding(bottom = 16.dp)) {

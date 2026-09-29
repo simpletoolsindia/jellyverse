@@ -167,6 +167,8 @@ fun WatchHomeScreen(
     }
     val vm = viewModel { WatchHomeViewModel(container) }
     val look = com.sridhar.harbor.ui.theme.Looks.look
+    val recs by container.reco.recs.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(vm.resume) { container.reco.refresh() }
     val ctx = LocalContext.current
     val jf = container.jellyfin
     val play: (BaseItem) -> Unit = { PlayerActivity.start(ctx, it.id) }
@@ -249,6 +251,12 @@ fun WatchHomeScreen(
                 }
             }
             if (!unreachable && downloads.isNotEmpty()) item(key = "device") { DownloadsShelf(downloads, offline = false) }
+            // On-device recommendations from your Jellyfin watch history (see Recommender).
+            if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou) && recs.forYou.isNotEmpty()) item(key = "foryou") {
+                Rail(stringResource(R.string.reco_for_you), recs.forYou, key = { it.item.id }) { p ->
+                    PosterCard(jf.posterUrl(cfg, p.item), p.item.name, p.reason.ifBlank { p.item.year?.toString() }) { onItem(p.item.id) }
+                }
+            }
             if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Top10)) item(key = "top10") { Top10Row(vm.top10, onItem) }
             if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.NextUp)) item(key = "nextup") {
                 Rail(stringResource(R.string.next_up), vm.nextUp, key = { it.id }) { item ->
@@ -257,6 +265,13 @@ fun WatchHomeScreen(
                 }
             }
             item(key = "picks") { PosterMarquee(stringResource(R.string.marquee_discover), vm.picks, onItem) }
+            if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou)) recs.because.forEach { row ->
+                item(key = "because-${row.seed.id}") {
+                    Rail(stringResource(R.string.reco_because, row.seed.name), row.picks, key = { it.item.id }) { p ->
+                        PosterCard(jf.posterUrl(cfg, p.item), p.item.name, p.reason.ifBlank { p.item.year?.toString() }) { onItem(p.item.id) }
+                    }
+                }
+            }
             if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Latest)) vm.shelves.forEach { shelf ->
                 item(key = "shelf-${shelf.view.id}") {
                     Rail(stringResource(R.string.new_in_1_s, shelf.view.name), shelf.items, key = { it.id }, action = stringResource(R.string.see_all),
@@ -346,10 +361,7 @@ private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (
                 if (page == pager.currentPage && !pager.isScrollInProgress) com.sridhar.harbor.ui.components.TrailerPreview(item, Modifier.fillMaxSize(), delayMs = 1800, onPlaying = { trailerOn = it })
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = .92f))))
                 Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    val logo = jf.logoUrl(cfg, item)
-                    if (logo != null) NetImage(logo, Modifier.width(220.dp).height(70.dp), contentScale = ContentScale.Fit, fallback = item.name)
-                    else Text(item.name, style = MaterialTheme.typography.headlineMedium, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    // The poster already carries its title – no logo on top (it doubled the title).
                     Spacer(Modifier.height(6.dp))
                     Text(listOfNotNull(item.year?.toString(), item.genres.take(2).joinToString(" • ").ifBlank { null }, item.officialRating,
                         item.communityRating?.let { "★ %.1f".format(it) }).joinToString("  ·  "), color = Color.White.copy(.8f), style = MaterialTheme.typography.bodySmall)

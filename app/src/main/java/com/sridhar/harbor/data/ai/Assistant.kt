@@ -55,7 +55,7 @@ sealed interface ChatItem {
 }
 
 /**
- * Tool-calling agent on top of on-device Qwen2.5-0.5B.
+ * Tool-calling agent on top of the on-device model (Qwen3, Gemma 4, Phi-4, … – see [LlmModel]).
  * The model chooses a tool in Qwen's native <tool_call>{json}</tool_call> format; a small keyword router
  * covers obvious intents if the model answers without calling a tool.
  */

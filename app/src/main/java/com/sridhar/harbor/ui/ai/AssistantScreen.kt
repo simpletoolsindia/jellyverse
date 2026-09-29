@@ -158,9 +158,12 @@ fun AssistantScreen(onBack: () -> Unit, onNav: (AiNav) -> Unit) {
             IconButton(onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) }
             AiOrb(34.dp, busy = vm.busy)
             Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
+            // Tap the model line to switch models (the catalogue).
+            var catalog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            if (catalog) ModelCatalog(onDismiss = { catalog = false })
+            Column(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { catalog = true }.padding(vertical = 2.dp)) {
                 Text(stringResource(R.string.jellyverse_ai), fontWeight = FontWeight.Bold)
-                Text(when (state) { ModelState.Loaded, ModelState.Ready -> L10n.s(R.string.qwen_0_5b_on_device_1, container.assistant.tools.size); ModelState.Loading -> L10n.s(R.string.loading_model)
+                Text(when (state) { ModelState.Loaded, ModelState.Ready -> L10n.s(R.string.qwen_0_5b_on_device_1, container.llm.model.value.displayName, container.assistant.tools.size.toString()) + "  ▾"; ModelState.Loading -> L10n.s(R.string.loading_model)
                     else -> stringResource(R.string.command_mode_download_model_for_full) }, fontSize = 11.sp, color = Harbor.TextDim)
             }
         }

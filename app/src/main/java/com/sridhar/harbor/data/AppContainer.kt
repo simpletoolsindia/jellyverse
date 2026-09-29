@@ -76,6 +76,8 @@ class AppContainer(context: Context) {
     val updater by lazy { com.sridhar.harbor.update.Updater(context, http) }
     val remote by lazy { com.sridhar.harbor.remote.RemoteClient(context) }
     val parental by lazy { com.sridhar.harbor.data.parental.ParentalControls(context) }
+    /** On-device "Recommended for you" from library embeddings + Jellyfin watch history. */
+    val reco by lazy { com.sridhar.harbor.data.reco.RecoRepository(jellyfin, parental) }
     val radio by lazy { com.sridhar.harbor.data.music.RadioStations(context, http) }
     /** A stream link shared into the app ("Share → JellyVerse"); Music home offers to save it as a station. */
     val sharedRadioLink = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)

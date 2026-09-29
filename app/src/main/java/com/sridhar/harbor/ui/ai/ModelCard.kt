@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,7 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sridhar.harbor.data.ai.ModelState
-import com.sridhar.harbor.data.ai.QwenModel
+import com.sridhar.harbor.data.ai.LlmModel
 import com.sridhar.harbor.ui.components.GradientButton
 import com.sridhar.harbor.ui.components.GradientProgress
 import com.sridhar.harbor.ui.components.LocalContainer
@@ -67,6 +69,8 @@ fun AiOrb(size: androidx.compose.ui.unit.Dp, busy: Boolean = false) {
 fun ModelCard(modifier: Modifier = Modifier) {
     val llm = LocalContainer.current.llm
     val state by llm.state.collectAsState()
+    val model by llm.model.collectAsState()
+    var picking by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     LaunchedEffect(state) { while (state is ModelState.Downloading) { delay(1000); llm.refreshDownload() } }
     Column(modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Brush.linearGradient(listOf(Harbor.SurfaceHigh, Harbor.Surface)))
         .border(1.dp, Harbor.line(.08f), RoundedCornerShape(22.dp)).padding(16.dp)) {
@@ -74,9 +78,9 @@ fun ModelCard(modifier: Modifier = Modifier) {
             AiOrb(44.dp, busy = state is ModelState.Downloading || state is ModelState.Loading)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(QwenModel.NAME, fontWeight = FontWeight.Bold)
+                Text(model.displayName, fontWeight = FontWeight.Bold)
                 Text(when (val s = state) {
-                    ModelState.Missing -> stringResource(R.string.runs_100_on_this_phone_521)
+                    ModelState.Missing -> stringResource(R.string.ai_model_missing, mb(model.sizeBytes))
                     is ModelState.Downloading -> stringResource(R.string.downloading_1_s, (s.fraction * 100).toInt())
                     ModelState.Ready -> stringResource(R.string.downloaded_loads_on_first_use)
                     ModelState.Loading -> stringResource(R.string.loading_into_memory)
@@ -84,7 +88,7 @@ fun ModelCard(modifier: Modifier = Modifier) {
                     is ModelState.Failed -> s.message
                 }, fontSize = 12.sp, color = if (state is ModelState.Failed) Harbor.Rose else Harbor.TextDim)
             }
-            if (state is ModelState.Ready || state is ModelState.Loaded) TextButton({ llm.delete() }) { Text(stringResource(R.string.remove), color = Harbor.TextDim, fontSize = 12.sp) }
+            TextButton({ picking = true }) { Text(stringResource(R.string.ai_change_model), color = Harbor.VioletSoft, fontSize = 12.sp) }
         }
         when (val s = state) {
             ModelState.Missing, is ModelState.Failed -> {
@@ -94,5 +98,8 @@ fun ModelCard(modifier: Modifier = Modifier) {
             is ModelState.Downloading -> { Spacer(Modifier.height(12.dp)); GradientProgress(s.fraction, height = 6.dp) }
             else -> {}
         }
+        if (picking) ModelCatalog(onDismiss = { picking = false })
     }
 }
+
+private fun mb(bytes: Long) = if (bytes >= 1_000_000_000) "%.1f GB".format(bytes / 1e9) else "${bytes / 1_000_000} MB"

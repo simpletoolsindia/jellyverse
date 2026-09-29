@@ -1,0 +1,1 @@
+JellyVerse TV 2.10.0: Recommended for you and "Because you watched" rows on Home, based on your Jellyfin watch history. Spotlight titles no longer appear twice.

@@ -1,29 +1,94 @@
 package com.sridhar.harbor.data.ai
 
+import android.app.ActivityManager
 import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
-import com.google.mediapipe.tasks.genai.llminference.LlmInference
-import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
-import com.google.mediapipe.tasks.genai.llminference.PromptTemplates
+import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.ConversationConfig
+import com.google.ai.edge.litertlm.Engine
+import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.Message
+import com.google.ai.edge.litertlm.SamplerConfig
+import com.google.ai.edge.litertlm.ThinkingConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
-/** Qwen2.5-0.5B-Instruct (int8), converted for MediaPipe by Google's LiteRT community. */
-object QwenModel {
-    const val NAME = "Qwen2.5 0.5B Instruct"
-    const val FILE = "Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task"
-    const val URL = "https://huggingface.co/litert-community/Qwen2.5-0.5B-Instruct/resolve/main/$FILE"
-    const val SIZE_BYTES = 546_000_000L
-    const val MAX_TOKENS = 1280
+/**
+ * On-device models, all published by Google's LiteRT community in the `.litertlm` format (no login needed) and
+ * run by LiteRT-LM on the CPU. Each file carries its own chat template, so every family (Qwen, Gemma, Phi, …)
+ * gets its native prompt format.
+ */
+enum class LlmModel(
+    val id: String, val displayName: String, val maker: String, val params: String, val emoji: String,
+    val repo: String, val file: String, val sizeMb: Int, val minRamGb: Int, val blurb: String, val thinks: Boolean = false,
+) {
+    // ---- Tiny: any phone ----
+    SmolLM2Tiny("smollm2-135m", "SmolLM2 · 135M", "Hugging Face", "135 M", "🐣", "SmolLM2-135M-Instruct", "SmolLM2_135M_Instruct.litertlm",
+        143, 2, "The smallest here. Instant replies; best for simple commands."),
+    SmolLM2("smollm2-360m", "SmolLM2 · 360M", "Hugging Face", "360 M", "🤗", "SmolLM2-360M-Instruct", "SmolLM2_360M_instruct.litertlm",
+        374, 2, "Trained for on-device use. Snappy on older phones."),
+    Qwen3Small("qwen3-0.6b", "Qwen 3 · 0.6B", "Alibaba", "0.6 B", "✨", "Qwen3-0.6B", "Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm",
+        345, 3, "Recommended. Latest Qwen, tiny and good at calling tools."),
+    Qwen2Small("qwen2-0.5b", "Qwen 2 · 0.5B Instruct", "Alibaba", "0.5 B", "🚀", "Qwen2-0.5B-Instruct", "Qwen2_0.5B_Instruct.litertlm",
+        647, 3, "Tiny and fast. Runs on almost any phone."),
+    MiniCpm1B("minicpm5-1b", "MiniCPM 5 · 1B", "OpenBMB", "1 B", "🐝", "MiniCPM5-1B", "minicpm_wi4b32_wi8_afp32.litertlm",
+        793, 4, "Built for phones: strong answers for its size, quick decode."),
+    Olmo1B("olmo2-1b", "OLMo 2 · 1B Instruct", "Ai2", "1 B", "🔬", "OLMo-2-1B-Instruct", "OLMo-2-1B-Instruct_q4_block32_ekv4096.litertlm",
+        931, 4, "Fully open model – weights, data and training all public."),
+    // ---- Mid-range phones ----
+    Qwen3("qwen3-1.7b", "Qwen 3 · 1.7B", "Alibaba", "1.7 B", "🌟", "Qwen3-1.7B", "Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm",
+        977, 6, "Smarter tool use than 0.6B and still quick. Great all-rounder."),
+    MiniCpm2B("minicpm5-2b", "MiniCPM 5 · 2B", "OpenBMB", "2 B", "🐝", "MiniCPM5-2B", "MiniCPM5-2B_int4.litertlm",
+        1554, 6, "Bigger MiniCPM – noticeably better answers, 4-bit to stay light."),
+    Qwen25("qwen2.5-1.5b", "Qwen 2.5 · 1.5B Instruct", "Alibaba", "1.5 B", "⚡", "Qwen2.5-1.5B-Instruct", "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+        1598, 6, "Proven sweet spot for mid-range phones."),
+    VibeThinker("vibethinker-1.5b", "VibeThinker · 1.5B", "Weibo", "1.5 B", "🧠", "VibeThinker-1.5B", "VibeThinker-1.5B.litertlm",
+        1568, 6, "Reasoning specialist: thinks before it answers (slower).", thinks = true),
+    DeepSeekR1("deepseek-r1-1.5b", "DeepSeek-R1 Distill · 1.5B", "DeepSeek", "1.5 B", "🐋", "DeepSeek-R1-Distill-Qwen-1.5B",
+        "DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv4096.litertlm", 1833, 6, "Step-by-step reasoning in a small package (slower).", thinks = true),
+    SmolLM3("smollm3-3b", "SmolLM3 · 3B", "Hugging Face", "3 B", "🤗", "SmolLM3-3B", "SmolLM3-3B_q4_block32_ekv4096.litertlm",
+        2002, 8, "Newest SmolLM – multilingual, 4-bit for speed."),
+    Qwen35("qwen3.5-2b", "Qwen 3.5 · 2B", "Alibaba", "2 B", "🔮", "Qwen3.5-2B", "Qwen3.5-2B_int8.litertlm",
+        2117, 8, "The mid-size Qwen 3.5. Strong multilingual chat."),
+    // ---- Flagship phones ----
+    Ministral3B("ministral3-3b", "Ministral 3 · 3B Instruct", "Mistral AI", "3 B", "🌬️", "Ministral-3-3B-Instruct-2512",
+        "Ministral-3-3B-Instruct-2512_q4_block32_ekv4096.litertlm", 2341, 8, "Mistral's edge model: crisp, well-structured answers."),
+    JanNano("jan-nano", "Jan Nano · 4B", "Menlo", "4 B", "🛠️", "Jan-nano", "model.litertlm",
+        2474, 8, "Tuned for agents and tool calling."),
+    Gemma4E2B("gemma4-e2b", "Gemma 4 · E2B Instruct", "Google", "2.3 B effective", "💎", "gemma-4-E2B-it-litert-lm", "gemma-4-E2B-it.litertlm",
+        2588, 8, "Gemma 4's phone tier. 140+ languages, best all-round quality."),
+    Qwen3Instruct4B("qwen3-4b-2507", "Qwen 3 · 4B Instruct 2507", "Alibaba", "4 B", "⚒️", "Qwen3-4B-Instruct-2507", "qwen3_4b_instruct_2507_mixed_int4.litertlm",
+        2659, 8, "Refreshed Qwen3 4B – big gains and no thinking preamble."),
+    Qwen3Think4B("qwen3-4b", "Qwen 3 · 4B", "Alibaba", "4 B", "🧩", "Qwen3-4B", "qwen3_4b_mixed_int4.litertlm",
+        2659, 8, "The original Qwen3 4B with hybrid thinking."),
+    Gemma4E4B("gemma4-e4b", "Gemma 4 · E4B Instruct", "Google", "4 B effective", "💎", "gemma-4-E4B-it-litert-lm", "gemma-4-E4B-it.litertlm",
+        3660, 12, "The larger Gemma 4 edge model for flagship phones."),
+    Phi4Mini("phi4-mini", "Phi-4 · Mini Instruct", "Microsoft", "3.8 B", "🎓", "Phi-4-mini-instruct", "Phi-4-mini-instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+        3910, 12, "Excellent at maths and reasoning for its size."),
+    DeepSeekR17B("deepseek-r1-7b", "DeepSeek-R1 Distill · 7B", "DeepSeek", "7 B", "🐋", "DeepSeek-R1-Distill-Qwen-7B",
+        "DeepSeek-R1-Distill-Qwen-7B_q4_block32_ekv4096.litertlm", 4532, 12, "Deep reasoning. Flagship only; expect slow tokens.", thinks = true),
+    Qwen3Big("qwen3-8b", "Qwen 3 · 8B", "Alibaba", "8 B", "👑", "Qwen3-8B", "qwen3_8b_mixed_int4.litertlm",
+        4887, 16, "The largest here. Best answers if your phone can hold it."),
+    ;
+
+    val sizeBytes: Long get() = sizeMb * 1_000_000L
+    val url: String get() = "https://huggingface.co/litert-community/$repo/resolve/main/$file"
+    /** Some repos ship a generic "model.litertlm": store under a unique name so two can live side by side. */
+    val localFile: String get() = if (file == "model.litertlm") "$id.litertlm" else file
+
+    companion object {
+        val DEFAULT = Qwen3Small
+        fun of(id: String?) = entries.firstOrNull { it.id == id } ?: DEFAULT
+    }
 }
 
 sealed interface ModelState {
@@ -36,28 +101,62 @@ sealed interface ModelState {
 }
 
 /**
- * Runs Qwen fully on the phone. No prompt leaves the device.
- * Prompts are formatted with Qwen's ChatML template by the caller; MediaPipe's own templates are disabled.
+ * Runs the chosen model fully on the device – no prompt leaves it. Callers still write prompts in ChatML
+ * (`<|im_start|>role … <|im_end|>`); they are turned into structured messages here and rendered with the model's
+ * own template, so the same prompts work for Qwen, Gemma, Phi and the rest.
  */
 class LocalLlm(private val context: Context) {
     private val dm = context.getSystemService(DownloadManager::class.java)
     private val dir = File(context.getExternalFilesDir(null), "models").apply { mkdirs() }
-    val modelFile = File(dir, QwenModel.FILE)
     private val prefs = context.getSharedPreferences("harbor_ai", Context.MODE_PRIVATE)
 
-    private val _state = MutableStateFlow<ModelState>(if (modelFile.exists() && modelFile.length() > 100_000_000) ModelState.Ready else ModelState.Missing)
+    private val _model = MutableStateFlow(LlmModel.of(prefs.getString("model", null)))
+    val model: StateFlow<LlmModel> = _model.asStateFlow()
+    private fun fileOf(m: LlmModel) = File(dir, m.localFile)
+    val modelFile: File get() = fileOf(_model.value)
+
+    /** Device RAM in GB, to flag models that won't fit. */
+    val deviceRamGb: Int = context.getSystemService(ActivityManager::class.java).let { am ->
+        ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }.totalMem.let { ((it + (1L shl 29)) shr 30).toInt() }
+    }
+
+    private fun onDisk(m: LlmModel) = fileOf(m).let { it.exists() && it.length() > m.sizeBytes * 9 / 10 }
+    fun isDownloaded(m: LlmModel) = onDisk(m)
+
+    private val _state = MutableStateFlow<ModelState>(if (onDisk(_model.value)) ModelState.Ready else ModelState.Missing)
     val state: StateFlow<ModelState> = _state
 
-    private var engine: LlmInference? = null
+    /** Models on disk, for the catalogue's Installed badges. */
+    private val _downloaded = MutableStateFlow(LlmModel.entries.filter { File(dir, it.localFile).let { f -> f.exists() && f.length() > it.sizeBytes * 9 / 10 } }.toSet())
+    val downloaded: StateFlow<Set<LlmModel>> = _downloaded.asStateFlow()
+
+    private var engine: Engine? = null
     private val lock = Mutex()
+
+    init {
+        // 2.9 and earlier used a MediaPipe .task file that LiteRT-LM can't load – free the space.
+        File(dir, "Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task").delete()
+        if (prefs.getLong("download_id", -1) >= 0) refreshDownload()
+    }
+
+    /** Switch models. A downloaded one is ready at once; others show the Download button. */
+    fun select(m: LlmModel) {
+        if (m == _model.value) return
+        if (_state.value is ModelState.Downloading) prefs.getLong("download_id", -1).takeIf { it >= 0 }?.let { dm.remove(it) }
+        prefs.edit().putString("model", m.id).remove("download_id").apply()
+        engine?.close(); engine = null
+        _model.value = m
+        _state.value = if (onDisk(m)) ModelState.Ready else ModelState.Missing
+    }
 
     fun startDownload() {
         if (_state.value is ModelState.Downloading) return
-        modelFile.delete()
-        val id = dm.enqueue(DownloadManager.Request(Uri.parse(QwenModel.URL))
+        val m = _model.value
+        fileOf(m).delete()
+        val id = dm.enqueue(DownloadManager.Request(Uri.parse(m.url))
             .setTitle("JellyVerse AI model")
-            .setDescription(QwenModel.NAME)
-            .setDestinationUri(Uri.fromFile(modelFile))
+            .setDescription(m.displayName)
+            .setDestinationUri(Uri.fromFile(fileOf(m)))
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED))
         prefs.edit().putLong("download_id", id).apply()
         _state.value = ModelState.Downloading(0f)
@@ -71,75 +170,103 @@ class LocalLlm(private val context: Context) {
             if (c == null || !c.moveToFirst()) return
             val status = c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
             val done = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-            val total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)).takeIf { it > 0 } ?: QwenModel.SIZE_BYTES
+            val total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)).takeIf { it > 0 } ?: _model.value.sizeBytes
             _state.value = when (status) {
-                DownloadManager.STATUS_SUCCESSFUL -> { prefs.edit().remove("download_id").apply(); ModelState.Ready }
+                DownloadManager.STATUS_SUCCESSFUL -> { prefs.edit().remove("download_id").apply(); _downloaded.value = _downloaded.value + _model.value; ModelState.Ready }
                 DownloadManager.STATUS_FAILED -> { prefs.edit().remove("download_id").apply(); ModelState.Failed("Download failed – check your connection") }
                 else -> ModelState.Downloading(done.toFloat() / total)
             }
         }
     }
 
-    init { if (prefs.getLong("download_id", -1) >= 0) refreshDownload() }
+    /** Deletes the current model's file (other downloaded models stay). */
+    fun delete() = delete(_model.value)
 
-    fun delete() {
-        engine?.close(); engine = null
-        modelFile.delete()
-        _state.value = ModelState.Missing
+    fun delete(m: LlmModel) {
+        if (m == _model.value) { engine?.close(); engine = null; _state.value = ModelState.Missing }
+        fileOf(m).delete()
+        _downloaded.value = LlmModel.entries.filter(::onDisk).toSet()
     }
 
-    private suspend fun ensureLoaded(): LlmInference = lock.withLock {
+
+    private suspend fun ensureLoaded(): Engine = lock.withLock {
         engine?.let { return it }
         if (!modelFile.exists()) throw IllegalStateException("Download the AI model first")
         _state.value = ModelState.Loading
         withContext(Dispatchers.Default) {
             runCatching {
-                LlmInference.createFromOptions(context, LlmInference.LlmInferenceOptions.builder()
-                    .setModelPath(modelFile.absolutePath)
-                    .setMaxTokens(QwenModel.MAX_TOKENS)
-                    .setMaxTopK(40)
-                    .build())
+                Engine(EngineConfig(
+                    modelPath = modelFile.absolutePath,
+                    backend = Backend.CPU(),
+                    maxNumTokens = 4096,
+                    cacheDir = context.cacheDir.absolutePath,
+                )).also { it.initialize() }
             }.onFailure { _state.value = ModelState.Failed(it.message ?: "Model failed to load") }.getOrThrow()
         }.also { engine = it; _state.value = ModelState.Loaded }
     }
 
-    fun tokens(text: String): Int = engine?.sizeInTokens(text) ?: (text.length / 3)
+    fun tokens(text: String): Int = text.length / 3
+
+    private data class Turn(val role: String, val text: String)
+
+    /** `<|im_start|>role\ntext<|im_end|>` blocks → turns (a trailing open assistant turn is dropped). */
+    private fun parseChatMl(prompt: String): List<Turn> =
+        Regex("<\\|im_start\\|>(system|user|assistant)\\n(.*?)(?:<\\|im_end\\|>|$)", RegexOption.DOT_MATCHES_ALL)
+            .findAll(prompt).map { Turn(it.groupValues[1], it.groupValues[2].trim()) }
+            .filterNot { it.role == "assistant" && it.text.isEmpty() }.toList()
 
     /**
-     * Generate a completion for a raw ChatML prompt. [onPartial] receives the accumulated text as it streams.
-     * Low temperature keeps tool calls and JSON well-formed on a 0.5B model.
+     * Generate a reply to a ChatML prompt. [onPartial] receives the accumulated text as it streams. Low temperature
+     * keeps tool calls and JSON well-formed on small models; "thinking" is switched off (or stripped) so answers
+     * arrive quickly.
      */
     suspend fun complete(prompt: String, temperature: Float = 0.2f, onPartial: (String) -> Unit = {}): String {
         val llm = ensureLoaded()
+        val turns = parseChatMl(prompt).ifEmpty { listOf(Turn("user", prompt)) }
+        val system = turns.firstOrNull { it.role == "system" }?.text
+        val rest = turns.filter { it.role != "system" }
+        val lastIdx = rest.indexOfLast { it.role == "user" }
+        val last = rest.getOrNull(lastIdx) ?: Turn("user", prompt)
+        val history = (if (lastIdx > 0) rest.subList(0, lastIdx) else emptyList()).map {
+            if (it.role == "user") Message.user(it.text) else Message.model(it.text)
+        }
+        val m = _model.value
         return withContext(Dispatchers.Default) {
-            val session = LlmInferenceSession.createFromOptions(llm, LlmInferenceSession.LlmInferenceSessionOptions.builder()
-                .setTemperature(temperature).setTopK(20).setTopP(0.9f).setRandomSeed(7)
-                .setPromptTemplates(PromptTemplates.builder()
-                    .setUserPrefix("").setUserSuffix("").setModelPrefix("").setModelSuffix("")
-                    .setSystemPrefix("").setSystemSuffix("").build())
-                .build())
+            val conv = llm.createConversation(ConversationConfig(
+                systemInstruction = system?.let { Contents.of(it) },
+                initialMessages = history,
+                samplerConfig = SamplerConfig(20, 0.9, temperature.toDouble(), 7),
+                thinkingConfig = ThinkingConfig(false),
+            ))
+            val sb = StringBuilder()
             try {
-                session.addQueryChunk(prompt)
-                val sb = StringBuilder()
-                suspendCancellableCoroutine { cont ->
-                    val future = session.generateResponseAsync { partial, done ->
-                        sb.append(partial)
-                        onPartial(sb.toString())
-                        // Stop early once a tool call closes or the turn ends – saves time on-device.
-                        val t = sb.toString()
-                        if (!done && (t.contains("</tool_call>") || t.contains("<|im_end|>"))) runCatching { session.cancelGenerateResponseAsync() }
-                        if (done && cont.isActive) cont.resume(sb.toString())
-                    }
-                    future.addListener({
-                        if (cont.isActive) runCatching { future.get() }.fold({ cont.resume(sb.toString()) }, { e ->
-                            if (sb.isNotEmpty()) cont.resume(sb.toString()) else cont.resumeWithException(e)
-                        })
-                    }, Runnable::run)
-                    cont.invokeOnCancellation { runCatching { session.cancelGenerateResponseAsync() } }
+                conv.sendMessageAsync(last.text).collect { msg ->
+                    msg.contents.contents.filterIsInstance<Content.Text>().forEach { sb.append(it.text) }
+                    if (com.sridhar.harbor.BuildConfig.DEBUG) android.util.Log.v("LocalLlm", "chunk → ${sb.length} chars")
+                    val visible = clean(sb.toString(), m)
+                    if (visible.isNotEmpty()) onPartial(visible)
+                    // Stop early once a tool call closes – saves time on-device.
+                    if (sb.contains("</tool_call>")) runCatching { conv.cancelProcess() }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                runCatching { conv.cancelProcess() }; throw e
+            } catch (e: Exception) {
+                if (sb.isEmpty()) throw e   // partial output after a cancel is still a usable answer
             } finally {
-                runCatching { session.close() }
+                runCatching { conv.close() }
             }
-        }.substringBefore("<|im_end|>").trim()
+            clean(sb.toString(), m)
+        }
+    }
+
+    /** Drop reasoning blocks and stray end-of-turn markers. */
+    private fun clean(text: String, m: LlmModel): String {
+        var t = text.replace(Regex("<think>.*?</think>", RegexOption.DOT_MATCHES_ALL), "")
+        if (m.thinks || t.contains("<think>")) t = when {
+            t.contains("</think>") -> t.substringAfter("</think>")
+            t.contains("<think>") -> ""
+            else -> t
+        }
+        return t.substringBefore("<|im_end|>").substringBefore("<end_of_turn>").trim()
     }
 }

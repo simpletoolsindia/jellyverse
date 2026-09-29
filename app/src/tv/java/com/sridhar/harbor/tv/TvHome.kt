@@ -1,5 +1,6 @@
 package com.sridhar.harbor.tv
 
+import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.animation.core.Spring
@@ -127,6 +128,8 @@ fun TvHome(onOpen: (String) -> Unit) {
     val watchFocus = remember { FocusRequester() }
     val look = com.sridhar.harbor.ui.theme.Looks.look
     val billboard = look.home == com.sridhar.harbor.ui.theme.HomeStyle.Billboard
+    val recs by container.reco.recs.collectAsState()
+    LaunchedEffect(vm.resume) { container.reco.refresh() }
 
     LaunchedEffect(vm.hero) { if (vm.hero.isNotEmpty() && display == null) { display = vm.hero.first(); runCatching { delay(150); watchFocus.requestFocus() } } }
     // Spotlight auto-rotates while the hero buttons have focus.
@@ -199,6 +202,11 @@ fun TvHome(onOpen: (String) -> Unit) {
                             onFocus = { display = it2 }, onMenu = { removing = it2 }) { PlayerActivity.start(ctx, it2.id) }
                     }
                 }
+                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou) && recs.forYou.isNotEmpty()) item(key = "foryou") {
+                    TvRow(stringResource(R.string.reco_for_you), recs.forYou, key = { it.item.id }) { p ->
+                        PosterTile(p.item.name, jf.posterUrl(cfg, p.item, 300), onFocus = { display = p.item }) { onOpen(p.item.id) }
+                    }
+                }
                 if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Top10) && vm.top10.isNotEmpty()) item(key = "top10") {
                     TvTop10Row(vm.top10, onFocus = { display = it }) { onOpen(it.seriesId ?: it.id) }
                 }
@@ -210,6 +218,13 @@ fun TvHome(onOpen: (String) -> Unit) {
                 }
                 if (vm.picks.size >= 6) item(key = "picks") {
                     TvGlideRow(stringResource(R.string.marquee_discover), vm.picks, onFocus = { display = it }) { onOpen(it.seriesId ?: it.id) }
+                }
+                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou)) recs.because.forEach { row ->
+                    item(key = "because-${row.seed.id}") {
+                        TvRow(stringResource(R.string.reco_because, row.seed.name), row.picks, key = { it.item.id }) { p ->
+                            PosterTile(p.item.name, jf.posterUrl(cfg, p.item, 300), onFocus = { display = p.item }) { onOpen(p.item.id) }
+                        }
+                    }
                 }
                 if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Latest)) vm.shelves.forEach { shelf ->
                     item(key = "shelf-${shelf.view.id}") {

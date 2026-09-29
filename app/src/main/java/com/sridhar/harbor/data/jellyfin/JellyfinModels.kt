@@ -36,6 +36,8 @@ data class UserData(
     @SerialName("Played") val played: Boolean = false,
     @SerialName("IsFavorite") val isFavorite: Boolean = false,
     @SerialName("UnplayedItemCount") val unplayedCount: Int? = null,
+    @SerialName("PlayCount") val playCount: Int = 0,
+    @SerialName("LastPlayedDate") val lastPlayedDate: String? = null,
 )
 
 @Serializable
@@ -61,6 +63,9 @@ data class MediaSource(
     @SerialName("Bitrate") val bitrate: Long? = null,
     @SerialName("MediaStreams") val streams: List<MediaStream> = emptyList(),
 )
+
+@Serializable
+data class NameRef(@SerialName("Name") val name: String = "")
 
 @Serializable
 data class Person(
@@ -103,6 +108,8 @@ data class BaseItem(
     @SerialName("CommunityRating") val communityRating: Double? = null,
     @SerialName("RunTimeTicks") val runTimeTicks: Long? = null,
     @SerialName("Genres") val genres: List<String> = emptyList(),
+    @SerialName("Tags") val tags: List<String> = emptyList(),
+    @SerialName("Studios") val studios: List<NameRef> = emptyList(),
     @SerialName("Taglines") val taglines: List<String> = emptyList(),
     @SerialName("SeriesId") val seriesId: String? = null,
     @SerialName("SeriesName") val seriesName: String? = null,

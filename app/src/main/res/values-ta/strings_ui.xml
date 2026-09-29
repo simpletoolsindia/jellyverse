@@ -642,7 +642,7 @@
     <string name="key_for_1_s_revoked">%1$s-க்கான சாவி ரத்துசெய்யப்பட்டது</string>
     <string name="started_1_s">%1$s தொடங்கப்பட்டது</string>
     <string name="s_1_s_created">%1$s உருவாக்கப்பட்டது</string>
-    <string name="qwen_0_5b_on_device_1">Qwen 0.5B · சாதனத்திலேயே · %1$s கருவிகள்</string>
+    <string name="qwen_0_5b_on_device_1">%1$s · சாதனத்தில் · %2$s கருவிகள்</string>
     <string name="loading_model">மாடலை ஏற்றுகிறது…</string>
     <string name="applied_1_s_matches_jellyfin_is">%1$s பொருத்தங்கள் பயன்படுத்தப்பட்டன – Jellyfin போஸ்டர்களைப் பதிவிறக்குகிறது</string>
     <string name="saved_as_a_qwen_example_for">எதிர்கால ஸ்கேன்களுக்கு Qwen எடுத்துக்காட்டாகச் சேமிக்கப்பட்டது</string>
@@ -1067,4 +1067,21 @@
     <string name="search_seerr_tv_hint">Jellyseerr-இலிருந்து – கோர OK அழுத்தவும்</string>
     <string name="tab_more">மேலும்</string>
     <string name="more_ai_hint">எதையும் கேளுங்கள் – இயக்கு, தேடு, கோரு, சர்வரைச் சரிபார்</string>
+    <string name="ai_model_missing">இந்தச் சாதனத்திலேயே இயங்கும் · %1$s பதிவிறக்கம்</string>
+    <string name="ai_change_model">மாடலை மாற்று</string>
+    <string name="ai_needs_ram">சுமார் %1$d GB RAM தேவை</string>
+    <string name="ai_models_title">AI மாடல்கள்</string>
+    <string name="ai_models_sub">இந்தச் சாதனத்திலேயே இயங்கும் · %1$d GB RAM</string>
+    <string name="ai_models_search">மாடல், நிறுவனம், அளவு தேடு</string>
+    <string name="ai_filter_all">அனைத்தும்</string>
+    <string name="ai_filter_fits">இந்தப் போனில் பொருந்தும்</string>
+    <string name="ai_filter_installed">பதிவிறக்கியவை</string>
+    <string name="ai_get">பெறு</string>
+    <string name="ai_use">பயன்படுத்து</string>
+    <string name="ai_active">செயலில்</string>
+    <string name="ai_tight_fit">நெருக்கமாகப் பொருந்தும். இது இயங்கும்போது மற்ற ஆப்கள் மூடப்படலாம்.</string>
+    <string name="ai_too_big">இந்தப் போனை விட அதிக நினைவகம் தேவை – ஏறாமல் போகலாம்.</string>
+    <string name="ai_models_footer">மாடல்கள் Hugging Face-இல் உள்ள Google litert-community அதிகாரப்பூர்வ LiteRT பதிப்புகள். உங்கள் கேள்விகள் சாதனத்தை விட்டு வெளியேறாது.</string>
+    <string name="reco_for_you">உங்களுக்குப் பரிந்துரை</string>
+    <string name="reco_because">%1$s பார்த்ததால்</string>
 </resources>

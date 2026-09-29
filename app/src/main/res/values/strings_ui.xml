@@ -642,7 +642,7 @@
     <string name="key_for_1_s_revoked">Key for %1$s revoked</string>
     <string name="started_1_s">Started %1$s</string>
     <string name="s_1_s_created">%1$s created</string>
-    <string name="qwen_0_5b_on_device_1">Qwen 0.5B · on-device · %1$s tools</string>
+    <string name="qwen_0_5b_on_device_1">%1$s · on-device · %2$s tools</string>
     <string name="loading_model">Loading model…</string>
     <string name="applied_1_s_matches_jellyfin_is">Applied %1$s matches – Jellyfin is downloading posters</string>
     <string name="saved_as_a_qwen_example_for">Saved as a Qwen example for future scans</string>
@@ -1067,4 +1067,21 @@
     <string name="search_seerr_tv_hint">From Jellyseerr – press OK to request</string>
     <string name="tab_more">More</string>
     <string name="more_ai_hint">Ask anything – play, find, request, check the server</string>
+    <string name="ai_model_missing">Runs 100% on this device · %1$s download</string>
+    <string name="ai_change_model">Change model</string>
+    <string name="ai_needs_ram">Needs about %1$d GB RAM</string>
+    <string name="ai_models_title">AI models</string>
+    <string name="ai_models_sub">Runs fully on this device · %1$d GB RAM</string>
+    <string name="ai_models_search">Search models, makers, sizes</string>
+    <string name="ai_filter_all">All</string>
+    <string name="ai_filter_fits">Fits this phone</string>
+    <string name="ai_filter_installed">Downloaded</string>
+    <string name="ai_get">Get</string>
+    <string name="ai_use">Use</string>
+    <string name="ai_active">Active</string>
+    <string name="ai_tight_fit">A tight fit. Other apps may close while this runs.</string>
+    <string name="ai_too_big">Needs more memory than this phone has – it may not load.</string>
+    <string name="ai_models_footer">Models are official LiteRT builds from Google\'s litert-community on Hugging Face. Prompts never leave your device.</string>
+    <string name="reco_for_you">Recommended for you</string>
+    <string name="reco_because">Because you watched %1$s</string>
 </resources>
