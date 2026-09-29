@@ -1067,7 +1067,7 @@
     <string name="search_seerr_tv_hint">Jellyseerr-இலிருந்து – கோர OK அழுத்தவும்</string>
     <string name="tab_more">மேலும்</string>
     <string name="more_ai_hint">எதையும் கேளுங்கள் – இயக்கு, தேடு, கோரு, சர்வரைச் சரிபார்</string>
-    <string name="ai_model_missing">இந்தச் சாதனத்திலேயே இயங்கும் · %1$s பதிவிறக்கம்</string>
+    <string name="ai_model_missing">இந்தச் சாதனத்திலேயே 100%% இயங்கும் · %1$s பதிவிறக்கம்</string>
     <string name="ai_change_model">மாடலை மாற்று</string>
     <string name="ai_needs_ram">சுமார் %1$d GB RAM தேவை</string>
     <string name="ai_models_title">AI மாடல்கள்</string>

@@ -1,0 +1,1 @@
+JellyVerse 2.10.1: fixes a crash when opening the AI assistant or Settings before an AI model is downloaded.

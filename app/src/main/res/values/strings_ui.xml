@@ -1067,7 +1067,7 @@
     <string name="search_seerr_tv_hint">From Jellyseerr – press OK to request</string>
     <string name="tab_more">More</string>
     <string name="more_ai_hint">Ask anything – play, find, request, check the server</string>
-    <string name="ai_model_missing">Runs 100% on this device · %1$s download</string>
+    <string name="ai_model_missing">Runs 100%% on this device · %1$s download</string>
     <string name="ai_change_model">Change model</string>
     <string name="ai_needs_ram">Needs about %1$d GB RAM</string>
     <string name="ai_models_title">AI models</string>
