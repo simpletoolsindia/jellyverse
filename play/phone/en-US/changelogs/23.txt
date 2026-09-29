@@ -1,0 +1,1 @@
+JellyVerse 2.10.2: the on-device AI no longer answers "Task cancelled" – replies and actions now come through.

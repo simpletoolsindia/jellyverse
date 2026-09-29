@@ -383,6 +383,17 @@ class Assistant(private val c: AppContainer) {
                 c.llm.complete(base) { partial -> if (!partial.trimStart().startsWith("<tool") && !partial.trimStart().startsWith("{")) emit(ChatItem.Bot(partial, true), true) }
             }.getOrElse { e -> emit(ChatItem.Bot("⚠ ${e.message}"), true); return }
             call = parseCall(first)
+            // Small models sometimes invent a tool ("city", "weather"…). Don't show raw <tool_call> text: ask again
+            // as a plain question, without the tool list.
+            if (call == null && (first.contains("<tool_call>") || first.trimStart().startsWith("{"))) {
+                emit(ChatItem.Bot("", streaming = true), true)
+                first = runCatching {
+                    c.llm.complete("<|im_start|>system\nYou are JellyVerse AI, a friendly assistant. Answer in one or two short sentences. " +
+                        "Do not use tools or JSON.<|im_end|>\n<|im_start|>user\n${message.take(300)}<|im_end|>\n<|im_start|>assistant\n", temperature = 0.3f) { partial ->
+                        emit(ChatItem.Bot(partial, true), true)
+                    }
+                }.getOrDefault("").replace(Regex("<tool_call>.*?(</tool_call>|$)", RegexOption.DOT_MATCHES_ALL), "").trim()
+            }
         }
 
         val (tool, args) = call ?: run {

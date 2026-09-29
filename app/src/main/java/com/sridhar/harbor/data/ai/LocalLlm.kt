@@ -1,5 +1,6 @@
 package com.sridhar.harbor.data.ai
 
+import kotlinx.coroutines.isActive
 import android.app.ActivityManager
 import android.app.DownloadManager
 import android.content.Context
@@ -239,6 +240,7 @@ class LocalLlm(private val context: Context) {
                 thinkingConfig = ThinkingConfig(false),
             ))
             val sb = StringBuilder()
+            var stoppedEarly = false   // we cancelled on purpose: the text so far is the answer
             try {
                 conv.sendMessageAsync(last.text).collect { msg ->
                     msg.contents.contents.filterIsInstance<Content.Text>().forEach { sb.append(it.text) }
@@ -246,12 +248,15 @@ class LocalLlm(private val context: Context) {
                     val visible = clean(sb.toString(), m)
                     if (visible.isNotEmpty()) onPartial(visible)
                     // Stop early once a tool call closes – saves time on-device.
-                    if (sb.contains("</tool_call>")) runCatching { conv.cancelProcess() }
+                    if (!stoppedEarly && sb.contains("</tool_call>")) { stoppedEarly = true; runCatching { conv.cancelProcess() } }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
-                runCatching { conv.cancelProcess() }; throw e
+                // LiteRT-LM ends the stream with a CancellationException ("Task cancelled") after cancelProcess();
+                // only a cancellation of *our* caller must propagate.
+                if (!coroutineContext.isActive) { runCatching { conv.cancelProcess() }; throw e }
+                if (!stoppedEarly && sb.isEmpty()) throw IllegalStateException(e.message ?: "Generation stopped")
             } catch (e: Exception) {
-                if (sb.isEmpty()) throw e   // partial output after a cancel is still a usable answer
+                if (sb.isEmpty()) throw e   // partial output after a stop is still a usable answer
             } finally {
                 runCatching { conv.close() }
             }
