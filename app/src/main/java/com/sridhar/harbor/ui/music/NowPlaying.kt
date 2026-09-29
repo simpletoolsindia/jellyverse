@@ -408,7 +408,7 @@ fun SongRow(song: Song, index: Int?, current: Boolean, playing: Boolean, onClick
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (current && showArt) { EqualizerBars(playing, color = Harbor.Sky); Spacer(Modifier.width(6.dp)) }
-                Text(song.displayTitle, color = if (current) Harbor.Sky else Color.White, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(song.displayTitle, color = if (current) Harbor.Sky else Harbor.Fg, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(song.displayArtist, color = Harbor.TextDim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

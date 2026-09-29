@@ -1119,4 +1119,5 @@
     <string name="mu_removed_downloads">Removed from this device</string>
     <string name="downloading_short">Downloading</string>
     <string name="dl_in_progress">Downloading – see the notification for speed</string>
+    <string name="mu_offline_hint">You\'re offline – your downloaded songs still play.</string>
 </resources>

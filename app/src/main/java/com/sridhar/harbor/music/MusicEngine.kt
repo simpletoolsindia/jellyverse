@@ -87,7 +87,8 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
     }
 
     val player: ExoPlayer by lazy {
-        val upstream = OkHttpDataSource.Factory(http)
+        // DefaultDataSource routes file:// (offline downloads) to local storage and http(s) to OkHttp.
+        val upstream = androidx.media3.datasource.DefaultDataSource.Factory(context, OkHttpDataSource.Factory(http))
         val cached = CacheDataSource.Factory().setCache(cache).setUpstreamDataSourceFactory(upstream).setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(DefaultMediaSourceFactory(cached))

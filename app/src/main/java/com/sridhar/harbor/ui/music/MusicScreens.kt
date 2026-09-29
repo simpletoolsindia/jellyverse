@@ -145,7 +145,10 @@ fun MusicHomeScreen(nav: MusicNav) {
             vm.error != null && vm.newest.isEmpty() -> {
                 // Offline: downloaded songs still play.
                 if (offlineSongs.isNotEmpty()) item(key = "downloaded") { DownloadedTile(offlineSongs.size) { nav.downloaded() } }
-                item { MessageState(stringResource(R.string.mu_cant_reach), vm.error, onRetry = { vm.load() }) }
+                item {
+                    val online by com.sridhar.harbor.net.NetworkMonitor.online.collectAsState()
+                    MessageState(stringResource(R.string.mu_cant_reach), if (!online) stringResource(R.string.mu_offline_hint) else vm.error, onRetry = { vm.load() })
+                }
             }
             filter == 2 -> item { PlaylistGrid(vm.playlists, vm.liked.size, nav) }
             filter == 1 -> item { AlbumGrid(vm.newest + vm.frequent, nav) }

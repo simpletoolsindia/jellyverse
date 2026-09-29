@@ -1,0 +1,1 @@
+JellyVerse 2.11.1: downloaded songs now play with no internet; song titles are readable in light mode; clearer offline message in Music.

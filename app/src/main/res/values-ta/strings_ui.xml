@@ -1119,4 +1119,5 @@
     <string name="mu_removed_downloads">இந்தச் சாதனத்திலிருந்து நீக்கப்பட்டது</string>
     <string name="downloading_short">பதிவிறக்கம்</string>
     <string name="dl_in_progress">பதிவிறக்கம் நடக்கிறது – வேகத்தை அறிவிப்பில் பார்க்கவும்</string>
+    <string name="mu_offline_hint">நீங்கள் ஆஃப்லைனில் உள்ளீர்கள் – பதிவிறக்கிய பாடல்கள் இயங்கும்.</string>
 </resources>

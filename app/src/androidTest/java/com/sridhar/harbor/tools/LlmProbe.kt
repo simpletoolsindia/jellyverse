@@ -16,7 +16,7 @@ import org.junit.runner.RunWith
 class LlmProbe {
     @Test fun probe() { runBlocking {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-        val llm = LocalLlm(ctx)
+        val llm = (ctx.applicationContext as com.sridhar.harbor.HarborApp).container.llm
         Log.i("LlmProbe", "model=${llm.model.value.displayName} state=${llm.state.value}")
         val t0 = System.currentTimeMillis()
         var first = 0L
@@ -28,7 +28,7 @@ class LlmProbe {
     /** Same shape as the assistant: a long system prompt (≈1.5k tokens) before a short question. */
     @Test fun probeLong() { runBlocking {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-        val llm = LocalLlm(ctx)
+        val llm = (ctx.applicationContext as com.sridhar.harbor.HarborApp).container.llm
         val tools = (1..32).joinToString("\n") { "- tool_$it(query: string): looks up item $it in the user's media library and returns names and years" }
         val t0 = System.currentTimeMillis()
         var first = 0L
