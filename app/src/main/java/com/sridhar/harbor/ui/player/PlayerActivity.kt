@@ -42,6 +42,17 @@ class PlayerActivity : ComponentActivity() {
         session = androidx.media3.session.MediaSession.Builder(this, vm.player).setId("harbor-${System.nanoTime()}").build()
         // Hardware volume keys adjust media volume while the player is open (phones and TV remotes).
         volumeControlStream = android.media.AudioManager.STREAM_MUSIC
+        // Screen stays on while a video plays or buffers (window-level, so it survives surface rebuilds, the
+        // loading screen and channel changes); when paused it may time out as usual. Also blocks the TV screensaver.
+        fun keepOn(on: Boolean) = if (on) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        keepOn(true)
+        vm.player.addListener(object : androidx.media3.common.Player.Listener {
+            override fun onEvents(player: androidx.media3.common.Player, events: androidx.media3.common.Player.Events) {
+                keepOn(player.playWhenReady && player.playbackState != androidx.media3.common.Player.STATE_ENDED &&
+                    player.playbackState != androidx.media3.common.Player.STATE_IDLE)
+            }
+        })
         setContent {
             com.sridhar.harbor.ui.theme.ForceDark { HarborTheme {
                 com.sridhar.harbor.ui.components.ProvideContainer((application as com.sridhar.harbor.HarborApp).container) {

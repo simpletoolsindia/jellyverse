@@ -1,5 +1,7 @@
 package com.sridhar.harbor.data.ai
 
+import kotlinx.coroutines.launch
+import com.sridhar.harbor.data.download.DlStatus
 import kotlinx.coroutines.isActive
 import android.app.ActivityManager
 import android.app.DownloadManager
@@ -106,8 +108,8 @@ sealed interface ModelState {
  * (`<|im_start|>role … <|im_end|>`); they are turned into structured messages here and rendered with the model's
  * own template, so the same prompts work for Qwen, Gemma, Phi and the rest.
  */
-class LocalLlm(private val context: Context) {
-    private val dm = context.getSystemService(DownloadManager::class.java)
+class LocalLlm(private val context: Context, private val downloader: com.sridhar.harbor.data.download.SegmentedDownloader) {
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.Default)
     private val dir = File(context.getExternalFilesDir(null), "models").apply { mkdirs() }
     private val prefs = context.getSharedPreferences("harbor_ai", Context.MODE_PRIVATE)
 
@@ -137,53 +139,71 @@ class LocalLlm(private val context: Context) {
     init {
         // 2.9 and earlier used a MediaPipe .task file that LiteRT-LM can't load – free the space.
         File(dir, "Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task").delete()
-        if (prefs.getLong("download_id", -1) >= 0) refreshDownload()
+        prefs.edit().remove("download_id").apply()
+        // The current model's state follows its download (progress, done, failed).
+        scope.launch {
+            downloader.state.collect { all ->
+                val m = _model.value
+                all[key(m)]?.let { st ->
+                    _state.value = when (st.status) {
+                        DlStatus.Queued, DlStatus.Running -> ModelState.Downloading(st.fraction)
+                        DlStatus.Done -> ModelState.Ready
+                        DlStatus.Failed -> ModelState.Failed("Download failed – check your connection")
+                        DlStatus.Cancelled -> if (onDisk(m)) ModelState.Ready else ModelState.Missing
+                    }
+                }
+            }
+        }
     }
+
+    private fun key(m: LlmModel) = "llm:${m.id}"
+
+    /** Download progress of every model being fetched (several can download at once). */
+    val progress: StateFlow<Map<String, com.sridhar.harbor.data.download.DlState>> get() = downloader.state
+    fun downloadFraction(m: LlmModel): Float? = downloader.state.value[key(m)]?.takeIf { it.status == DlStatus.Running || it.status == DlStatus.Queued }?.fraction
+    fun keyOf(m: LlmModel) = key(m)
 
     /** Switch models. A downloaded one is ready at once; others show the Download button. */
     fun select(m: LlmModel) {
         if (m == _model.value) return
-        if (_state.value is ModelState.Downloading) prefs.getLong("download_id", -1).takeIf { it >= 0 }?.let { dm.remove(it) }
-        prefs.edit().putString("model", m.id).remove("download_id").apply()
+        prefs.edit().putString("model", m.id).apply()
         engine?.close(); engine = null
         _model.value = m
-        _state.value = if (onDisk(m)) ModelState.Ready else ModelState.Missing
-    }
-
-    fun startDownload() {
-        if (_state.value is ModelState.Downloading) return
-        val m = _model.value
-        fileOf(m).delete()
-        val id = dm.enqueue(DownloadManager.Request(Uri.parse(m.url))
-            .setTitle("JellyVerse AI model")
-            .setDescription(m.displayName)
-            .setDestinationUri(Uri.fromFile(fileOf(m)))
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED))
-        prefs.edit().putLong("download_id", id).apply()
-        _state.value = ModelState.Downloading(0f)
-    }
-
-    /** Poll DownloadManager; call periodically from UI while downloading. */
-    fun refreshDownload() {
-        val id = prefs.getLong("download_id", -1)
-        if (id < 0) return
-        dm.query(DownloadManager.Query().setFilterById(id)).use { c ->
-            if (c == null || !c.moveToFirst()) return
-            val status = c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-            val done = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-            val total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)).takeIf { it > 0 } ?: _model.value.sizeBytes
-            _state.value = when (status) {
-                DownloadManager.STATUS_SUCCESSFUL -> { prefs.edit().remove("download_id").apply(); _downloaded.value = _downloaded.value + _model.value; ModelState.Ready }
-                DownloadManager.STATUS_FAILED -> { prefs.edit().remove("download_id").apply(); ModelState.Failed("Download failed – check your connection") }
-                else -> ModelState.Downloading(done.toFloat() / total)
-            }
+        _state.value = when {
+            onDisk(m) -> ModelState.Ready
+            downloader.isActive(key(m)) -> ModelState.Downloading(downloadFraction(m) ?: 0f)
+            else -> ModelState.Missing
         }
     }
+
+    /** Download the current model. */
+    fun startDownload() = download(_model.value)
+
+    /** Download any model in parallel with others; the first one to finish becomes current if none is usable yet. */
+    fun download(m: LlmModel) {
+        if (downloader.isActive(key(m)) || onDisk(m)) return
+        downloader.enqueue(key(m), m.displayName, m.url, fileOf(m)) { ok ->
+            if (!ok) return@enqueue
+            _downloaded.value = _downloaded.value + m
+            if (!onDisk(_model.value)) select(m)
+            if (m == _model.value) _state.value = ModelState.Ready
+        }
+        if (m == _model.value) _state.value = ModelState.Downloading(0f)
+    }
+
+    fun cancelDownload(m: LlmModel) = downloader.cancel(key(m), fileOf(m))
+
+    /** Resume model downloads interrupted by the app closing. */
+    fun resumeDownloads() = LlmModel.entries.filter { !onDisk(it) && downloader.hasPartial(fileOf(it)) }.forEach(::download)
+
+    /** Kept for callers that poll; progress now arrives through [progress]. */
+    fun refreshDownload() {}
 
     /** Deletes the current model's file (other downloaded models stay). */
     fun delete() = delete(_model.value)
 
     fun delete(m: LlmModel) {
+        downloader.cancel(key(m), fileOf(m))
         if (m == _model.value) { engine?.close(); engine = null; _state.value = ModelState.Missing }
         fileOf(m).delete()
         _downloaded.value = LlmModel.entries.filter(::onDisk).toSet()

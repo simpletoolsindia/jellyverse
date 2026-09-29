@@ -1,5 +1,6 @@
 package com.sridhar.harbor.ui.watch
 
+import androidx.compose.material.icons.rounded.Downloading
 import androidx.compose.runtime.mutableIntStateOf
 import com.sridhar.harbor.L10n
 import com.sridhar.harbor.R
@@ -182,7 +183,7 @@ class ItemDetailViewModel(private val c: AppContainer, private val id: String) :
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit) {
+fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit, onDoctor: (String) -> Unit = {}) {
     val container = LocalContainer.current
     val cfg = rememberConfig()
     val ctx = LocalContext.current
@@ -202,7 +203,10 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit) {
         1 -> com.sridhar.harbor.ui.components.CreatePinDialog(onDismiss = { lockStep = 0 }) { pin -> container.parental.setPin(pin); lockStep = 3 }
         2 -> com.sridhar.harbor.ui.components.PinDialog(stringResource(R.string.pin_enter), null, onDismiss = { lockStep = 0 }) { if (container.parental.verify(it)) { lockStep = 3; null } else wrongPin }
     }
-    val downloadedIds = remember(offline) { offline.map { it.itemId }.toSet() }
+    // Finished downloads vs ones still in progress (the offline index lists both).
+    val dlState by container.downloader.state.collectAsState()
+    val downloadedIds = remember(offline, dlState) { offline.filter { container.offline.progress(it).done }.map { it.itemId }.toSet() }
+    val downloadingIds = remember(offline, dlState) { offline.filter { container.offline.progress(it).let { p -> !p.done } }.map { it.itemId }.toSet() }
     val list = rememberLazyListState()
     val toast: (String) -> Unit = { Toast.makeText(ctx, it, Toast.LENGTH_SHORT).show() }
 
@@ -285,6 +289,8 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit) {
                                 vm.download(vm.episodes.filter { it.id !in downloadedIds }, toast)
                             }
                             item.id in downloadedIds -> ActionIcon(Icons.Rounded.DownloadDone, stringResource(R.string.downloaded), Harbor.Mint) { toast(L10n.s(R.string.already_saved_offline)) }
+                            item.id in downloadingIds -> ActionIcon(Icons.Rounded.Downloading, container.offline.entriesNow().firstOrNull { it.itemId == item.id }
+                                ?.let { "${(container.offline.progress(it).fraction * 100).toInt()}%" } ?: stringResource(R.string.downloading_short), Harbor.Sky) { toast(L10n.s(R.string.dl_in_progress)) }
                             else -> ActionIcon(Icons.Rounded.Download, stringResource(R.string.download)) { vm.download(listOf(item), toast) }
                         }
                     }
@@ -358,6 +364,7 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit) {
             name = item.name,
             onRefresh = { vm.refreshMetadata(toast) },
             onDelete = { vm.deleteFromServer(toast) },
+            onDoctor = if (item.type in setOf("Movie", "Series", "Episode")) ({ onDoctor(item.seriesId ?: item.id) }) else null,
             modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(12.dp),
         )
     }
@@ -365,13 +372,14 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit) {
 }
 
 @Composable
-private fun AdminItemMenu(name: String, onRefresh: () -> Unit, onDelete: () -> Unit, modifier: Modifier) {
+private fun AdminItemMenu(name: String, onRefresh: () -> Unit, onDelete: () -> Unit, onDoctor: (() -> Unit)?, modifier: Modifier) {
     var open by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf(false) }
     Box(modifier) {
         IconButton({ open = true }, Modifier.glass(RoundedCornerShape(50)).testTag("item_admin_menu")) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.admin_actions), tint = Harbor.Fg) }
         androidx.compose.material3.DropdownMenu(open, { open = false }) {
             androidx.compose.material3.DropdownMenuItem({ Text(stringResource(R.string.refresh_metadata)) }, { open = false; onRefresh() })
+            if (onDoctor != null) androidx.compose.material3.DropdownMenuItem({ Text(stringResource(R.string.doctor_fix_this)) }, { open = false; onDoctor() })
             androidx.compose.material3.DropdownMenuItem({ Text(stringResource(R.string.delete_from_server), color = Harbor.Rose) }, { open = false; confirm = true })
         }
     }

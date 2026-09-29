@@ -46,6 +46,8 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         locked.value = lockPrefs.enabled
         handleIntent(intent)
+        // Unfinished parallel downloads (films, songs, AI models) continue where they stopped.
+        lifecycleScope.launch(CrashGuard) { runCatching { container.offline.resume() }; runCatching { container.llm.resumeDownloads() }; runCatching { container.offlineMusic.resume() } }
         setContent {
             HarborTheme {
                 ProvideContainer(container) {

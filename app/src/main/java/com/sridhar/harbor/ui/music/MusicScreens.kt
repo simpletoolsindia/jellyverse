@@ -1,5 +1,7 @@
 package com.sridhar.harbor.ui.music
 
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -100,6 +102,7 @@ class MusicNav(
     val album: (String) -> Unit,
     val playlist: (String) -> Unit,
     val liked: () -> Unit,
+    val downloaded: () -> Unit = {},
     val artist: (List<String>, String) -> Unit,
     val search: () -> Unit,
     val library: () -> Unit,
@@ -110,6 +113,7 @@ class MusicNav(
 
 @Composable
 fun MusicHomeScreen(nav: MusicNav) {
+    val offlineSongs by LocalContainer.current.offlineMusic.songs.collectAsState()
     val c = LocalContainer.current
     val cfg = rememberConfig()
     val vm = viewModel { MusicHomeViewModel(c) }
@@ -138,7 +142,11 @@ fun MusicHomeScreen(nav: MusicNav) {
         }
         when {
             vm.loading && vm.recent.isEmpty() && vm.newest.isEmpty() -> item { Box(Modifier.fillMaxWidth().padding(64.dp), Alignment.Center) { com.sridhar.harbor.ui.components.JellyLoader() } }
-            vm.error != null && vm.newest.isEmpty() -> item { MessageState(stringResource(R.string.mu_cant_reach), vm.error, onRetry = { vm.load() }) }
+            vm.error != null && vm.newest.isEmpty() -> {
+                // Offline: downloaded songs still play.
+                if (offlineSongs.isNotEmpty()) item(key = "downloaded") { DownloadedTile(offlineSongs.size) { nav.downloaded() } }
+                item { MessageState(stringResource(R.string.mu_cant_reach), vm.error, onRetry = { vm.load() }) }
+            }
             filter == 2 -> item { PlaylistGrid(vm.playlists, vm.liked.size, nav) }
             filter == 1 -> item { AlbumGrid(vm.newest + vm.frequent, nav) }
             else -> {
@@ -149,6 +157,7 @@ fun MusicHomeScreen(nav: MusicNav) {
                     }
                 }
                 item(key = "radio") { RadioShelf() }
+                if (offlineSongs.isNotEmpty()) item(key = "downloaded") { DownloadedTile(offlineSongs.size) { nav.downloaded() } }
                 if (vm.recent.isNotEmpty()) item { AlbumShelf(stringResource(R.string.mu_jump_back_in), vm.recent, nav) }
                 if (vm.newest.isNotEmpty()) item { AlbumShelf(stringResource(R.string.mu_new_releases), vm.newest, nav) }
                 if (vm.artists.isNotEmpty()) item {
@@ -341,6 +350,19 @@ fun CollectionScreen(kind: String, id: String, nav: MusicNav) {
                     Text(vm.subtitle, color = Harbor.TextDim, fontSize = 13.sp, modifier = Modifier.clickable { vm.artistId?.let { nav.artist(listOf(it), vm.subtitle.substringBefore(" •")) } })
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton({ vm.addAllToQueue() }) { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, stringResource(R.string.mu_add_to_queue), tint = Harbor.TextDim) }
+                        // Offline: download the whole album / playlist; tick when every song is on the device.
+                        val offlineSongs by c.offlineMusic.songs.collectAsState()
+                        val dlProgress by c.offlineMusic.progress.collectAsState()
+                        val saved = vm.songs.count { s -> offlineSongs.any { it.id == s.id } && c.offlineMusic.isDownloaded(s.id) }
+                        val busy = vm.songs.any { c.offlineMusic.progressOf(it.id) != null }
+                        @Suppress("UNUSED_EXPRESSION") dlProgress
+                        if (vm.songs.isNotEmpty()) when {
+                            busy -> Box(Modifier.size(48.dp), Alignment.Center) {
+                                androidx.compose.material3.CircularProgressIndicator(progress = { saved.toFloat() / vm.songs.size }, modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = Harbor.Sky)
+                            }
+                            saved == vm.songs.size -> IconButton({ vm.removeDownloads() }) { Icon(Icons.Rounded.DownloadDone, stringResource(R.string.mu_remove_downloads), tint = Harbor.Mint) }
+                            else -> IconButton({ vm.download() }) { Icon(Icons.Rounded.Download, stringResource(R.string.mu_download_all), tint = Harbor.TextDim) }
+                        }
                         Spacer(Modifier.weight(1f))
                         IconButton({ vm.play(shuffle = true) }) { Icon(Icons.Rounded.Shuffle, stringResource(R.string.mu_shuffle), tint = if (playingHere && s.shuffle) Harbor.Sky else Harbor.TextDim, modifier = Modifier.size(28.dp)) }
                         Spacer(Modifier.width(8.dp))
@@ -546,5 +568,23 @@ fun NavidromeSignIn(onDone: () -> Unit, modifier: Modifier = Modifier) {
         Spacer(Modifier.height(16.dp))
         GradientButton(if (busy) stringResource(R.string.signing_in) else stringResource(R.string.connect), { submit() }, Modifier.fillMaxWidth().testTag("nd_connect"), enabled = !busy && url.isNotBlank() && user.isNotBlank() && pass.isNotBlank())
         Text(stringResource(R.string.mu_token_note), color = Harbor.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
+    }
+}
+
+
+/** "Downloaded · 42 songs" – opens the offline collection (plays with no network). */
+@Composable
+private fun DownloadedTile(count: Int, onClick: () -> Unit) {
+    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp))
+        .background(Brush.horizontalGradient(listOf(Harbor.Mint.copy(alpha = .22f), Harbor.Surface))).clickable(onClick = onClick).padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(Harbor.Mint), Alignment.Center) {
+            Icon(Icons.Rounded.DownloadDone, null, tint = Color.White)
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.mu_downloaded), fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.mu_downloaded_hint, count), color = Harbor.TextDim, fontSize = 13.sp)
+        }
     }
 }

@@ -35,10 +35,12 @@ data class OfflineEntry(
     val seriesId: String? = null,
 )
 
-data class OfflineProgress(val status: Int, val downloaded: Long, val total: Long) {
+data class OfflineProgress(val status: Int, val downloaded: Long, val total: Long, val bytesPerSec: Long = 0) {
     val fraction get() = if (total > 0) downloaded.toFloat() / total else 0f
     val done get() = status == DownloadManager.STATUS_SUCCESSFUL
     val failed get() = status == DownloadManager.STATUS_FAILED
+    /** Interrupted (app closed / network lost): resumes from where it stopped. */
+    val paused get() = status == DownloadManager.STATUS_PAUSED
 }
 
 /** Downloads original media files from Jellyfin for offline playback via the system DownloadManager. */
@@ -46,15 +48,21 @@ class OfflineRepository(
     private val context: Context,
     private val settings: SettingsStore,
     private val jellyfin: JellyfinRepository,
+    private val downloader: com.sridhar.harbor.data.download.SegmentedDownloader,
 ) {
+    private fun key(itemId: String) = "media:$itemId"
     private val dm = context.getSystemService(DownloadManager::class.java)
     private val serializer = ListSerializer(OfflineEntry.serializer())
 
     val entries: Flow<List<OfflineEntry>> = settings.offlineIndex.map { raw ->
-        if (raw.isBlank()) emptyList() else runCatching { HarborJson.decodeFromString(serializer, raw) }.getOrDefault(emptyList())
+        (if (raw.isBlank()) emptyList() else runCatching { HarborJson.decodeFromString(serializer, raw) }.getOrDefault(emptyList())).also { cached = it }
     }
 
     private suspend fun save(list: List<OfflineEntry>) = settings.setOfflineIndex(HarborJson.encodeToString(serializer, list))
+
+    /** Synchronous snapshot for UI that already observes [entries]. */
+    fun entriesNow(): List<OfflineEntry> = cached
+    @Volatile private var cached: List<OfflineEntry> = emptyList()
 
     suspend fun isDownloaded(itemId: String) = entries.first().any { it.itemId == itemId }
     suspend fun entry(itemId: String) = entries.first().firstOrNull { it.itemId == itemId }
@@ -75,14 +83,9 @@ class OfflineRepository(
         }
 
         val title = listOfNotNull(item.seriesName, item.episodeLabel, item.name).joinToString(" · ")
-        val request = DownloadManager.Request(Uri.parse(jellyfin.downloadUrl(cfg, item.id)))
-            .addRequestHeader("Authorization", jellyfin.authHeader(cfg))
-            .setTitle(title)
-            .setDescription("JellyVerse offline download")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            .setDestinationUri(Uri.fromFile(file))
-            .setAllowedOverMetered(true)
-        val id = dm.enqueue(request)
+        // Multi-part parallel download (see SegmentedDownloader); downloadId -2 marks the new engine.
+        downloader.enqueue(key(item.id), title, jellyfin.downloadUrl(cfg, item.id), file, mapOf("Authorization" to jellyfin.authHeader(cfg)))
+        val id = -2L
 
         val entry = OfflineEntry(
             itemId = item.id, name = item.name,
@@ -96,6 +99,23 @@ class OfflineRepository(
     }
 
     fun progress(entry: OfflineEntry): OfflineProgress {
+        if (entry.downloadId < 0) {
+            downloader.state.value[key(entry.itemId)]?.let { st ->
+                val status = when (st.status) {
+                    com.sridhar.harbor.data.download.DlStatus.Queued -> DownloadManager.STATUS_PENDING
+                    com.sridhar.harbor.data.download.DlStatus.Running -> DownloadManager.STATUS_RUNNING
+                    com.sridhar.harbor.data.download.DlStatus.Done -> DownloadManager.STATUS_SUCCESSFUL
+                    else -> DownloadManager.STATUS_FAILED
+                }
+                return OfflineProgress(status, st.downloaded, st.total, st.bytesPerSec)
+            }
+            val f = File(entry.filePath)
+            return when {
+                downloader.hasPartial(f) -> OfflineProgress(DownloadManager.STATUS_PAUSED, File(f.path + ".part").length().coerceAtLeast(0), 0)
+                f.exists() -> OfflineProgress(DownloadManager.STATUS_SUCCESSFUL, f.length(), f.length())
+                else -> OfflineProgress(DownloadManager.STATUS_FAILED, 0, 0)
+            }
+        }
         dm.query(DownloadManager.Query().setFilterById(entry.downloadId)).use { c ->
             if (c != null && c.moveToFirst()) {
                 return OfflineProgress(
@@ -111,8 +131,18 @@ class OfflineRepository(
         else OfflineProgress(DownloadManager.STATUS_FAILED, 0, 0)
     }
 
+    /** Continue unfinished parallel downloads (called at app start and from the Retry button). */
+    suspend fun resume(entry: OfflineEntry? = null) = withContext(Dispatchers.IO) {
+        val cfg = settings.current()
+        (entry?.let { listOf(it) } ?: entries.first()).filter { it.downloadId < 0 && !File(it.filePath).exists() }.forEach { e ->
+            downloader.enqueue(key(e.itemId), listOfNotNull(e.name, e.subtitle).joinToString(" · "), jellyfin.downloadUrl(cfg, e.itemId),
+                File(e.filePath), mapOf("Authorization" to jellyfin.authHeader(cfg)))
+        }
+    }
+
     suspend fun remove(entry: OfflineEntry) = withContext(Dispatchers.IO) {
-        runCatching { dm.remove(entry.downloadId) }
+        if (entry.downloadId < 0) downloader.cancel(key(entry.itemId), File(entry.filePath))
+        else runCatching { dm.remove(entry.downloadId) }
         File(entry.filePath).delete()
         entry.posterPath?.let { File(it).delete() }
         save(entries.first().filterNot { it.itemId == entry.itemId })

@@ -1,5 +1,9 @@
 package com.sridhar.harbor.ui.ai
 
+import androidx.compose.ui.text.withStyle
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.horizontalScroll
 import com.sridhar.harbor.L10n
 import com.sridhar.harbor.R
 import androidx.compose.ui.res.stringResource
@@ -85,22 +89,29 @@ import com.sridhar.harbor.ui.theme.Harbor
 import kotlinx.coroutines.launch
 
 class AssistantViewModel(private val c: AppContainer) : ViewModel() {
-    val items = mutableStateListOf<ChatItem>()
+    /** Homelab (tools) and general Chat keep separate conversations. */
+    var chatMode by mutableStateOf(false)
+    private val homeItems = mutableStateListOf<ChatItem>()
+    private val chatItems = mutableStateListOf<ChatItem>()
+    val items get() = if (chatMode) chatItems else homeItems
     var busy by mutableStateOf(false); private set
     var nav by mutableStateOf<AiNav?>(null)
 
     fun send(text: String) {
         if (text.isBlank() || busy) return
+        val items = items   // the conversation this message belongs to, even if the mode flips mid-reply
+        val chat = chatMode
         val history = items.toList()
         items += ChatItem.User(text.trim())
         busy = true
         viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
             runCatching {
-                c.assistant.ask(text.trim(), history) { item, replace ->
+                val onItem: (ChatItem, Boolean) -> Unit = { item, replace ->
                     if (replace && items.isNotEmpty() && (items.last() is ChatItem.Bot || items.last() is ChatItem.ToolUse && item is ChatItem.ToolUse)) items[items.lastIndex] = item
                     else if (replace && items.isNotEmpty() && items.last() is ChatItem.Bot && (items.last() as ChatItem.Bot).text.isEmpty()) items[items.lastIndex] = item
                     else items += item
                 }
+                if (chat) c.assistant.chat(text.trim(), history, onItem) else c.assistant.ask(text.trim(), history, onItem)
             }.onFailure { items += ChatItem.Bot("⚠ ${it.message}") }
             // Drop empty streaming placeholders.
             items.removeAll { it is ChatItem.Bot && it.text.isBlank() }
@@ -135,6 +146,11 @@ class AssistantViewModel(private val c: AppContainer) : ViewModel() {
     }
 }
 
+private val chatSuggestions = listOf(
+    "Solve 3x + 7 = 22", "Explain recursion simply", "Write a Kotlin function to reverse a string", "What is 15% of 240?",
+    "Summarise the theory of relativity", "Fix this SQL: SELEC * FROM users", "Give me a 3-day workout plan",
+)
+
 private val suggestions = listOf(
     "What's downloading?", "Server health", "Fix wrong posters", "Suggest a thriller", "Continue watching",
     "Limit downloads to 5 MB/s", "What's missing?", "Coming this week", "Turtle mode on", "Pause all",
@@ -167,14 +183,24 @@ fun AssistantScreen(onBack: () -> Unit, onNav: (AiNav) -> Unit) {
                     else -> stringResource(R.string.command_mode_download_model_for_full) }, fontSize = 11.sp, color = Harbor.TextDim)
             }
         }
+        // Homelab = actions on your server and library (tools); Chat = anything else (code, maths, writing…).
+        Row(Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(40.dp).clip(RoundedCornerShape(20.dp)).background(Harbor.Surface).padding(4.dp)) {
+            listOf(false to stringResource(R.string.ai_mode_homelab), true to stringResource(R.string.ai_mode_chat)).forEach { (chat, label) ->
+                val on = vm.chatMode == chat
+                Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(if (on) Harbor.Violet else Color.Transparent)
+                    .clickable(enabled = !vm.busy) { vm.chatMode = chat }, contentAlignment = Alignment.Center) {
+                    Text(label, color = if (on) Color.White else Harbor.TextDim, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                }
+            }
+        }
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), list, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (state !is ModelState.Loaded && state !is ModelState.Ready) item { ModelCard() }
             if (vm.items.isEmpty()) item {
                 Column(Modifier.fillMaxWidth().padding(top = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     AiOrb(96.dp)
                     Spacer(Modifier.padding(8.dp))
-                    Text(stringResource(R.string.ask_about_your_homelab), style = MaterialTheme.typography.titleLarge)
-                    Text(stringResource(R.string.search_play_request_manage_downloads_check),
+                    Text(stringResource(if (vm.chatMode) R.string.ai_chat_title else R.string.ask_about_your_homelab), style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(if (vm.chatMode) R.string.ai_chat_hint else R.string.search_play_request_manage_downloads_check),
                         color = Harbor.TextDim, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
                 }
             }
@@ -182,7 +208,7 @@ fun AssistantScreen(onBack: () -> Unit, onNav: (AiNav) -> Unit) {
             if (vm.busy && (vm.items.lastOrNull() as? ChatItem.Bot)?.streaming != true) item { TypingDots() }
         }
         LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(suggestions) { s ->
+            items(if (vm.chatMode) chatSuggestions else suggestions) { s ->
                 Text(s, fontSize = 12.sp, color = Harbor.VioletSoft, modifier = Modifier.clip(RoundedCornerShape(50)).background(Harbor.Violet.copy(.14f))
                     .border(1.dp, Harbor.Violet.copy(.3f), RoundedCornerShape(50)).clickable(enabled = !vm.busy) { vm.send(s) }.padding(horizontal = 12.dp, vertical = 7.dp))
             }
@@ -209,8 +235,10 @@ private fun ChatRow(item: ChatItem, modifier: Modifier, onNav: (AiNav) -> Unit, 
         }
         is ChatItem.Bot -> Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             AiOrb(26.dp, busy = item.streaming); Spacer(Modifier.width(8.dp))
-            Text(item.text + if (item.streaming) " ▍" else "", color = Harbor.Fg.copy(.92f), modifier = Modifier.widthIn(max = 300.dp)
-                .clip(RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp)).background(Harbor.Surface).padding(horizontal = 14.dp, vertical = 10.dp))
+            Column(Modifier.widthIn(max = 320.dp).clip(RoundedCornerShape(6.dp, 20.dp, 20.dp, 20.dp)).background(Harbor.Surface)
+                .padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                RichReply(item.text + if (item.streaming) " ▍" else "")
+            }
         }
         is ChatItem.ToolUse -> {
             var open by remember { mutableStateOf(false) }
@@ -258,6 +286,36 @@ private fun TypingDots() {
         repeat(3) { i ->
             val a by t.animateFloat(0.25f, 1f, infiniteRepeatable(tween(600, delayMillis = i * 150), RepeatMode.Reverse), label = "d$i")
             Box(Modifier.size(7.dp).graphicsLayer { alpha = a; translationY = (1f - a) * 4f }.clip(CircleShape).background(Harbor.VioletSoft))
+        }
+    }
+}
+
+
+/** Minimal Markdown for replies: ```code``` blocks (monospace, scrollable, Copy) and **bold**. */
+@Composable
+private fun RichReply(text: String) {
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    text.split("```").forEachIndexed { i, part ->
+        if (i % 2 == 1) {
+            val lang = part.substringBefore('\n').trim().takeIf { it.length in 1..15 && !it.contains(' ') }
+            val code = (if (lang != null) part.substringAfter('\n') else part).trimEnd()
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Harbor.Ink)) {
+                Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(lang ?: "code", color = Harbor.TextDim, fontSize = 11.sp, modifier = Modifier.weight(1f))
+                    androidx.compose.material3.TextButton({ clipboard.setText(androidx.compose.ui.text.AnnotatedString(code)) }) {
+                        Text(stringResource(R.string.ai_copy), fontSize = 12.sp)
+                    }
+                }
+                Text(code, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 12.sp, color = Harbor.Fg,
+                    modifier = Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
+                    softWrap = false)
+            }
+        } else if (part.isNotBlank()) {
+            Text(androidx.compose.ui.text.buildAnnotatedString {
+                part.trim().split("**").forEachIndexed { j, seg ->
+                    if (j % 2 == 1) withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold)) { append(seg) } else append(seg)
+                }
+            }, color = Harbor.Fg.copy(.92f))
         }
     }
 }

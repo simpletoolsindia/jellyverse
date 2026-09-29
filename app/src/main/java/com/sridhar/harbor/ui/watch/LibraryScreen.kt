@@ -1,5 +1,9 @@
 package com.sridhar.harbor.ui.watch
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.rounded.AutoFixHigh
 import kotlinx.coroutines.async
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
@@ -147,11 +151,25 @@ class LibraryViewModel(private val c: AppContainer, private val parentId: String
 }
 
 @Composable
-fun LibraryScreen(id: String, name: String, collectionType: String?, onItem: (String) -> Unit, onBack: () -> Unit) {
+fun LibraryScreen(id: String, name: String, collectionType: String?, onItem: (String) -> Unit, onBack: () -> Unit, onDoctor: (String) -> Unit = {}) {
     val container = LocalContainer.current
     val cfg = rememberConfig()
     val vm = viewModel(key = "lib-$id") { LibraryViewModel(container, id, collectionType) }
     val grid = rememberLazyGridState()
+    // Admins: long-press a poster → run Library Doctor on just that title.
+    val isAdmin by androidx.compose.runtime.produceState(false) { value = runCatching { container.jellyfin.isAdmin() }.getOrDefault(false) }
+    var doctorFor by remember { androidx.compose.runtime.mutableStateOf<com.sridhar.harbor.data.jellyfin.BaseItem?>(null) }
+    doctorFor?.let { target ->
+        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { doctorFor = null }, containerColor = Harbor.Surface) {
+            Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp)) {
+                Text(target.name, style = androidx.compose.material3.MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(12.dp))
+                androidx.compose.material3.OutlinedButton({ doctorFor = null; onDoctor(target.id) }, Modifier.fillMaxWidth()) {
+                    Icon(Icons.Rounded.AutoFixHigh, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.doctor_fix_this))
+                }
+            }
+        }
+    }
     val scroll = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val nearEnd by remember { derivedStateOf { (grid.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) > grid.layoutInfo.totalItemsCount - 12 } }
     LaunchedEffect(nearEnd) { if (nearEnd) vm.loadMore() }
@@ -197,6 +215,7 @@ fun LibraryScreen(id: String, name: String, collectionType: String?, onItem: (St
                     container.jellyfin.posterUrl(cfg, item), item.name, item.year?.toString(), width = 200.dp,
                     progress = item.progress, played = item.userData?.played == true,
                     badge = item.userData?.unplayedCount?.takeIf { it > 0 }?.let { n -> { CountBadge(n) } },
+                    onLongClick = if (isAdmin && item.type in setOf("Movie", "Series")) ({ doctorFor = item }) else null,   // Library Doctor handles films and shows
                 ) { onItem(item.id) } }
             }
             if (vm.loading) item(span = { GridItemSpan(maxLineSpan) }) {

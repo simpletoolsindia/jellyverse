@@ -71,6 +71,14 @@ class LibraryDoctor(
         else DoctorIssue(item, if (TitleCleaner.looksMessy(item.name)) kinds + IssueKind.MessyName else kinds, parsed)
     }.sortedWith(compareBy<DoctorIssue> { IssueKind.WrongMatch !in it.kinds }.thenBy { it.item.name.lowercase() })
 
+    /** One title the user picked (detail menu / grid long-press) – checked even if nothing looks wrong. */
+    suspend fun issueFor(itemId: String): DoctorIssue {
+        val item = jf.libraryItems().firstOrNull { it.id == itemId } ?: error("Title not found in the library")
+        val parsed = TitleCleaner.parse(DoctorRules.sourceName(item))
+        val kinds = DoctorRules.issueKinds(item, parsed)
+        return DoctorIssue(item, if (TitleCleaner.looksMessy(item.name)) kinds + IssueKind.MessyName else kinds, parsed)
+    }
+
     /** Ask Qwen to extract the clean title. Few-shot, JSON-only, temperature ~0. */
     suspend fun aiParse(raw: String): ParsedTitle? {
         if (llm.state.value !is ModelState.Loaded && llm.state.value !is ModelState.Ready) return null

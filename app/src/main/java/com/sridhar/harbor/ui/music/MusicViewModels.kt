@@ -99,6 +99,10 @@ class CollectionViewModel(private val c: AppContainer, val kind: String, val id:
                     title = p.name; cover = p.coverArt; songs = p.songs
                     subtitle = listOfNotNull(p.owner, L10n.s(R.string.mu_songs_count, p.songCount), MusicText.totalDuration(p.duration)).joinToString(" • ")
                 }
+                "downloaded" -> c.offlineMusic.songs.value.let { s ->
+                    title = L10n.s(R.string.mu_downloaded); songs = s; cover = s.firstOrNull()?.coverArt
+                    subtitle = L10n.s(R.string.mu_songs_count, s.size)
+                }
                 else -> c.music.starred().song.let { s ->
                     title = L10n.s(R.string.mu_liked_songs); songs = s; cover = null
                     subtitle = L10n.s(R.string.mu_songs_count, s.size)
@@ -111,6 +115,9 @@ class CollectionViewModel(private val c: AppContainer, val kind: String, val id:
     val source get() = when (kind) { "album" -> L10n.s(R.string.mu_src_album, title); "playlist" -> L10n.s(R.string.mu_src_playlist, title); else -> title }
 
     fun play(index: Int = 0, shuffle: Boolean = false) = c.musicEngine.play(songs, index, shuffle, source)
+
+    fun download() { c.offlineMusic.download(songs); message = L10n.s(R.string.mu_downloading_n, songs.size) }
+    fun removeDownloads() { c.offlineMusic.remove(songs); message = L10n.s(R.string.mu_removed_downloads) }
 
     fun addAllToQueue() { c.musicEngine.addToQueue(songs); message = L10n.s(R.string.mu_added_to_queue, songs.size) }
 }

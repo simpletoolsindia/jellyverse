@@ -131,6 +131,19 @@ class DoctorViewModel(private val c: AppContainer) : ViewModel() {
         }
     }
 
+    /** Library Doctor for a single movie or series. */
+    fun scanOne(itemId: String) {
+        job?.cancel()
+        job = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
+            issues.clear(); phase = "scanning"
+            val issue = runCatching { c.doctor.issueFor(itemId) }.getOrElse { message = it.friendly(); phase = "idle"; return@launch }
+            issues += issue; phase = "identifying"; progress = 0 to 1
+            val ai = useAi && c.llm.state.value.let { it is ModelState.Ready || it is ModelState.Loaded }
+            issues[0] = runCatching { c.doctor.identify(issue, ai) }.getOrElse { issue.copy(error = it.friendly()) }
+            progress = 1 to 1; phase = "done"
+        }
+    }
+
     fun stop() { job?.cancel(); phase = "done" }
 
     fun matches(issue: DoctorIssue, q: String) = q.isBlank() || issue.item.name.contains(q, true) || (issue.item.path?.contains(q, true) == true)
@@ -179,7 +192,7 @@ class DoctorViewModel(private val c: AppContainer) : ViewModel() {
 }
 
 @Composable
-fun LibraryDoctorScreen(onBack: () -> Unit) {
+fun LibraryDoctorScreen(itemId: String? = null, onBack: () -> Unit) {
     val container = LocalContainer.current
     val cfg = rememberConfig()
     val vm = viewModel { DoctorViewModel(container) }
@@ -189,6 +202,10 @@ fun LibraryDoctorScreen(onBack: () -> Unit) {
     var alternatives by remember { mutableStateOf<DoctorIssue?>(null) }
     var editing by remember { mutableStateOf<DoctorIssue?>(null) }
     val aiAvailable = model is ModelState.Ready || model is ModelState.Loaded
+    val llmModel by container.llm.model.collectAsState()
+    var catalog by remember { mutableStateOf(false) }
+    if (catalog) ModelCatalog(onDismiss = { catalog = false })
+    LaunchedEffect(itemId) { if (itemId != null) vm.scanOne(itemId) }
 
     Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 120.dp)) {
@@ -210,10 +227,11 @@ fun LibraryDoctorScreen(onBack: () -> Unit) {
                         AiOrb(34.dp, busy = vm.phase == "identifying" && vm.useAi && aiAvailable)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.use_on_device_qwen), fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.doctor_use_ai, llmModel.displayName), fontWeight = FontWeight.SemiBold)
                             Text(if (aiAvailable) stringResource(R.string.smarter_title_extraction_for_weird_file) else stringResource(R.string.download_the_model_above_to_enable),
                                 fontSize = 12.sp, color = Harbor.TextDim)
                         }
+                        androidx.compose.material3.TextButton({ catalog = true }) { Text(stringResource(R.string.ai_change_model), fontSize = 12.sp) }
                         Switch(vm.useAi && aiAvailable, { vm.useAi = it }, enabled = aiAvailable)
                     }
                     OutlinedTextField(vm.query, { vm.query = it }, Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(16.dp),

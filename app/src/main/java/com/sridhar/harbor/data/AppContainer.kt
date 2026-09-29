@@ -72,23 +72,26 @@ class AppContainer(context: Context) {
     val jellyfin = JellyfinRepository(settings, http)
     val qbit = QbitRepository(settings, http)
     val music by lazy { com.sridhar.harbor.data.music.NavidromeRepository(settings, http) }
-    val musicEngine by lazy { com.sridhar.harbor.music.MusicEngine(context, music, settings, http) }
+    val offlineMusic by lazy { com.sridhar.harbor.data.music.OfflineMusic(context, settings, music, downloader, http) }
+    val musicEngine by lazy { com.sridhar.harbor.music.MusicEngine(context, music, settings, http) { offlineMusic } }
     val updater by lazy { com.sridhar.harbor.update.Updater(context, http) }
     val remote by lazy { com.sridhar.harbor.remote.RemoteClient(context) }
     val parental by lazy { com.sridhar.harbor.data.parental.ParentalControls(context) }
     /** On-device "Recommended for you" from library embeddings + Jellyfin watch history. */
-    val reco by lazy { com.sridhar.harbor.data.reco.RecoRepository(jellyfin, parental) }
+    val reco by lazy { com.sridhar.harbor.data.reco.RecoRepository(context, jellyfin, parental) { llm } }
     val radio by lazy { com.sridhar.harbor.data.music.RadioStations(context, http) }
     /** A stream link shared into the app ("Share → JellyVerse"); Music home offers to save it as a station. */
     val sharedRadioLink = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val admin by lazy { com.sridhar.harbor.data.jellyfin.admin.JellyfinAdminRepository(jellyfin) }
     val seerr = SeerrRepository(settings, http)
-    val offline = OfflineRepository(context, settings, jellyfin)
+    /** Multi-part parallel downloader shared by offline films and AI models. */
+    val downloader = com.sridhar.harbor.data.download.SegmentedDownloader(context, http)
+    val offline = OfflineRepository(context, settings, jellyfin, downloader)
     val sonarr = ArrRepository(ArrKind.Sonarr, settings, http)
     val radarr = ArrRepository(ArrKind.Radarr, settings, http)
     val aria2 = com.sridhar.harbor.data.aria2.Aria2Repository(settings, http)
     val iptv by lazy { com.sridhar.harbor.data.iptv.IptvRepository(context, http) }
-    val llm by lazy { com.sridhar.harbor.data.ai.LocalLlm(context) }
+    val llm by lazy { com.sridhar.harbor.data.ai.LocalLlm(context, downloader) }
     val cast = com.sridhar.harbor.cast.CastController(context)
     // Lazy: the encrypted store hits the Android Keystore (slow) and TV never needs SSH.
     val ssh by lazy { com.sridhar.harbor.data.ssh.SshRepository(context) }

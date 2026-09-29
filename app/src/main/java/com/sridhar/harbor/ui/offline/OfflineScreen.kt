@@ -99,13 +99,18 @@ fun OfflineScreen(onBack: () -> Unit) {
                         Spacer(Modifier.height(8.dp))
                         when {
                             p.done -> Text(formatBytes(p.total), color = Harbor.Mint, style = MaterialTheme.typography.bodySmall)
-                            p.failed -> Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Rounded.ErrorOutline, null, tint = Harbor.Rose, modifier = Modifier.size(16.dp))
-                                Text(stringResource(R.string.download_failed), color = Harbor.Rose, style = MaterialTheme.typography.bodySmall)
+                            p.failed || p.paused -> Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.ErrorOutline, null, tint = if (p.paused) Harbor.Amber else Harbor.Rose, modifier = Modifier.size(16.dp))
+                                Text(stringResource(if (p.paused) R.string.dl_paused else R.string.download_failed), color = if (p.paused) Harbor.Amber else Harbor.Rose,
+                                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f, fill = false))
+                                androidx.compose.material3.TextButton({ scope.launch(com.sridhar.harbor.CrashGuard) { container.offline.resume(e) } }) {
+                                    Text(stringResource(if (p.paused) R.string.dl_resume else R.string.retry))
+                                }
                             }
                             else -> {
                                 GradientProgress(p.fraction, height = 5.dp)
-                                Text("${formatBytes(p.downloaded)} of ${if (p.total > 0) formatBytes(p.total) else "…"}", color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+                                Text("${formatBytes(p.downloaded)} of ${if (p.total > 0) formatBytes(p.total) else "…"}" +
+                                    (if (p.bytesPerSec > 0) "  ·  ${formatBytes(p.bytesPerSec)}/s" else ""), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }

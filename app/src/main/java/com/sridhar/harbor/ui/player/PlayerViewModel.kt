@@ -206,6 +206,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private var droppedAtWindow = 0
     private var windowStart = 0L
     private var smoothSwitched = false
+    /** The current non-original quality was chosen by the stutter watchdog, not the user. */
+    private var autoStepped = false
     /** Controls on screen: the position needs 4 updates a second; otherwise once a second is plenty (less UI work). */
     var fastTick = true
 
@@ -240,6 +242,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 val pos = player.currentPosition
                 // Recovery ladder before giving up: direct play → server remux → software decoder → full re-encode.
                 when {
+                    // The automatic "smoother stream" step-down failed (e.g. the server can't transcode): the
+                    // original was playing fine, so go back to it rather than showing an error.
+                    autoStepped && ui.quality != Quality.Original && !ui.offline -> {
+                        autoStepped = false
+                        notice(L10n.s(R.string.play_back_to_original))
+                        setQuality(Quality.Original)
+                    }
                     ui.quality == Quality.Original && !ui.offline -> {
                         notice(L10n.s(R.string.direct_play_failed_switching_to_transcoding))
                         setQuality(Quality.Q20)
@@ -269,7 +278,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 if (sw && c.lowEnd && !prefs.softwareDecoding && !preferSoftware && ui.quality == Quality.Original && !ui.offline && !ui.live
                     && (player.videoFormat?.height ?: 0) >= 700 && !smoothSwitched) {
                     smoothSwitched = true
-                    viewModelScope.launch(com.sridhar.harbor.CrashGuard) { notice(L10n.s(R.string.play_smoother)); setQuality(Quality.Q8) }
+                    viewModelScope.launch(com.sridhar.harbor.CrashGuard) { notice(L10n.s(R.string.play_smoother)); autoStepped = true; setQuality(Quality.Q8) }
                 }
             }
             override fun onDroppedVideoFrames(e: AnalyticsListener.EventTime, count: Int, elapsedMs: Long) { dropped += count }
@@ -345,7 +354,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         // New title: forget the previous title's server-side track picks.
         autoLangTried = false
         ui = ui.copy(audioIndex = null, subIndex = null, serverForAudio = false, quality = if (ui.serverForAudio) prefs.quality else ui.quality)
-        recoveryStep = 0; reencode = false; preferSoftware = prefs.softwareDecoding; smoothSwitched = false; dropped = 0; droppedAtWindow = 0
+        recoveryStep = 0; reencode = false; preferSoftware = prefs.softwareDecoding; smoothSwitched = false; autoStepped = false; dropped = 0; droppedAtWindow = 0
         ui = ui.copy(itemId = itemId, error = null, upNextDismissed = false, intro = null, creditsAtMs = null, next = null, previous = null, offline = false,
             firstFrame = false, loadStartedAt = System.currentTimeMillis(), buffering = true)
         reportedStart = false; skippedSegmentStart = null; dropped = 0
@@ -584,7 +593,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** User pick from the Quality panel: applied now and remembered for the next video. */
-    fun chooseQuality(q: Quality) { prefs.quality = q; recoveryStep = 0; reencode = false; smoothSwitched = true /* the user decides now */; setQuality(q) }
+    fun chooseQuality(q: Quality) { prefs.quality = q; recoveryStep = 0; reencode = false; smoothSwitched = true /* the user decides now */; autoStepped = false; setQuality(q) }
 
     fun setQuality(q: Quality) {
         if (ui.offline) return
@@ -787,7 +796,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         windowStart = now; droppedAtWindow = dropped
         if (lost >= 60 && !smoothSwitched && ui.quality == Quality.Original && !ui.offline && !ui.live) {
             smoothSwitched = true
-            notice(L10n.s(R.string.play_smoother)); setQuality(Quality.Q8)
+            notice(L10n.s(R.string.play_smoother)); autoStepped = true; setQuality(Quality.Q8)
         }
     }
 

@@ -129,7 +129,8 @@ fun TvHome(onOpen: (String) -> Unit) {
     val look = com.sridhar.harbor.ui.theme.Looks.look
     val billboard = look.home == com.sridhar.harbor.ui.theme.HomeStyle.Billboard
     val recs by container.reco.recs.collectAsState()
-    LaunchedEffect(vm.resume) { container.reco.refresh() }
+    val consent by container.reco.consent.collectAsState()
+    LaunchedEffect(vm.resume, consent) { container.reco.refresh() }
 
     LaunchedEffect(vm.hero) { if (vm.hero.isNotEmpty() && display == null) { display = vm.hero.first(); runCatching { delay(150); watchFocus.requestFocus() } } }
     // Spotlight auto-rotates while the hero buttons have focus.
@@ -202,7 +203,17 @@ fun TvHome(onOpen: (String) -> Unit) {
                             onFocus = { display = it2 }, onMenu = { removing = it2 }) { PlayerActivity.start(ctx, it2.id) }
                     }
                 }
-                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou) && recs.forYou.isNotEmpty()) item(key = "foryou") {
+                if (consent == null && vm.resume.isNotEmpty()) item(key = "reco-consent") {
+                    Column(Modifier.padding(start = 48.dp, end = 48.dp, bottom = 22.dp).clip(RoundedCornerShape(20.dp)).background(Harbor.Surface).padding(22.dp)) {
+                        Text(stringResource(R.string.reco_ask_title), color = Harbor.Fg, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.reco_ask_body), color = Harbor.TextDim, fontSize = 15.sp, modifier = Modifier.padding(vertical = 8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            TvButton(stringResource(R.string.reco_ask_yes), null, primary = true) { container.reco.setConsent(true) }
+                            TvButton(stringResource(R.string.reco_ask_no), null) { container.reco.setConsent(false) }
+                        }
+                    }
+                }
+                if (consent == true && look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou) && recs.forYou.isNotEmpty()) item(key = "foryou") {
                     TvRow(stringResource(R.string.reco_for_you), recs.forYou, key = { it.item.id }) { p ->
                         PosterTile(p.item.name, jf.posterUrl(cfg, p.item, 300), onFocus = { display = p.item }) { onOpen(p.item.id) }
                     }
@@ -219,7 +230,7 @@ fun TvHome(onOpen: (String) -> Unit) {
                 if (vm.picks.size >= 6) item(key = "picks") {
                     TvGlideRow(stringResource(R.string.marquee_discover), vm.picks, onFocus = { display = it }) { onOpen(it.seriesId ?: it.id) }
                 }
-                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou)) recs.because.forEach { row ->
+                if (consent == true && look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou)) recs.because.forEach { row ->
                     item(key = "because-${row.seed.id}") {
                         TvRow(stringResource(R.string.reco_because, row.seed.name), row.picks, key = { it.item.id }) { p ->
                             PosterTile(p.item.name, jf.posterUrl(cfg, p.item, 300), onFocus = { display = p.item }) { onOpen(p.item.id) }

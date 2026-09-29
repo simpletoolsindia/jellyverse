@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
@@ -79,9 +80,9 @@ fun ModelCatalog(onDismiss: () -> Unit) {
         val state by llm.state.collectAsState()
         val current by llm.model.collectAsState()
         val installed by llm.downloaded.collectAsState()
+        val progress by llm.progress.collectAsState()
         var query by remember { mutableStateOf("") }
         var filter by remember { mutableStateOf(ModelFilter.All) }
-        LaunchedEffect(state) { while (state is ModelState.Downloading) { delay(1000); llm.refreshDownload() } }
         val ram = llm.deviceRamGb
         val shown = LlmModel.entries.filter { m ->
             (query.isBlank() || listOf(m.displayName, m.maker, m.params, m.blurb).any { it.contains(query.trim(), ignoreCase = true) }) &&
@@ -110,8 +111,9 @@ fun ModelCatalog(onDismiss: () -> Unit) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 items(shown, key = { it.id }) { m ->
-                    ModelRow(m, active = m == current, installed = m in installed, state = if (m == current) state else null, ram = ram,
-                        onGet = { llm.select(m); llm.startDownload() }, onUse = { llm.select(m) }, onDelete = { llm.delete(m) })
+                    val dl = progress[llm.keyOf(m)]?.takeIf { it.status == com.sridhar.harbor.data.download.DlStatus.Running || it.status == com.sridhar.harbor.data.download.DlStatus.Queued }
+                    ModelRow(m, active = m == current, installed = m in installed, dl = dl, ram = ram,
+                        onGet = { llm.download(m) }, onUse = { llm.select(m) }, onDelete = { llm.delete(m) }, onCancel = { llm.cancelDownload(m) })
                 }
                 item { Text(stringResource(R.string.ai_models_footer), color = Harbor.TextDim, fontSize = 12.sp, modifier = Modifier.navigationBarsPadding().padding(top = 8.dp)) }
             }
@@ -120,7 +122,8 @@ fun ModelCatalog(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun ModelRow(m: LlmModel, active: Boolean, installed: Boolean, state: ModelState?, ram: Int, onGet: () -> Unit, onUse: () -> Unit, onDelete: () -> Unit) {
+private fun ModelRow(m: LlmModel, active: Boolean, installed: Boolean, dl: com.sridhar.harbor.data.download.DlState?, ram: Int,
+                     onGet: () -> Unit, onUse: () -> Unit, onDelete: () -> Unit, onCancel: () -> Unit) {
     val tile = remember(m.maker) { makerColors(m.maker) }
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(Harbor.Surface)
         .border(if (active) 2.dp else 1.dp, if (active) Harbor.Violet else Harbor.line(.08f), RoundedCornerShape(26.dp))
@@ -133,13 +136,19 @@ private fun ModelRow(m: LlmModel, active: Boolean, installed: Boolean, state: Mo
                 Text(m.maker, color = Harbor.TextDim, fontSize = 14.sp)
             }
             Spacer(Modifier.width(8.dp))
-            val downloading = state as? ModelState.Downloading
             when {
-                downloading != null -> Pill("${(downloading.fraction * 100).toInt()}%", Icons.Rounded.CloudDownload, Harbor.SurfaceHigh, Harbor.Fg) {}
+                dl != null -> Pill("${(dl.fraction * 100).toInt()}%", Icons.Rounded.Close, Harbor.SurfaceHigh, Harbor.Fg, onCancel)
                 active && installed -> Pill(stringResource(R.string.ai_active), Icons.Rounded.Check, Harbor.Violet, Color.White) {}
                 installed -> Pill(stringResource(R.string.ai_use), Icons.Rounded.Check, Harbor.Violet.copy(alpha = .18f), Harbor.Fg, onUse)
                 else -> Pill(stringResource(R.string.ai_get), Icons.Rounded.Download, Harbor.SurfaceHigh, Harbor.Fg, onGet)
             }
+        }
+        if (dl != null) {
+            Spacer(Modifier.height(10.dp))
+            com.sridhar.harbor.ui.components.GradientProgress(dl.fraction, height = 5.dp)
+            Text(listOfNotNull("%.0f / %.0f MB".format(dl.downloaded / 1e6, dl.total / 1e6),
+                dl.bytesPerSec.takeIf { it > 0 }?.let { "%.1f MB/s".format(it / 1e6) }, if (dl.parts > 1) "${dl.parts} parts" else null).joinToString("  ·  "),
+                color = Harbor.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         }
         Spacer(Modifier.height(12.dp))
         Text(m.blurb, color = Harbor.Fg.copy(alpha = .85f), fontSize = 14.sp, lineHeight = 20.sp)

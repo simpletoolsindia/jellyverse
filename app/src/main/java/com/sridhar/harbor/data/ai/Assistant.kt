@@ -337,6 +337,29 @@ class Assistant(private val c: AppContainer) {
         append("After <tool_response>, reply in one or two short friendly sentences. Never invent results.")
     }
 
+    /**
+     * General chat (coding, maths, writing, questions) – no tools, the model's own knowledge. Keeps the last few
+     * turns so follow-ups work; asks for fenced code blocks and step-by-step maths so the UI can format them.
+     */
+    suspend fun chat(message: String, history: List<ChatItem>, emit: (ChatItem, Boolean) -> Unit) {
+        val prompt = buildString {
+            append("<|im_start|>system\nYou are a helpful, knowledgeable assistant running privately on the user's phone. ")
+            append("Answer clearly and concisely. For maths, work step by step and give the final answer on its own line. ")
+            append("For code, use fenced code blocks with the language name, and briefly explain it.<|im_end|>\n")
+            history.filter { it is ChatItem.User || it is ChatItem.Bot }.takeLast(6).forEach { h ->
+                when (h) {
+                    is ChatItem.User -> append("<|im_start|>user\n").append(h.text.take(1200)).append("<|im_end|>\n")
+                    is ChatItem.Bot -> append("<|im_start|>assistant\n").append(h.text.take(1200)).append("<|im_end|>\n")
+                    else -> {}
+                }
+            }
+            append("<|im_start|>user\n").append(message.take(2000)).append("<|im_end|>\n<|im_start|>assistant\n")
+        }
+        emit(ChatItem.Bot("", streaming = true), false)
+        val out = c.llm.complete(prompt, temperature = 0.4f) { partial -> emit(ChatItem.Bot(partial, true), true) }
+        emit(ChatItem.Bot(out.ifBlank { "…" }), true)
+    }
+
     private val fewShot = "<|im_start|>user\nis dune in my library?<|im_end|>\n<|im_start|>assistant\n<tool_call>{\"name\":\"search_library\",\"arguments\":{\"query\":\"dune\"}}</tool_call><|im_end|>\n" +
         "<|im_start|>user\nlimit downloads to 5 MB/s<|im_end|>\n<|im_start|>assistant\n<tool_call>{\"name\":\"set_speed_limit\",\"arguments\":{\"download_mbps\":5,\"upload_mbps\":0}}</tool_call><|im_end|>\n"
 

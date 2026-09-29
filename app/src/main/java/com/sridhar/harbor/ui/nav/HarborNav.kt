@@ -126,7 +126,7 @@ import kotlinx.serialization.Serializable
 @Serializable object ManageRoute
 @Serializable object LabRoute
 @Serializable object AssistantRoute
-@Serializable object DoctorRoute
+@Serializable data class DoctorRoute(val itemId: String? = null)
 @Serializable object LiveRoute
 @Serializable object HostsRoute
 @Serializable data class TerminalRoute(val hostId: String)
@@ -138,6 +138,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class MusicAlbumRoute(val id: String)
 @Serializable data class MusicPlaylistRoute(val id: String)
 @Serializable object MusicLikedRoute
+@Serializable object MusicDownloadedRoute
 @Serializable data class MusicArtistRoute(val ids: String, val name: String)
 @Serializable object MusicSearchRoute
 @Serializable object MusicLibraryRoute
@@ -208,7 +209,7 @@ private fun HarborNavContent(initial: ServerConfig) {
     val musicActive = music.current != null && !musicIdle
     val musicNav = remember(nav) {
         com.sridhar.harbor.ui.music.MusicNav(
-            album = { nav.navigate(MusicAlbumRoute(it)) }, playlist = { nav.navigate(MusicPlaylistRoute(it)) }, liked = { nav.navigate(MusicLikedRoute) },
+            album = { nav.navigate(MusicAlbumRoute(it)) }, playlist = { nav.navigate(MusicPlaylistRoute(it)) }, liked = { nav.navigate(MusicLikedRoute) }, downloaded = { nav.navigate(MusicDownloadedRoute) },
             artist = { ids, name -> nav.navigate(MusicArtistRoute(ids.joinToString(","), name)) },
             search = { nav.navigate(MusicSearchRoute) }, library = { nav.navigate(MusicLibraryRoute) }, back = { nav.popBackStack() },
         )
@@ -249,7 +250,7 @@ private fun HarborNavContent(initial: ServerConfig) {
     Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
         val isTab: (androidx.navigation.NavBackStackEntry) -> Boolean = { e -> tabs.any { t -> e.destination.hasRoute(t.route::class) } }
         // Mini player height (+ gap) that floating buttons and lists must stay clear of.
-        val miniVisible = musicActive && (showBar || dest != null && listOf(MusicAlbumRoute::class, MusicPlaylistRoute::class, MusicLikedRoute::class, MusicArtistRoute::class, MusicSearchRoute::class, MusicLibraryRoute::class).any { dest.hasRoute(it) })
+        val miniVisible = musicActive && (showBar || dest != null && listOf(MusicAlbumRoute::class, MusicPlaylistRoute::class, MusicLikedRoute::class, MusicDownloadedRoute::class, MusicArtistRoute::class, MusicSearchRoute::class, MusicLibraryRoute::class).any { dest.hasRoute(it) })
         val miniInset by androidx.compose.animation.core.animateDpAsState(if (miniVisible) 72.dp else 0.dp, label = "miniInset")
         androidx.compose.runtime.CompositionLocalProvider(com.sridhar.harbor.ui.components.LocalMiniPlayerInset provides miniInset, com.sridhar.harbor.ui.components.LocalBottomBarInset provides (if (useRail) 0.dp else 80.dp)) {
         NavHost(
@@ -292,7 +293,7 @@ private fun HarborNavContent(initial: ServerConfig) {
             composable<TorrentsRoute> { Readable { TorrentsScreen(onSetup = { nav.navigate(SetupRoute) }) }}
             composable<ProfileRoute> { Readable {
                 ProfileScreen(
-                    onDoctor = { nav.navigate(DoctorRoute) },
+                    onDoctor = { nav.navigate(DoctorRoute()) },
                     onAssistant = { nav.navigate(AssistantRoute) },
                     onTerminal = { nav.navigate(HostsRoute) },
                     onSetup = { nav.navigate(SetupRoute) },
@@ -305,11 +306,11 @@ private fun HarborNavContent(initial: ServerConfig) {
             composable<SearchRoute> { SearchScreen(onItem = { nav.navigate(ItemRoute(it)) }, onBack = { nav.popBackStack() }, onSeerr = { t, id -> nav.navigate(SeerrRoute(t, id)) }) }
             composable<LibraryRoute> {
                 val r = it.toRoute<LibraryRoute>()
-                LibraryScreen(r.id, r.name, r.collectionType, onItem = { id -> nav.navigate(ItemRoute(id)) }, onBack = { nav.popBackStack() })
+                LibraryScreen(r.id, r.name, r.collectionType, onItem = { id -> nav.navigate(ItemRoute(id)) }, onBack = { nav.popBackStack() }, onDoctor = { id -> nav.navigate(DoctorRoute(id)) })
             }
             composable<ItemRoute> {
                 val r = it.toRoute<ItemRoute>()
-                ItemDetailScreen(r.id, onItem = { id -> nav.navigate(ItemRoute(id)) }, onBack = { nav.popBackStack() })
+                ItemDetailScreen(r.id, onItem = { id -> nav.navigate(ItemRoute(id)) }, onBack = { nav.popBackStack() }, onDoctor = { id -> nav.navigate(DoctorRoute(id)) })
             }
             composable<SeerrRoute> {
                 val r = it.toRoute<SeerrRoute>()
@@ -320,7 +321,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                 val ctx = androidx.compose.ui.platform.LocalContext.current
                 com.sridhar.harbor.ui.ai.AssistantScreen(onBack = { nav.popBackStack() }, onNav = { target ->
                     when (target) {
-                        com.sridhar.harbor.data.ai.AiNav.Doctor -> nav.navigate(DoctorRoute)
+                        com.sridhar.harbor.data.ai.AiNav.Doctor -> nav.navigate(DoctorRoute())
                         com.sridhar.harbor.data.ai.AiNav.Lab -> nav.switchTab(LabRoute)
                         com.sridhar.harbor.data.ai.AiNav.Terminal -> nav.navigate(HostsRoute)
                         com.sridhar.harbor.data.ai.AiNav.Downloads -> nav.switchTab(TorrentsRoute)
@@ -336,7 +337,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                 })
             }}
             composable<LiveRoute> { com.sridhar.harbor.ui.live.LiveTvScreen(onBack = { nav.popBackStack() }) }
-            composable<DoctorRoute> { Readable { com.sridhar.harbor.ui.ai.LibraryDoctorScreen(onBack = { nav.popBackStack() }) }}
+            composable<DoctorRoute> { Readable { com.sridhar.harbor.ui.ai.LibraryDoctorScreen(itemId = it.toRoute<DoctorRoute>().itemId, onBack = { nav.popBackStack() }) }}
             composable<LabRoute> { Readable {
                 com.sridhar.harbor.ui.lab.LabScreen(
                     onSetup = { nav.navigate(SetupRoute) },
@@ -366,6 +367,7 @@ private fun HarborNavContent(initial: ServerConfig) {
             composable<MusicRoute> { com.sridhar.harbor.ui.music.MusicHomeScreen(musicNav) }
             composable<MusicAlbumRoute> { Readable { com.sridhar.harbor.ui.music.CollectionScreen("album", it.toRoute<MusicAlbumRoute>().id, musicNav) }}
             composable<MusicPlaylistRoute> { Readable { com.sridhar.harbor.ui.music.CollectionScreen("playlist", it.toRoute<MusicPlaylistRoute>().id, musicNav) }}
+            composable<MusicDownloadedRoute> { Readable { com.sridhar.harbor.ui.music.CollectionScreen("downloaded", "downloaded", musicNav) }}
             composable<MusicLikedRoute> { Readable { com.sridhar.harbor.ui.music.CollectionScreen("liked", "liked", musicNav) }}
             composable<MusicArtistRoute> { Readable { val r = it.toRoute<MusicArtistRoute>(); com.sridhar.harbor.ui.music.ArtistScreen(r.ids.split(','), r.name, musicNav) }}
             composable<MusicSearchRoute> { Readable { com.sridhar.harbor.ui.music.MusicSearchScreen(musicNav) }}
@@ -373,7 +375,7 @@ private fun HarborNavContent(initial: ServerConfig) {
         }
 
         }
-        val onMusicScreen = dest != null && listOf(MusicAlbumRoute::class, MusicPlaylistRoute::class, MusicLikedRoute::class, MusicArtistRoute::class, MusicSearchRoute::class, MusicLibraryRoute::class).any { dest.hasRoute(it) }
+        val onMusicScreen = dest != null && listOf(MusicAlbumRoute::class, MusicPlaylistRoute::class, MusicLikedRoute::class, MusicDownloadedRoute::class, MusicArtistRoute::class, MusicSearchRoute::class, MusicLibraryRoute::class).any { dest.hasRoute(it) }
         val onMusicTab = dest?.hasRoute(MusicRoute::class) == true
         val showMini = (musicActive || (onMusicScreen || onMusicTab) && music.current != null) && (showBar || onMusicScreen)
         val miniLift = if (showMini && !useRail) 68.dp else 0.dp

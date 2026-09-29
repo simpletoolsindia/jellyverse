@@ -1,0 +1,1 @@
+JellyVerse 2.11.0: faster, resumable downloads split into parallel parts with live speed in the notification; download songs for offline listening; screen stays on during videos; download several AI models at once; new AI Chat mode for coding, maths and more; Library Doctor for a single title with your choice of model; opt-in AI-picked recommendations.

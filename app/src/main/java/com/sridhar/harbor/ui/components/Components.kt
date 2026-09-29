@@ -132,9 +132,13 @@ fun NetImage(url: String?, modifier: Modifier = Modifier, contentScale: ContentS
 @Composable
 fun PosterCard(
     imageUrl: String?, title: String, subtitle: String? = null, width: Dp = 124.dp,
-    progress: Float = 0f, badge: (@Composable () -> Unit)? = null, played: Boolean = false, onClick: () -> Unit,
+    progress: Float = 0f, badge: (@Composable () -> Unit)? = null, played: Boolean = false, onLongClick: (() -> Unit)? = null, onClick: () -> Unit,
 ) {
-    Column(Modifier.width(width).pressable(onClick = onClick)) {
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    Column(Modifier.width(width).then(
+        if (onLongClick == null) Modifier.pressable(onClick = onClick)
+        else Modifier.combinedClickable(onLongClick = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); onLongClick() }, onClick = onClick),
+    )) {
         Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(14.dp))) {
             NetImage(imageUrl, Modifier.fillMaxSize(), fallback = title)
             if (badge != null) Box(Modifier.align(Alignment.TopStart).padding(6.dp)) { badge() }

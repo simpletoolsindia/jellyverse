@@ -130,6 +130,9 @@ class NavidromeRepository(private val settings: SettingsStore, private val http:
     fun coverUrl(cfg: ServerConfig, id: String?, size: Int = 500): String? =
         id?.takeIf { cfg.navidromeReady }?.let { base(cfg, "getCoverArt").addQueryParameter("id", it).addQueryParameter("size", size.toString()).build().toString() }
 
+    /** The original file, for offline downloads. */
+    fun downloadUrl(cfg: ServerConfig, songId: String): String = base(cfg, "download").addQueryParameter("id", songId).build().toString()
+
     /** maxBitRate 0 = original quality. */
     fun streamUrl(cfg: ServerConfig, songId: String, maxBitRate: Int = 0): String =
         base(cfg, "stream").addQueryParameter("id", songId).apply { if (maxBitRate > 0) addQueryParameter("maxBitRate", maxBitRate.toString()) }.build().toString()

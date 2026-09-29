@@ -73,7 +73,8 @@ data class MusicState(
  * [MusicService] wraps [player] in a media session for background playback and system controls.
  */
 @OptIn(UnstableApi::class)
-class MusicEngine(private val context: Context, private val repo: NavidromeRepository, private val settings: SettingsStore, http: OkHttpClient) {
+class MusicEngine(private val context: Context, private val repo: NavidromeRepository, private val settings: SettingsStore, http: OkHttpClient,
+                  private val offline: () -> com.sridhar.harbor.data.music.OfflineMusic) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + com.sridhar.harbor.CrashGuard)
     private val prefs = context.getSharedPreferences("music_engine", Context.MODE_PRIVATE)
 
@@ -243,6 +244,14 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
                     .setIsPlayable(true).setIsBrowsable(false).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
                     .setExtras(bundleOf("song" to HarborJson.encodeToString(Song.serializer(), s))).build())
                 .build()
+        }
+        // Downloaded for offline: play the local file (works with no network, no data used).
+        offline().localFile(s.id)?.let { f ->
+            return MediaItem.Builder().setMediaId(s.id).setUri(Uri.fromFile(f))
+                .setMediaMetadata(MediaMetadata.Builder().setTitle(s.displayTitle).setArtist(s.displayArtist).setAlbumTitle(s.displayAlbum)
+                    .setArtworkUri((offline().coverFile(s.coverArt)?.let(Uri::fromFile)) ?: repo.coverUrl(cfg, s.coverArt, 800)?.let(Uri::parse))
+                    .setIsPlayable(true).setIsBrowsable(false).setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                    .setExtras(bundleOf("song" to HarborJson.encodeToString(Song.serializer(), s))).build()).build()
         }
         return MediaItem.Builder()
             .setMediaId(s.id)

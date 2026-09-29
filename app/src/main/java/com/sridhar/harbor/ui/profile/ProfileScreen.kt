@@ -115,6 +115,8 @@ fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () 
         Spacer(Modifier.height(24.dp))
         com.sridhar.harbor.ui.components.AppearancePicker(Modifier.fillMaxWidth())
         Spacer(Modifier.height(24.dp))
+        RecoSettings()
+        Spacer(Modifier.height(24.dp))
         com.sridhar.harbor.ui.components.LanguagePicker(Modifier.fillMaxWidth())
         Spacer(Modifier.height(24.dp))
         Text(stringResource(R.string.alerts_privacy), style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)
@@ -210,5 +212,31 @@ private fun MenuRow(icon: ImageVector, title: String, subtitle: String, onClick:
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.SemiBold); Text(subtitle, color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall) }
         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Harbor.TextDim)
+    }
+}
+
+
+/** Settings → Recommendations: personal picks from the watch history, and the optional on-device AI pass. */
+@Composable
+fun RecoSettings() {
+    val reco = LocalContainer.current.reco
+    val consent by reco.consent.collectAsState()
+    val useAi by reco.useAi.collectAsState()
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Harbor.Surface).padding(16.dp)) {
+        Text(stringResource(R.string.reco_settings_title), style = MaterialTheme.typography.labelLarge, color = Harbor.TextDim)
+        Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.reco_toggle), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.reco_toggle_hint), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+            }
+            androidx.compose.material3.Switch(consent == true, { reco.setConsent(it) })
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.reco_ai_toggle), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.reco_ai_toggle_hint), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+            }
+            androidx.compose.material3.Switch(useAi && consent == true, { reco.setUseAi(it) }, enabled = consent == true)
+        }
     }
 }

@@ -147,6 +147,10 @@ fun TvSettings() {
         TvButton(stringResource(R.string.parental_title) + " · " + com.sridhar.harbor.ui.parental.parentalSummary(), Icons.Rounded.Lock) { parental = true }
         if (parental) com.sridhar.harbor.ui.parental.ParentalSettingsDialog { parental = false }
         com.sridhar.harbor.ui.components.AppearancePicker(Modifier.padding(vertical = 8.dp).widthIn(max = 720.dp), tv = true)
+        val recoOn by container.reco.consent.collectAsState()
+        TvButton(stringResource(R.string.reco_toggle) + " · " + stringResource(if (recoOn == true) R.string.on_label else R.string.off_label), Icons.Rounded.Movie) {
+            container.reco.setConsent(recoOn != true)
+        }
         // Playback: previews compete with the film for the decoder on budget boxes; passthrough's clock stutters on many.
         val previewMode by container.previewMode.collectAsState()
         TvButton(stringResource(R.string.previews_title) + " · " + when (previewMode) {

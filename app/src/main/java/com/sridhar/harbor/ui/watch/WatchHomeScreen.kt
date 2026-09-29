@@ -168,7 +168,13 @@ fun WatchHomeScreen(
     val vm = viewModel { WatchHomeViewModel(container) }
     val look = com.sridhar.harbor.ui.theme.Looks.look
     val recs by container.reco.recs.collectAsState()
-    androidx.compose.runtime.LaunchedEffect(vm.resume) { container.reco.refresh() }
+    val aiPicks by container.reco.aiPicks.collectAsState()
+    val consent by container.reco.consent.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(vm.resume, consent) {
+        container.reco.refresh()
+        // The LLM pass is slow on phones: run it app-wide in the background, the row appears when it's ready.
+        container.scope.launch(com.sridhar.harbor.CrashGuard) { container.reco.refreshAi() }
+    }
     val ctx = LocalContext.current
     val jf = container.jellyfin
     val play: (BaseItem) -> Unit = { PlayerActivity.start(ctx, it.id) }
@@ -252,7 +258,29 @@ fun WatchHomeScreen(
             }
             if (!unreachable && downloads.isNotEmpty()) item(key = "device") { DownloadsShelf(downloads, offline = false) }
             // On-device recommendations from your Jellyfin watch history (see Recommender).
-            if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou) && recs.forYou.isNotEmpty()) item(key = "foryou") {
+            // Ask once before using the watch history for suggestions.
+            if (consent == null && vm.resume.isNotEmpty()) item(key = "reco-consent") {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp).fillMaxWidth().clip(RoundedCornerShape(24.dp))
+                    .background(Brush.linearGradient(listOf(Harbor.Violet.copy(alpha = .22f), Harbor.Surface))).padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        com.sridhar.harbor.ui.ai.AiOrb(36.dp); Spacer(Modifier.width(12.dp))
+                        Text(stringResource(R.string.reco_ask_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(stringResource(R.string.reco_ask_body), color = Harbor.TextDim, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(14.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        androidx.compose.material3.Button({ container.reco.setConsent(true) }) { Text(stringResource(R.string.reco_ask_yes)) }
+                        androidx.compose.material3.TextButton({ container.reco.setConsent(false) }) { Text(stringResource(R.string.reco_ask_no)) }
+                    }
+                }
+            }
+            if (consent == true && look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou) && aiPicks.isNotEmpty()) item(key = "aipicks") {
+                Rail(stringResource(R.string.reco_ai_picks), aiPicks, key = { "ai-" + it.item.id }) { p ->
+                    PosterCard(jf.posterUrl(cfg, p.item), p.item.name, "✨ " + p.reason) { onItem(p.item.id) }
+                }
+            }
+            if (consent == true && look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou) && recs.forYou.isNotEmpty()) item(key = "foryou") {
                 Rail(stringResource(R.string.reco_for_you), recs.forYou, key = { it.item.id }) { p ->
                     PosterCard(jf.posterUrl(cfg, p.item), p.item.name, p.reason.ifBlank { p.item.year?.toString() }) { onItem(p.item.id) }
                 }
@@ -265,7 +293,7 @@ fun WatchHomeScreen(
                 }
             }
             item(key = "picks") { PosterMarquee(stringResource(R.string.marquee_discover), vm.picks, onItem) }
-            if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou)) recs.because.forEach { row ->
+            if (consent == true && look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou)) recs.because.forEach { row ->
                 item(key = "because-${row.seed.id}") {
                     Rail(stringResource(R.string.reco_because, row.seed.name), row.picks, key = { it.item.id }) { p ->
                         PosterCard(jf.posterUrl(cfg, p.item), p.item.name, p.reason.ifBlank { p.item.year?.toString() }) { onItem(p.item.id) }
