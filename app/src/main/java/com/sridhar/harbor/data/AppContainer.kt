@@ -51,6 +51,13 @@ class AppContainer(context: Context) {
     } || Runtime.getRuntime().availableProcessors() <= 2
 
     private val uiPrefs = context.getSharedPreferences("harbor_ui", Context.MODE_PRIVATE)
+    /** Animations: "auto" (reduced on low-end devices or when Android's animations are off), "full" or "reduced". */
+    val motionMode = kotlinx.coroutines.flow.MutableStateFlow(uiPrefs.getString("motion", "auto") ?: "auto")
+    fun setMotionMode(mode: String) { uiPrefs.edit().putString("motion", mode).apply(); motionMode.value = mode }
+    private val systemAnimsOff = runCatching {
+        android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    }.getOrDefault(false)
+    fun reducedMotion(mode: String = motionMode.value): Boolean = when (mode) { "full" -> false; "reduced" -> true; else -> lowEnd || systemAnimsOff }
     /** Trailer previews: "auto" (on unless [lowEnd]), "on" or "off". */
     val previewMode = kotlinx.coroutines.flow.MutableStateFlow(uiPrefs.getString("previews", "auto") ?: "auto")
     fun setPreviewMode(mode: String) { uiPrefs.edit().putString("previews", mode).apply(); previewMode.value = mode }

@@ -1,0 +1,1 @@
+JellyVerse TV 2.12.0: faster browsing on budget TVs – the background picture only changes once you stop on a title, screen changes are lighter, and low-end TVs automatically use simplified animations. Settings → Appearance → Animations.

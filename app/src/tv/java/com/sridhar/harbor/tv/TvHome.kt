@@ -1,5 +1,7 @@
 package com.sridhar.harbor.tv
 
+import androidx.compose.ui.draw.drawBehind
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -120,7 +122,13 @@ fun TvHome(onOpen: (String) -> Unit) {
     val jf = container.jellyfin
     val vm = viewModel { WatchHomeViewModel(container) }
     val extra = viewModel { TvRowsViewModel(container) }
+    // What the hero shows. Focus changes go through [focusTarget] and only reach it once the remote rests on a
+    // title (~280 ms): scrolling along a row no longer starts a full-screen backdrop load + crossfade per press.
     var display by remember { mutableStateOf<BaseItem?>(null) }
+    var focusTarget by remember { mutableStateOf<BaseItem?>(null) }
+    LaunchedEffect(Unit) {
+        androidx.compose.runtime.snapshotFlow { focusTarget }.collectLatest { t -> if (t != null) { delay(280); display = t } }
+    }
     var heroIndex by remember { mutableIntStateOf(0) }
     var heroFocused by remember { mutableStateOf(true) }
     // A trailer playing holds the spotlight (Hotstar-style), up to 45 s, then rotation resumes.
@@ -157,7 +165,7 @@ fun TvHome(onOpen: (String) -> Unit) {
         }
     }
     Box(Modifier.fillMaxSize()) {
-        AmbientBackdrop(display?.let { jf.backdropUrl(cfg, it, if (container.lowRam) 1280 else 1920) }, drift = !container.lowRam, preview = display, onTrailer = { trailerOn = it })
+        AmbientBackdrop(display?.let { jf.backdropUrl(cfg, it, if (container.lowEnd) 1280 else 1920) }, drift = !container.lowEnd, preview = display, onTrailer = { trailerOn = it })
         if (vm.loading && vm.hero.isEmpty()) Column(Modifier.fillMaxSize().padding(start = 120.dp, top = 360.dp)) {
             com.sridhar.harbor.ui.components.SkeletonShelf(300.dp, 16f / 9f, 5)
             com.sridhar.harbor.ui.components.SkeletonShelf(150.dp, 2f / 3f, 8)
@@ -200,7 +208,7 @@ fun TvHome(onOpen: (String) -> Unit) {
                 if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Continue)) item(key = "resume") {
                     TvRow(stringResource(R.string.continue_watching_2), vm.resume, key = { it.id }) { it2 ->
                         LandscapeTile(it2.seriesName ?: it2.name, it2.episodeLabel ?: it2.year?.toString(), jf.thumbUrl(cfg, it2, 600), progress = it2.progress,
-                            onFocus = { display = it2 }, onMenu = { removing = it2 }) { PlayerActivity.start(ctx, it2.id) }
+                            onFocus = { focusTarget = it2 }, onMenu = { removing = it2 }) { PlayerActivity.start(ctx, it2.id) }
                     }
                 }
                 if (consent == null && vm.resume.isNotEmpty()) item(key = "reco-consent") {
@@ -215,25 +223,25 @@ fun TvHome(onOpen: (String) -> Unit) {
                 }
                 if (consent == true && look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou) && recs.forYou.isNotEmpty()) item(key = "foryou") {
                     TvRow(stringResource(R.string.reco_for_you), recs.forYou, key = { it.item.id }) { p ->
-                        PosterTile(p.item.name, jf.posterUrl(cfg, p.item, 300), onFocus = { display = p.item }) { onOpen(p.item.id) }
+                        PosterTile(p.item.name, jf.posterUrl(cfg, p.item, 300), onFocus = { focusTarget = p.item }) { onOpen(p.item.id) }
                     }
                 }
                 if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Top10) && vm.top10.isNotEmpty()) item(key = "top10") {
-                    TvTop10Row(vm.top10, onFocus = { display = it }) { onOpen(it.seriesId ?: it.id) }
+                    TvTop10Row(vm.top10, onFocus = { focusTarget = it }) { onOpen(it.seriesId ?: it.id) }
                 }
                 if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.NextUp)) item(key = "next") {
                     TvRow(stringResource(R.string.next_up_2), vm.nextUp, key = { it.id }) { it2 ->
                         LandscapeTile(it2.seriesName ?: it2.name, listOfNotNull(it2.episodeLabel, it2.name).joinToString(" · "), jf.thumbUrl(cfg, it2, 600),
-                            onFocus = { display = it2 }) { PlayerActivity.start(ctx, it2.id) }
+                            onFocus = { focusTarget = it2 }) { PlayerActivity.start(ctx, it2.id) }
                     }
                 }
                 if (vm.picks.size >= 6) item(key = "picks") {
-                    TvGlideRow(stringResource(R.string.marquee_discover), vm.picks, onFocus = { display = it }) { onOpen(it.seriesId ?: it.id) }
+                    TvGlideRow(stringResource(R.string.marquee_discover), vm.picks, onFocus = { focusTarget = it }) { onOpen(it.seriesId ?: it.id) }
                 }
                 if (consent == true && look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou)) recs.because.forEach { row ->
                     item(key = "because-${row.seed.id}") {
                         TvRow(stringResource(R.string.reco_because, row.seed.name), row.picks, key = { it.item.id }) { p ->
-                            PosterTile(p.item.name, jf.posterUrl(cfg, p.item, 300), onFocus = { display = p.item }) { onOpen(p.item.id) }
+                            PosterTile(p.item.name, jf.posterUrl(cfg, p.item, 300), onFocus = { focusTarget = p.item }) { onOpen(p.item.id) }
                         }
                     }
                 }
@@ -241,7 +249,7 @@ fun TvHome(onOpen: (String) -> Unit) {
                     item(key = "shelf-${shelf.view.id}") {
                         TvRow(stringResource(R.string.latest_1_s, shelf.view.name), shelf.items, key = { it.id }) { it2 ->
                             PosterTile(it2.seriesName ?: it2.name, jf.posterUrl(cfg, it2, 300),
-                                badge = it2.userData?.unplayedCount?.takeIf { n -> n > 0 }?.toString(), onFocus = { display = it2 }) { onOpen(it2.seriesId ?: it2.id) }
+                                badge = it2.userData?.unplayedCount?.takeIf { n -> n > 0 }?.toString(), onFocus = { focusTarget = it2 }) { onOpen(it2.seriesId ?: it2.id) }
                         }
                     }
                 }
@@ -249,13 +257,13 @@ fun TvHome(onOpen: (String) -> Unit) {
                     item(key = "row-$title") {
                         TvRow(title, items, key = { it.id }) { it2 ->
                             PosterTile(it2.name, jf.posterUrl(cfg, it2, 300), progress = it2.progress,
-                                onFocus = { display = it2 }) { onOpen(it2.id) }
+                                onFocus = { focusTarget = it2 }) { onOpen(it2.id) }
                         }
                     }
                 }
                 item(key = "spot") {
                     TvRow(stringResource(R.string.spotlight), vm.hero, key = { it.id }) { it2 ->
-                        PosterTile(it2.name, jf.posterUrl(cfg, it2, 300), onFocus = { display = it2 }) { onOpen(it2.id) }
+                        PosterTile(it2.name, jf.posterUrl(cfg, it2, 300), onFocus = { focusTarget = it2 }) { onOpen(it2.id) }
                     }
                 }
             }
@@ -300,7 +308,8 @@ private fun TvMarquee(items: List<BaseItem>, active: Int, rotating: Boolean, onF
                     }
                     Spacer(Modifier.height(6.dp))
                     Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = if (on && rotating) .2f else 0f))) {
-                        if (on && rotating) Box(Modifier.fillMaxHeight().fillMaxWidth(progress.value).background(Harbor.Sky))
+                        // Read in the draw phase only: the 8 s fill redraws a bar, it never recomposes the row.
+                        if (on && rotating) { val sky = Harbor.Sky; Box(Modifier.fillMaxSize().drawBehind { drawRect(sky, size = size.copy(width = size.width * progress.value)) }) }
                     }
                 }
             }
@@ -340,8 +349,9 @@ private fun TvGlideRow(title: String, items: List<BaseItem>, onFocus: (BaseItem)
     val state = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = items.size * 40)
     var inside by remember { mutableStateOf(false) }
     val resumed = com.sridhar.harbor.ui.components.rememberResumed()
-    LaunchedEffect(inside, resumed) {
-        if (inside || !resumed) return@LaunchedEffect
+    val reduced = com.sridhar.harbor.ui.components.reducedMotion()
+    LaunchedEffect(inside, resumed, reduced) {
+        if (inside || !resumed || reduced) return@LaunchedEffect
         delay(1500)
         while (true) state.animateScrollBy(200f, tween(4000, easing = androidx.compose.animation.core.LinearEasing))
     }

@@ -154,9 +154,10 @@ fun TvButton(text: String, icon: ImageVector?, primary: Boolean = false, modifie
 fun AmbientBackdrop(url: String?, drift: Boolean = false, preview: com.sridhar.harbor.data.jellyfin.BaseItem? = null, onTrailer: (Boolean) -> Unit = {}) {
     // Optional slow Ken Burns push-in so the hero feels alive; each new backdrop starts its own drift.
     Box(Modifier.fillMaxSize().background(Harbor.Ink).clipToBounds()) {
-        Crossfade(url, animationSpec = tween(650), label = "ambient") { u ->
+        val reduced = com.sridhar.harbor.ui.components.reducedMotion()
+        Crossfade(url, animationSpec = tween(if (reduced) 220 else 450), label = "ambient") { u ->
             val zoom = remember(u) { androidx.compose.animation.core.Animatable(1f) }
-            if (drift) LaunchedEffect(u) { zoom.animateTo(1.08f, tween(12_000, easing = androidx.compose.animation.core.LinearEasing)) }
+            if (drift && !reduced) LaunchedEffect(u) { zoom.animateTo(1.08f, tween(12_000, easing = androidx.compose.animation.core.LinearEasing)) }
             NetImage(u, Modifier.fillMaxSize().graphicsLayer { alpha = 0.9f; scaleX = zoom.value; scaleY = zoom.value; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.7f, 0.3f) })
         }
         // Hotstar-style: rest on a title and its trailer fades in behind the same scrims.

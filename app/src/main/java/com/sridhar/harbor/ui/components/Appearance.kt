@@ -1,5 +1,6 @@
 package com.sridhar.harbor.ui.components
 
+import androidx.compose.runtime.collectAsState
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -77,6 +78,15 @@ fun AppearancePicker(modifier: Modifier = Modifier, tv: Boolean = false) {
             ThemeMode.entries.forEach { m ->
                 Chip(stringResource(when (m) { ThemeMode.System -> R.string.look_mode_system; ThemeMode.Dark -> R.string.look_mode_dark; ThemeMode.Light -> R.string.look_mode_light }),
                     look.mode == m) { Looks.update { it.copy(mode = m) } }
+            }
+        }
+        // Animations: Auto = reduced on low-end devices
+        val c = LocalContainer.current
+        val motion by c.motionMode.collectAsState()
+        Label(stringResource(R.string.look_motion) + if (motion == "auto") "  ·  " + stringResource(if (c.reducedMotion("auto")) R.string.look_motion_auto_reduced else R.string.look_motion_auto_full) else "")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("auto" to R.string.look_motion_auto, "full" to R.string.look_motion_full, "reduced" to R.string.look_motion_reduced).forEach { (id, label) ->
+                Chip(stringResource(label), motion == id) { c.setMotionMode(id) }
             }
         }
         // Home layout

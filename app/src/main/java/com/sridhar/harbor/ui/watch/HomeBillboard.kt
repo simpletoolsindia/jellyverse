@@ -1,5 +1,6 @@
 package com.sridhar.harbor.ui.watch
 
+import com.sridhar.harbor.ui.components.reducedMotion
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.shadow
 import androidx.compose.animation.core.LinearEasing
@@ -98,6 +99,7 @@ fun BillboardHero(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (Base
         }
     }
     val current = items.getOrNull(pager.currentPage) ?: return
+    val reducedNow = reducedMotion()
     // Ambient glow: the artwork's own colour washes the top of the page, then fades into the background.
     val glow = com.sridhar.harbor.ui.music.rememberArtColor(jf.backdropUrl(cfg, current, 300), current.name)
     val glowAnim by androidx.compose.animation.animateColorAsState(glow, tween(900), label = "glow")
@@ -117,7 +119,7 @@ fun BillboardHero(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (Base
                 ) {
                     // Parallax inside the clipped card: the art moves slower than the card.
                     NetImage(jf.backdropUrl(cfg, item, 1280), Modifier.fillMaxSize().graphicsLayer {
-                        translationX = off * size.width * 0.25f; scaleX = drift; scaleY = drift
+                        translationX = off * size.width * 0.25f; if (!reducedNow) { scaleX = drift; scaleY = drift }
                     }, fallback = item.name)
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.35f to Color.Transparent, 1f to Color.Black.copy(alpha = .88f))))
                     Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(20.dp)) {
@@ -213,8 +215,9 @@ fun PosterMarquee(title: String, items: List<BaseItem>, onItem: (String) -> Unit
     val state = rememberLazyListState(initialFirstVisibleItemIndex = items.size * 50)
     val dragged by state.interactionSource.collectIsDraggedAsState()
     val resumed = rememberResumed()
-    LaunchedEffect(dragged, resumed) {
-        if (dragged || !resumed) return@LaunchedEffect
+    val reduced = reducedMotion()
+    LaunchedEffect(dragged, resumed, reduced) {
+        if (dragged || !resumed || reduced) return@LaunchedEffect
         delay(1200)
         while (true) state.animateScrollBy(240f, tween(4000, easing = LinearEasing))
     }

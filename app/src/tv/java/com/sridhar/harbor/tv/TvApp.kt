@@ -1,5 +1,6 @@
 package com.sridhar.harbor.tv
 
+import androidx.compose.animation.scaleIn
 import androidx.compose.material.icons.rounded.MusicNote
 import com.sridhar.harbor.R
 import androidx.compose.ui.res.stringResource
@@ -116,7 +117,15 @@ fun TvApp() {
 
     Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
         Box(Modifier.fillMaxSize().padding(start = 84.dp)) {
-            AnimatedContent(current, transitionSpec = { fadeIn(tween(260)) togetherWith fadeOut(tween(160)) }, label = "tvdest") { d ->
+            val reduced = com.sridhar.harbor.ui.components.reducedMotion()
+            AnimatedContent(current, transitionSpec = {
+                // Fade-through: the old screen is gone before the new one is mostly drawn, so the TV never renders
+                // two full screens for long. Low-end: a quick plain fade.
+                if (reduced) fadeIn(tween(140)) togetherWith fadeOut(tween(90))
+                else (fadeIn(tween(220, delayMillis = 70, easing = androidx.compose.animation.core.LinearOutSlowInEasing)) +
+                    scaleIn(tween(260, delayMillis = 70, easing = androidx.compose.animation.core.LinearOutSlowInEasing), initialScale = 0.97f)) togetherWith
+                    fadeOut(tween(90, easing = androidx.compose.animation.core.FastOutLinearInEasing))
+            }, label = "tvdest") { d ->
                 when (d) {
                     TvDest.Home -> TvHome(onOpen = { go(TvDest.Detail(it)) })
                     TvDest.Movies -> TvGrid("movies", onOpen = { go(TvDest.Detail(it)) })

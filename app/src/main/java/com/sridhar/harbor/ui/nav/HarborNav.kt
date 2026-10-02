@@ -1,5 +1,8 @@
 package com.sridhar.harbor.ui.nav
 
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material.icons.rounded.Apps
@@ -253,19 +256,34 @@ private fun HarborNavContent(initial: ServerConfig) {
         val miniVisible = musicActive && (showBar || dest != null && listOf(MusicAlbumRoute::class, MusicPlaylistRoute::class, MusicLikedRoute::class, MusicDownloadedRoute::class, MusicArtistRoute::class, MusicSearchRoute::class, MusicLibraryRoute::class).any { dest.hasRoute(it) })
         val miniInset by androidx.compose.animation.core.animateDpAsState(if (miniVisible) 72.dp else 0.dp, label = "miniInset")
         androidx.compose.runtime.CompositionLocalProvider(com.sridhar.harbor.ui.components.LocalMiniPlayerInset provides miniInset, com.sridhar.harbor.ui.components.LocalBottomBarInset provides (if (useRail) 0.dp else 80.dp)) {
+        val reducedNav = com.sridhar.harbor.ui.components.reducedMotion()
         NavHost(
             nav, startDestination = start, modifier = Modifier.fillMaxSize().padding(start = railInset),
             // Tabs cross-fade with a subtle zoom; pushed screens slide over like cards.
+            // Material shared-axis X for pushes (short slide + fade, in sync both ways) and fade-through between tabs.
+            // Low-end / "Remove animations": a quick plain fade so slow phones never draw two sliding screens.
             enterTransition = {
-                if (isTab(initialState) && isTab(targetState)) fadeIn(tween(220)) + scaleIn(tween(260), initialScale = 0.98f)
-                else slideInHorizontally(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) { it / 3 } + fadeIn(tween(200))
+                when {
+                    reducedNav -> fadeIn(tween(140))
+                    isTab(initialState) && isTab(targetState) -> fadeIn(tween(210, delayMillis = 60, easing = LinearOutSlowInEasing)) + scaleIn(tween(240, delayMillis = 60, easing = LinearOutSlowInEasing), initialScale = 0.98f)
+                    else -> slideInHorizontally(tween(300, easing = FastOutSlowInEasing)) { it / 10 } + fadeIn(tween(210, delayMillis = 60, easing = LinearOutSlowInEasing))
+                }
             },
             exitTransition = {
-                if (isTab(initialState) && isTab(targetState)) fadeOut(tween(160))
-                else slideOutHorizontally(tween(260)) { -it / 8 } + fadeOut(tween(260), targetAlpha = 0.4f)
+                when {
+                    reducedNav -> fadeOut(tween(90))
+                    isTab(initialState) && isTab(targetState) -> fadeOut(tween(90, easing = FastOutLinearInEasing))
+                    else -> slideOutHorizontally(tween(300, easing = FastOutSlowInEasing)) { -it / 10 } + fadeOut(tween(90, easing = FastOutLinearInEasing))
+                }
             },
-            popEnterTransition = { slideInHorizontally(tween(260)) { -it / 8 } + fadeIn(tween(260), initialAlpha = 0.4f) },
-            popExitTransition = { slideOutHorizontally(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow)) { it / 3 } + fadeOut(tween(180)) },
+            popEnterTransition = {
+                if (reducedNav) fadeIn(tween(140))
+                else slideInHorizontally(tween(300, easing = FastOutSlowInEasing)) { -it / 10 } + fadeIn(tween(210, delayMillis = 60, easing = LinearOutSlowInEasing))
+            },
+            popExitTransition = {
+                if (reducedNav) fadeOut(tween(90))
+                else slideOutHorizontally(tween(300, easing = FastOutSlowInEasing)) { it / 10 } + fadeOut(tween(90, easing = FastOutLinearInEasing))
+            },
         ) {
             composable<SetupRoute> { Readable {
                 SetupScreen(onDone = {

@@ -1120,4 +1120,10 @@
     <string name="downloading_short">Downloading</string>
     <string name="dl_in_progress">Downloading – see the notification for speed</string>
     <string name="mu_offline_hint">You\'re offline – your downloaded songs still play.</string>
+    <string name="look_motion">Animations</string>
+    <string name="look_motion_auto">Auto</string>
+    <string name="look_motion_full">Full</string>
+    <string name="look_motion_reduced">Reduced</string>
+    <string name="look_motion_auto_reduced">reduced on this device for speed</string>
+    <string name="look_motion_auto_full">full on this device</string>
 </resources>

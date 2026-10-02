@@ -1,5 +1,6 @@
 package com.sridhar.harbor
 
+import coil3.request.allowRgb565
 import android.app.Application
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -40,7 +41,9 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
     override fun newImageLoader(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
             .components { add(OkHttpNetworkFetcherFactory(callFactory = { container.imageHttp })) }
-            .crossfade(if (container.lowRam) 120 else 200)
+            // Low-end: half-size bitmaps (RGB_565 – no visible difference for posters) and no per-image crossfade.
+            .crossfade(if (container.lowEnd) 0 else 200)
+            .allowRgb565(container.lowEnd)
             .memoryCache { coil3.memory.MemoryCache.Builder().maxSizePercent(context, if (container.lowRam) 0.15 else 0.25).build() }
             .diskCache { coil3.disk.DiskCache.Builder().directory(context.cacheDir.resolve("images")).maxSizeBytes(if (container.lowRam) 128L shl 20 else 384L shl 20).build() }
             .build()

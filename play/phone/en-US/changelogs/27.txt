@@ -1,0 +1,1 @@
+JellyVerse 2.12.0: smoother, lighter app – new screen transitions, and on low-end phones animations are automatically simplified and images use half the memory. Choose Animations: Auto / Full / Reduced in Settings → Appearance.

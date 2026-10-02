@@ -96,6 +96,7 @@ fun rememberConfig(): ServerConfig {
 }
 
 fun Modifier.shimmer(): Modifier = composed {
+    if (reducedMotion()) return@composed drawWithContent { drawRect(Harbor.SurfaceHigh) }   // static placeholder
     val t = rememberInfiniteTransition(label = "shimmer")
     val x by t.animateFloat(-1f, 2f, infiniteRepeatable(tween(1300), RepeatMode.Restart), label = "x")
     drawWithContent {
@@ -208,6 +209,7 @@ fun Modifier.pressable(pressedScale: Float = 0.95f, enabled: Boolean = true, onC
 
 /** Items fade + rise in once, staggered by [index] — for lists that appear after loading. */
 fun Modifier.enterRise(index: Int): Modifier = composed {
+    if (reducedMotion()) return@composed this   // low-end: items appear at once, no per-item animation
     val shown = remember { Animatable(0f) }
     // Stagger only the first screenful; items revealed by scrolling later rise at once (no lag on fast flings).
     LaunchedEffect(Unit) { shown.animateTo(1f, tween(if (index < 12) 380 else 260, delayMillis = if (index < 12) index * 40 else 0, easing = FastOutSlowInEasing)) }
