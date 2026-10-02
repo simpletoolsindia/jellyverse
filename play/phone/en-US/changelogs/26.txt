@@ -1,0 +1,1 @@
+JellyVerse 2.11.2: smoother seeking – playback resumes by itself after skipping, with sound in sync.

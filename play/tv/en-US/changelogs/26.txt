@@ -1,0 +1,1 @@
+JellyVerse TV 2.11.2: fast-forward and rewind with the remote no longer leave the video paused or the sound out of sync – presses are combined into one quick jump and playback resumes on its own.

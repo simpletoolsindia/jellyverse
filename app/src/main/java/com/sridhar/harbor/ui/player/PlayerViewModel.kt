@@ -740,7 +740,61 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun togglePlay() { if (player.isPlaying) player.pause() else { if (player.playbackState == Player.STATE_ENDED) player.seekTo(0); player.play() } }
     fun seekStep(forward: Boolean) = seekBy((if (forward) 1 else -1) * ui.seekStepSec * 1000L)
     fun seekBy(ms: Long) = seekTo(player.currentPosition + ms)
-    fun seekTo(ms: Long) { player.seekTo(ms.coerceIn(0, player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE)); tick() }
+
+    // ---------------- remote seeking ----------------
+    private val isTvDevice = app.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+    /** Where the remote's presses are heading; executed as ONE seek once the presses stop. */
+    private var pendingSeek: Long? = null
+    private var seekJob: Job? = null
+    private var resyncJob: Job? = null
+
+    /**
+     * D-pad / FF / RW from a remote. Every key-repeat used to be its own seek (a held button = a dozen seeks a
+     * second): each one flushes the decoders and the audio track, and on many TV chips the audio clock restarts
+     * from a stale timestamp – sound drifts out of sync or playback looks stuck until pause/play. Now presses add up
+     * and a single keyframe-aligned seek runs ~0.45 s after the last one, followed by a quick audio-clock resync.
+     */
+    fun remoteSeekBy(ms: Long) {
+        val dur = player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
+        val target = ((pendingSeek ?: player.currentPosition) + ms).coerceIn(0, dur)
+        pendingSeek = target
+        ui = ui.copy(positionMs = target)
+        seekJob?.cancel()
+        seekJob = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
+            delay(450)
+            val t = pendingSeek ?: return@launch
+            pendingSeek = null
+            player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC)   // land on a keyframe: no decode-and-drop
+            player.seekTo(t)
+            player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.DEFAULT)
+            afterSeek()
+        }
+    }
+
+    /**
+     * Once playback resumes after a remote seek, re-anchor the audio clock – the same pause/play users had to do by
+     * hand on TV boxes. Also catches the "playing but frozen" case: if the position doesn't move, nudge it.
+     */
+    private fun afterSeek() {
+        resyncJob?.cancel()
+        resyncJob = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
+            // Wait (up to 20 s) for the seek to finish buffering.
+            var waited = 0
+            while (player.playbackState != Player.STATE_READY && waited < 20_000) { delay(100); waited += 100 }
+            if (!player.playWhenReady || player.playbackState != Player.STATE_READY) return@launch
+            delay(400)
+            if (isTvDevice && player.isPlaying) { player.pause(); delay(60); player.play() }
+            val p0 = player.currentPosition
+            delay(1500)
+            if (player.playWhenReady && player.playbackState == Player.STATE_READY && player.currentPosition - p0 < 300) {
+                android.util.Log.w("Player", "stalled after seek – nudging")
+                player.pause(); delay(80); player.play()
+                delay(1500)
+                if (player.playWhenReady && player.currentPosition - p0 < 300) player.seekTo(player.currentPosition)
+            }
+        }
+    }
+    fun seekTo(ms: Long) { pendingSeek = null; seekJob?.cancel(); player.seekTo(ms.coerceIn(0, player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE)); tick(); afterSeek() }
     fun skipIntro() { ui.intro?.let { seekTo(it.endTicks / TICKS_PER_MS) } }
     fun dismissUpNext() { ui = ui.copy(upNextDismissed = true) }
 
@@ -773,7 +827,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun tick() {
-        val pos = player.currentPosition.coerceAtLeast(0)
+        val pos = pendingSeek ?: player.currentPosition.coerceAtLeast(0)
+        stallWatch()
         ui = ui.copy(positionMs = pos, durationMs = player.duration.takeIf { it > 0 } ?: ui.durationMs, bufferedMs = player.bufferedPosition)
         ui.sleepAt?.let { if (System.currentTimeMillis() >= it) { player.pause(); ui = ui.copy(sleepAt = null); notice(L10n.s(R.string.sleep_timer_paused)) } }
         // Auto-skip intro/recap once per segment.
@@ -787,10 +842,26 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         stutterWatch()
     }
 
+    private var stallPos = -1L
+    private var stallSince = 0L
+
+    /** "Playing" (READY + playWhenReady) but the clock hasn't moved for 4 s: resync like a manual pause/play. */
+    private fun stallWatch() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (!player.playWhenReady || player.playbackState != Player.STATE_READY || pendingSeek != null || ui.live) { stallPos = -1; return }
+        val p = player.currentPosition
+        if (p != stallPos) { stallPos = p; stallSince = now; return }
+        if (now - stallSince > 4000) {
+            android.util.Log.w("Player", "playback clock stalled – resyncing")
+            stallSince = now
+            player.pause(); player.play()
+        }
+    }
+
     /** Direct play dropping ≥ 60 frames in 10 s (≈ 2.5 s of a 24 fps film) → one step down to a server stream. */
     private fun stutterWatch() {
         val now = android.os.SystemClock.elapsedRealtime()
-        if (!player.isPlaying || ui.buffering) { windowStart = now; droppedAtWindow = dropped; return }
+        if (!player.isPlaying || ui.buffering || pendingSeek != null || resyncJob?.isActive == true) { windowStart = now; droppedAtWindow = dropped; return }
         if (now - windowStart < 10_000) return
         val lost = dropped - droppedAtWindow
         windowStart = now; droppedAtWindow = dropped

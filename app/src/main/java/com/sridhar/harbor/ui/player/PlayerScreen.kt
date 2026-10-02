@@ -229,8 +229,8 @@ fun PlayerScreen(vm: PlayerViewModel, inPip: Boolean, onBack: () -> Unit, onPip:
             val code = ne.keyCode
             when (code) {
                 KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> { vm.togglePlay(); controls = true; return@remote true }
-                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { vm.seekBy(30_000); return@remote true }
-                KeyEvent.KEYCODE_MEDIA_REWIND -> { vm.seekBy(-30_000); return@remote true }
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { vm.remoteSeekBy(30_000); return@remote true }
+                KeyEvent.KEYCODE_MEDIA_REWIND -> { vm.remoteSeekBy(-30_000); return@remote true }
                 KeyEvent.KEYCODE_MEDIA_NEXT -> { if (ui.live) vm.zap(1) else vm.playNext(); return@remote true }
                 KeyEvent.KEYCODE_CHANNEL_UP -> { vm.zap(1); return@remote true }
                 KeyEvent.KEYCODE_CHANNEL_DOWN -> { vm.zap(-1); return@remote true }
@@ -264,7 +264,7 @@ fun PlayerScreen(vm: PlayerViewModel, inPip: Boolean, onBack: () -> Unit, onPip:
                     // Hold to accelerate: 1× step, then 3×, then 6×.
                     val mult = when { ne.repeatCount > 20 -> 6; ne.repeatCount > 6 -> 3; else -> 1 }
                     val secs = ui.seekStepSec * mult
-                    vm.seekBy((if (forward) 1 else -1) * secs * 1000L)
+                    vm.remoteSeekBy((if (forward) 1 else -1) * secs * 1000L)
                     tapSeek = tapSeek?.takeIf { it.first == forward }?.let { forward to it.second + secs } ?: (forward to secs)
                     tapSeekStamp = System.nanoTime(); true
                 }
