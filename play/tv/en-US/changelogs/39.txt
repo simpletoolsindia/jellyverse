@@ -1,0 +1,1 @@
+JellyVerse 2.21.1: when setting up a service from Settings, the bottom button now saves and connects ("Save & connect") instead of closing without saving.

@@ -1247,4 +1247,6 @@
     <string name="lab_mood_happy">all good</string>
     <string name="lab_mood_busy">getting busy</string>
     <string name="lab_mood_stressed">stressed!</string>
+    <string name="setup_save_connect">Save &amp; connect</string>
+    <string name="setup_connecting">Connecting…</string>
 </resources>

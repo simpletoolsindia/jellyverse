@@ -143,6 +143,28 @@ class SetupViewModel(private val c: AppContainer) : ViewModel() {
     var sshPass by mutableStateOf("")
     var sshState by mutableStateOf<ConnState>(ConnState.Idle)
 
+    /** Everything the user can edit for one service – to know whether "Done" must reconnect. */
+    internal fun fieldsKey(s: Svc): String = when (s) {
+        Svc.Movies -> "$jfUrl|$jfUser|${jfPass.length}"
+        Svc.Music -> "$ndUrl|$ndUser|${ndPass.length}"
+        Svc.Requests -> "$jsUrl|$jsUseJellyfin|$jsKey|$jfUser|${jfPass.length}"
+        Svc.Downloads -> "$qbUrl|$qbUser|${qbPass.length}|$a2Url|${a2Secret.length}"
+        Svc.Library -> "$snUrl|$rdUrl|$arrSameLogin|$arrUser|${arrPass.length}"
+        Svc.Homelab -> "$sshHost|$sshPort|$sshUser|${sshPass.length}"
+    }
+
+    /** Connect / sign in whatever this service step has filled in. */
+    internal fun connect(s: Svc) {
+        when (s) {
+            Svc.Movies -> connectJellyfin()
+            Svc.Music -> connectNavidrome()
+            Svc.Requests -> connectSeerr()
+            Svc.Downloads -> { if (qbUrl.isNotBlank()) connectQbit(); if (a2Url.isNotBlank()) connectAria2() }
+            Svc.Library -> { connectArr(com.sridhar.harbor.data.arr.ArrKind.Sonarr); connectArr(com.sridhar.harbor.data.arr.ArrKind.Radarr) }
+            Svc.Homelab -> connectSsh()
+        }
+    }
+
     val anyConnected get() = listOf(jfState, qbState, jsState, snState, rdState, sshState, a2State, ndState).any { it is ConnState.Ok }
 
     private fun arrCreds(): Pair<String, String> =
@@ -338,6 +360,17 @@ fun SetupScreen(onDone: () -> Unit, only: String? = null) {
 @Composable
 private fun SingleServiceSetup(s: Svc, vm: SetupViewModel, onDone: () -> Unit) {
     androidx.activity.compose.BackHandler(onBack = onDone)
+    val st = vm.stateOf(s)
+    // The bottom button is what people press (the inline Connect is often under the keyboard): it saves & connects
+    // whenever something changed or nothing is connected yet, and closes once connected.
+    val key = vm.fieldsKey(s)
+    var savedKey by remember { mutableStateOf(key) }
+    var finishing by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(st) {
+        if (st is ConnState.Ok) { savedKey = key; if (finishing) onDone() }
+        if (st is ConnState.Failed) finishing = false
+    }
+    val upToDate = st is ConnState.Ok && key == savedKey
     Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
         Column(Modifier.fillMaxSize().statusBarsPadding().imePadding().navigationBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -346,7 +379,10 @@ private fun SingleServiceSetup(s: Svc, vm: SetupViewModel, onDone: () -> Unit) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 ServiceStep(s, vm)
             }
-            GradientButton(stringResource(R.string.setup_done_btn), onClick = onDone, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp))
+            GradientButton(
+                stringResource(when { st is ConnState.Working || finishing -> R.string.setup_connecting; upToDate -> R.string.setup_done_btn; else -> R.string.setup_save_connect }),
+                onClick = { if (upToDate) onDone() else if (st !is ConnState.Working) { finishing = true; vm.connect(s) } },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp))
         }
     }
 }

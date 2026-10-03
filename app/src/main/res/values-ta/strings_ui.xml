@@ -1247,4 +1247,6 @@
     <string name="lab_mood_happy">எல்லாம் நன்று</string>
     <string name="lab_mood_busy">பிஸியாகிறது</string>
     <string name="lab_mood_stressed">அழுத்தம்!</string>
+    <string name="setup_save_connect">சேமித்து இணை</string>
+    <string name="setup_connecting">இணைக்கிறது…</string>
 </resources>
