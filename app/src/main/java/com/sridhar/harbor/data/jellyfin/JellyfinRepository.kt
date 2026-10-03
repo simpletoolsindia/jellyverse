@@ -232,7 +232,8 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
         val all = libraryTitles()
         val scored = all.map { item ->
             val sc = maxOf(TitleMatcher.match(query, item.name, item.year), item.originalTitle?.let { TitleMatcher.match(query, it, item.year) } ?: 0f)
-            item to if (item.id in direct) maxOf(sc, 0.7f) else sc
+            // The server's own search is loose (single letters match): only back it up when we see some similarity too.
+            item to if (item.id in direct && sc >= 0.35f) maxOf(sc, 0.7f) else sc
         }.sortedByDescending { it.second }
         val hits = scored.filter { it.second >= 0.55f }.take(40).map { it.first }
         val top = scored.firstOrNull()?.second ?: 0f

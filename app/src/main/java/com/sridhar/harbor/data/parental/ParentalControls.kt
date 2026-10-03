@@ -11,6 +11,15 @@ import java.security.MessageDigest
 object Ratings {
     private val adult = setOf("R", "NC-17", "NC17", "X", "XXX", "AO", "TV-MA", "A", "S", "18", "18+", "R18", "R18+", "FSK 18", "FSK18", "RP18")
 
+    /** Adult genres / tags (unrated adult films often only carry these). */
+    private val adultWords = Regex("(?i)\\b(erotic|erotica|adult|porn|porno|xxx|softcore|hardcore|hentai|sexploitation|nsfw|18\\+)\\b")
+
+    fun isAdultGenre(name: String?): Boolean = name != null && adultWords.containsMatchIn(name)
+
+    /** 18+ by rating (A, R, NC-17, TV-MA, 18…) or by an adult genre / tag. */
+    fun isAdultItem(item: com.sridhar.harbor.data.jellyfin.BaseItem): Boolean =
+        isAdult(item.officialRating) || item.genres.any(::isAdultGenre) || item.tags.any(::isAdultGenre)
+
     fun isAdult(rating: String?): Boolean {
         val r = rating?.trim()?.uppercase()?.takeIf { it.isNotEmpty() } ?: return false
         if (r in adult) return true
@@ -69,13 +78,22 @@ class ParentalControls(context: Context) {
         val s = _state.value
         if (!s.enabled) return false
         return isLocked(item.id) || isLocked(item.seriesId) ||
-            (s.protectAdult && (Ratings.isAdult(item.officialRating) || item.seriesId in adultSeries))
+            (s.protectAdult && (Ratings.isAdultItem(item) || item.seriesId in adultSeries))
     }
+
+    /** 18+ hiding is on and the PIN hasn't been entered: adult titles, genres and online results stay out of sight. */
+    val hidingAdult: Boolean get() = _state.value.let { it.enabled && it.protectAdult } && !isUnlocked()
+
+    /** Hide this title everywhere (library, search, rows) – adult content only; PIN-locked titles stay visible but locked. */
+    fun hideAdult(item: BaseItem): Boolean = hidingAdult && (Ratings.isAdultItem(item) || item.seriesId in adultSeries || item.id in adultSeries)
+
+    /** Jellyseerr / TMDB results (Discover, Search): drop titles TMDB marks adult. */
+    fun hideAdult(m: com.sridhar.harbor.data.seerr.SeerrMedia): Boolean = hidingAdult && m.adult == true
 
     /** Refreshes [adultSeries] from the library (cheap; called when Home loads with protection on). */
     suspend fun refreshAdultSeries(titles: suspend () -> List<BaseItem>) {
         if (!_state.value.enabled) return
-        runCatching { titles() }.onSuccess { list -> adultSeries = list.filter { it.type == "Series" && Ratings.isAdult(it.officialRating) }.map { it.id }.toSet() }
+        runCatching { titles() }.onSuccess { list -> adultSeries = list.filter { it.type == "Series" && Ratings.isAdultItem(it) }.map { it.id }.toSet() }
     }
 
     fun hideFromHome(item: BaseItem) = isProtected(item)

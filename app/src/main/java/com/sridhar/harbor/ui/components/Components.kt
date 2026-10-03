@@ -324,10 +324,9 @@ fun GradientButton(text: String, onClick: () -> Unit, modifier: Modifier = Modif
 fun MessageState(title: String, message: String?, modifier: Modifier = Modifier, icon: ImageVector = Icons.Rounded.CloudOff, onRetry: (() -> Unit)? = null, actionLabel: String = "Try again") {
     Column(modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         // Errors (the default cloud icon) get the drifting jellyfish; everything else keeps its icon badge.
+        // Errors get the sleepy dog; empty states ("no results", "nothing here") get the little dino.
         if (icon == Icons.Rounded.CloudOff) AdriftJelly(Modifier.size(120.dp))
-        else Box(Modifier.size(72.dp).clip(CircleShape).background(Harbor.accent), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Color.White, modifier = Modifier.size(34.dp))
-        }
+        else CuteDino(Modifier.size(120.dp))
         Spacer(Modifier.height(16.dp))
         Text(title, style = MaterialTheme.typography.titleMedium)
         if (message != null) {

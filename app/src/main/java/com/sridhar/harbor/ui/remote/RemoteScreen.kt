@@ -304,6 +304,7 @@ private fun KeyboardBar(client: RemoteClient, field: String?, onClose: () -> Uni
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(if (field.isNullOrBlank()) stringResource(R.string.remote_type_on_tv) else stringResource(R.string.remote_typing_into, field),
                 color = Harbor.Sky, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, modifier = Modifier.weight(1f))
+            TextButton({ client.clearText(); text = "" }) { Text(stringResource(R.string.remote_clear_all), color = Harbor.Rose) }
             TextButton(onClose) { Text(stringResource(R.string.close), color = Harbor.TextDim) }
         }
         OutlinedTextField(text, { new -> client.mirror(text, new); text = new }, Modifier.fillMaxWidth().focusRequester(focus), singleLine = true,

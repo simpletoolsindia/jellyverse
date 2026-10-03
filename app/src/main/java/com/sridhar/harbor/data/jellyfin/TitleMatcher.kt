@@ -118,8 +118,10 @@ object TitleMatcher {
                 if (dp <= allowed) return 0.86f - 0.1f * dp
             }
         }
+        // Soft fallback only between words of similar length (a long nonsense word must not "match" a 2-letter one).
+        if (q.length < 4 || t.length < 3 || kotlin.math.abs(q.length - t.length) > 2) return 0f
         val jw = jaroWinkler(q, t)
-        return if (jw >= 0.86f && q.length >= 4) jw * 0.8f else 0f
+        return if (jw >= 0.86f) jw * 0.8f else 0f
     }
 
     /**

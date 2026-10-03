@@ -74,6 +74,7 @@ private fun Intro(reveal: Animatable<Float, *>, onFinished: () -> Unit) {
     val fade = remember { Animatable(1f) }      // whole overlay alpha
     val scope = rememberCoroutineScope()
     val measurer = rememberTextMeasurer()
+    val show = remember { kotlin.random.Random.nextInt(6) }
     val focus = remember { FocusRequester() }
 
     fun skip() = scope.launch { launch { reveal.animateTo(1f, tween(220)) }; fade.animateTo(0f, tween(180)); onFinished() }
@@ -89,7 +90,7 @@ private fun Intro(reveal: Animatable<Float, *>, onFinished: () -> Unit) {
         kotlinx.coroutines.delay(420)
         launch { words.animateTo(1f, tween(620, easing = EaseOutExpo)) }
         kotlinx.coroutines.delay(360)
-        dart.animateTo(1f, tween(420, easing = CubicBezierEasing(0.5f, 0f, 0.9f, 0.4f)))
+        dart.animateTo(1f, tween(1000, easing = LinearEasing))
         // Iris-open from the tile into the app (smoother than a flat cross-fade), then let go.
         launch { kotlinx.coroutines.delay(380); fade.animateTo(0f, tween(220)) }
         reveal.animateTo(1f, tween(600, easing = EaseOutExpo))
@@ -125,9 +126,52 @@ private fun Intro(reveal: Animatable<Float, *>, onFinished: () -> Unit) {
         val box = splashBox + (full * 0.86f - splashBox) * k
         val dogCy = size.height / 2f + (cy - size.height / 2f) * k
         val tw = 2f * kotlin.math.PI.toFloat()
-        val hop = kotlin.math.sin(d * kotlin.math.PI.toFloat()) * full * 0.22f
-        dog(Offset(cx - box / 2f, dogCy - box * 0.51f - hop), box, sway = kotlin.math.sin(beat.value * tw), tilt = kotlin.math.sin(d * tw) * 8f,
-            tongue = if (d > 0f) 1f else 0f)
+        val pi = kotlin.math.PI.toFloat()
+        fun sin(x: Float) = kotlin.math.sin(x)
+        // A different little show on every launch (picked once per start).
+        var dx = 0f; var dy = 0f; var rot = 0f; var sc = 1f; var open = 1f; var tongue = 0f
+        var sway = sin(beat.value * tw); var tilt = 0f
+        when (show) {
+            0 -> { dy = -sin(d * pi) * full * 0.28f; tilt = sin(d * tw) * 8f; tongue = if (d > 0f) 1f else 0f }                 // happy hop + hearts
+            1 -> { dx = sin(d * tw) * full * 0.9f; dy = -kotlin.math.abs(sin(d * tw * 3)) * full * 0.06f                        // zoomies
+                   tilt = kotlin.math.cos(d * tw) * 14f; sway = sin(d * tw * 4); tongue = if (d > 0f) 1f else 0f }
+            2 -> { val e = androidx.compose.animation.core.FastOutSlowInEasing.transform(d); rot = 360f * e                    // spin + bounce
+                   sc = 1f + 0.18f * sin(d * pi); tongue = if (d > 0.5f) 1f else 0f }
+            3 -> { dy = sin((d * 1.15f).coerceAtMost(1f) * pi) * full * 0.42f; open = if (d in 0.2f..0.6f) 0f else 1f        // peek-a-boo
+                   sc = 1f + 0.12f * (if (d > 0.85f) sin((d - 0.85f) / 0.15f * pi) else 0f) }
+            4 -> { open = if (d < 0.35f) 0.05f else 1f; dy = if (d > 0.35f) -sin((d - 0.35f) / 0.65f * pi) * full * 0.3f else 0f // sleepy → wakes up
+                   tongue = if (d > 0.5f) 1f else 0f; tilt = if (d < 0.35f) -8f else 0f }
+            else -> { tilt = sin(d * tw * 3) * 14f; dx = sin(d * tw * 1.5f) * full * 0.12f; sway = sin(d * tw * 5)            // dance
+                      dy = -kotlin.math.abs(sin(d * tw * 3)) * full * 0.05f; tongue = if (d > 0f) 1f else 0f }
+        }
+        val pivot = Offset(cx + dx, dogCy + dy)
+        withTransform({ rotate(rot, pivot); scale(sc, sc, pivot) }) {
+            dog(Offset(cx + dx - box / 2f, dogCy + dy - box * 0.51f), box, open = open, sway = sway, tilt = tilt, tongue = tongue)
+        }
+        // Extras: hearts for the hop, "z z" before the sleepy dog wakes, dust for the zoomies.
+        when (show) {
+            0 -> if (d > 0f) for (i in 0..2) {
+                val t = ((d * 1.4f) - i * 0.18f).coerceIn(0f, 1f); if (t <= 0f) continue
+                val hx = cx + (i - 1) * box * 0.35f; val hy = dogCy - box * 0.45f - t * full * 0.5f
+                val r = box * 0.06f * (0.6f + t * 0.6f)
+                val hp = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(hx, hy + r * 0.9f); cubicTo(hx - r * 1.6f, hy - r * 0.2f, hx - r * 0.6f, hy - r * 1.4f, hx, hy - r * 0.4f)
+                    cubicTo(hx + r * 0.6f, hy - r * 1.4f, hx + r * 1.6f, hy - r * 0.2f, hx, hy + r * 0.9f); close()
+                }
+                drawPath(hp, Color(0xFFFF6B8B).copy(alpha = 1f - t * 0.7f))
+            }
+            1 -> if (d > 0f) for (i in 0..3) {
+                val px = cx + dx - kotlin.math.cos(d * tw) * box * (0.45f + i * 0.12f); val py = dogCy + box * 0.42f
+                drawCircle(Color(0xFFD9C3A5).copy(alpha = 0.5f - i * 0.1f), box * (0.05f + i * 0.015f), Offset(px, py))
+            }
+            4 -> if (d < 0.4f) {
+                val zs = TextStyle(fontSize = (box / 6f).toSp(), fontWeight = FontWeight.Black, color = Color(0xFF9FB4FF))
+                for (i in 0..1) {
+                    val t = ((beat.value / 2f) + i * 0.5f) % 1f
+                    drawText(measurer.measure("z", zs), topLeft = Offset(cx + box * (0.3f + 0.15f * i + 0.1f * t), dogCy - box * (0.45f + 0.35f * t)), alpha = 1f - t)
+                }
+            }
+        }
 
         // Wordmark: rises in, then a shine sweeps across it.
         val w = words.value

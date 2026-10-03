@@ -1238,4 +1238,5 @@
     <string name="play_on_tv">Play on TV</string>
     <string name="playing_on_tv">Playing on %1$s</string>
     <string name="tv_not_reachable">Couldn\'t reach your JellyVerse TV – open the app on the TV and try again</string>
+    <string name="remote_clear_all">Clear all</string>
 </resources>

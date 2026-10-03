@@ -1,6 +1,7 @@
 package com.sridhar.harbor.data.jellyfin
 
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
 
 /** The forgiving Search matcher: partial names, misspellings, transliteration, spacing, years. */
@@ -48,5 +49,11 @@ class TitleSearchTest {
     @Test fun bestMatchRanksFirst() {
         val titles = listOf("Vikram Vedha", "Vikram", "Vikramarkudu", "Vettaiyan")
         assertThat(titles.maxBy { m("vikram", it) }).isEqualTo("Vikram")
+    }
+
+    @Test fun gibberishMatchesNothing() {
+        listOf("Mr. X", "Wifelike X (2022)", "X-Deal 2", "Spy x Family").forEach {
+            assertWithMessage(it).that(m("qqxzzw", it)).isLessThan(0.55f)
+        }
     }
 }

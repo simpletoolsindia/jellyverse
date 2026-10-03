@@ -140,11 +140,11 @@ class LibraryViewModel(private val c: AppContainer, private val parentId: String
                         sort.key, descending,
                     ).map { it.id }.also { clientIds = it }
                     val page = c.jellyfin.itemsByIds(ids.drop(items.size).take(60))
-                    items = items + page; total = ids.size
+                    items = items + page.filterNot(c.parental::hideAdult); total = ids.size
                 } else {
                     val r = c.jellyfin.library(parentId, types, sort.key, if (descending) "Descending" else "Ascending", items.size, 60, filter.key,
                         genres = genre, years = com.sridhar.harbor.data.jellyfin.LibraryQuery.yearsParam(decade))
-                    items = items + r.items; total = r.total
+                    items = items + r.items.filterNot(c.parental::hideAdult); total = r.total
                 }
             }.onFailure { error = it.friendly() }
             loading = false
@@ -250,10 +250,10 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
                 else runCatching { c.seerr.search(q).results }.getOrDefault(emptyList())
                     .filter { it.mediaType == "movie" || it.mediaType == "tv" }
                     .filter { it.status != com.sridhar.harbor.data.seerr.MediaStatus.Available }
-                    .filter { !(c.parental.state.value.enabled && c.parental.state.value.protectAdult) || it.adult != true }
+                    .filterNot(c.parental::hideAdult)
             }
             val found = runCatching { c.jellyfin.searchTitles(q) }.getOrNull()
-            results = found?.items.orEmpty()
+            results = found?.items.orEmpty().filterNot(c.parental::hideAdult)
             var online = s.await()
             // Online (TMDB via Jellyseerr): a misspelt query often finds nothing – retry with the closest spelling.
             if (online.isEmpty() && c.settings.current().seerrReady) found?.suggestions?.firstOrNull()?.let { alt ->
@@ -263,7 +263,8 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
             seerr = online
             // Suggestions: library near-misses, plus what TMDB thinks you meant when the library has nothing.
             val fromTmdb = if (results.isEmpty()) online.mapNotNull { it.displayTitle.takeIf { t -> t.isNotBlank() } }.take(2) else emptyList()
-            suggestions = (found?.suggestions.orEmpty() + fromTmdb).distinctBy { it.lowercase() }
+            val hiddenNames = if (c.parental.hidingAdult) (found?.items.orEmpty().filter(c.parental::hideAdult).map { it.name.lowercase() }).toSet() else emptySet()
+            suggestions = (found?.suggestions.orEmpty().filterNot { it.lowercase() in hiddenNames } + fromTmdb).distinctBy { it.lowercase() }
                 .filter { com.sridhar.harbor.data.jellyfin.TitleMatcher.match(q, it) < 0.97f }.take(4)
         }
         loading = false

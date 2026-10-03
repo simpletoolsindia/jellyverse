@@ -253,6 +253,8 @@ object RemoteServer {
             when (str(m, "t")) {
                 "key" -> RemoteProtocol.keys[str(m, "k")]?.let { injectKey(it, m["long"]?.jsonPrimitive?.content == "true") }
                 "text" -> str(m, "s")?.let { injectText(it) }
+                // "Clear" from the phone: wipe whatever is already in the TV's focused text field.
+                "clear" -> writer.execute { injectKey(KeyEvent.KEYCODE_MOVE_END, false); repeat(160) { injectKey(KeyEvent.KEYCODE_DEL, false) } }
                 "vol" -> {
                     val am = app.getSystemService(AudioManager::class.java)
                     val dir = when (str(m, "d")) { "up" -> AudioManager.ADJUST_RAISE; "down" -> AudioManager.ADJUST_LOWER; else -> AudioManager.ADJUST_TOGGLE_MUTE }

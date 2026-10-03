@@ -35,6 +35,7 @@ data class LibraryIndex(val entries: List<IndexEntry>) {
     /** Languages by how many titles have them ("tam" to 594 …); undetermined audio is left out. */
     val languages: List<Pair<String, Int>> = entries.flatMap { it.languages }.groupingBy { it }.eachCount().toList().sortedByDescending { it.second }
     val genres: List<String> = entries.flatMap { it.genres }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { it.key }
+        .filterNot { com.sridhar.harbor.HarborApp.instance?.container?.parental?.hidingAdult == true && com.sridhar.harbor.data.parental.Ratings.isAdultGenre(it) }
     /** Decades present, newest first (2020, 2010, …). */
     val decades: List<Int> = entries.mapNotNull { it.year?.let { y -> y / 10 * 10 } }.distinct().sortedDescending()
 

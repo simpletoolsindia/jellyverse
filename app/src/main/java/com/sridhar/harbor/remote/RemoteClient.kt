@@ -216,6 +216,8 @@ class RemoteClient(private val context: Context) {
     fun text(s: String) { if (s.isNotEmpty()) send(buildJsonObject { put("t", "text"); put("s", s) }) }
     fun volume(dir: String) = send(buildJsonObject { put("t", "vol"); put("d", dir) })
     fun home() = send(buildJsonObject { put("t", "home") })
+    /** Clears the TV's focused text field completely (also text typed on the TV itself). */
+    fun clearText() = send(buildJsonObject { put("t", "clear") })
 
     /** A JellyVerse TV this phone has paired with before (for "Play on TV"). */
     val pairedTv: TvDevice? get() = lastTv()?.takeIf { prefs.contains(tokenKey(it)) }

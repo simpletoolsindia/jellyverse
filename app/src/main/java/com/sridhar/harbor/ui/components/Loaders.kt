@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
@@ -145,9 +146,26 @@ fun JellyLoader(modifier: Modifier = Modifier, color: Color = Color.White, accen
             Offset(c.x - ring, c.y - ring), androidx.compose.ui.geometry.Size(ring * 2, ring * 2), style = Stroke(s * 0.035f, cap = StrokeCap.Round))
         // The jellyfish, centred in the blob.
         val box = s * 0.62f * 108f / 68f
-        // The dog, bobbing in the middle of the blob, pigtails wiggling.
-        val dogBox = s * 0.68f
-        dog(Offset(c.x - dogBox / 2f, c.y - dogBox * 0.53f), dogBox, sway = sin(t.value * 2f * PI.toFloat()), bob = sin(t.value * 2f * PI.toFloat()) * 1.6f)
+        // The dog running: quick bounce, paws pedalling, speed lines and a puff of dust behind it.
+        val dogBox = s * 0.64f
+        val run = (t.value * 2f) % 1f                               // two strides per beat
+        val tw = 2f * PI.toFloat()
+        val bounce = kotlin.math.abs(sin(run * PI.toFloat())) * dogBox * 0.06f
+        val top = Offset(c.x - dogBox / 2f, c.y - dogBox * 0.56f - bounce)
+        // paws (behind the collar), alternating
+        for (i in 0..1) {
+            val ph = run * tw + i * PI.toFloat()
+            drawOval(Color(0xFFF4EBDD), Offset(c.x + (i - 0.5f) * dogBox * 0.26f - dogBox * 0.05f + sin(ph) * dogBox * 0.05f,
+                c.y + dogBox * 0.28f - bounce + kotlin.math.cos(ph).coerceAtLeast(0f) * -dogBox * 0.05f), androidx.compose.ui.geometry.Size(dogBox * 0.12f, dogBox * 0.08f))
+        }
+        dog(top, dogBox, sway = sin(run * tw), tilt = -6f, tongue = 0.8f)
+        // speed lines on the left
+        for (i in 0..2) {
+            val o = ((run + i / 3f) % 1f)
+            val y = c.y - dogBox * 0.15f + i * dogBox * 0.18f
+            val x0 = c.x - dogBox * (0.55f + 0.25f * o)
+            drawLine(Color.White.copy(alpha = 0.55f * (1f - o)), Offset(x0, y), Offset(x0 - dogBox * 0.18f, y), dogBox * 0.03f, StrokeCap.Round)
+        }
     }
 }
 
@@ -267,5 +285,56 @@ fun GlitchJelly(modifier: Modifier = Modifier, color: Color = Color.White) {
             if (burst) for (k in 0..4) drawRect(if (k % 2 == 0) Harbor.Sky else color,
                 Offset(84f + rnd(k + 20) * 10f, 30f + rnd(k + 40) * 46f), androidx.compose.ui.geometry.Size(2.4f, 2.4f))
         }
+    }
+}
+
+/**
+ * A cute little dinosaur (for empty states): round green body, back spikes, tiny arms, big eyes and blush.
+ * It bobs, blinks, swishes its tail and now and then lets out a tiny "rawr".
+ */
+@Composable
+fun CuteDino(modifier: Modifier = Modifier) {
+    val still = reducedMotion()
+    val clock = rememberInfiniteTransition(label = "dino")
+    val t = clock.animateFloat(0f, 1f, infiniteRepeatable(tween(2600, easing = LinearEasing)), label = "t")
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    Canvas(modifier.size(120.dp)) {
+        val u = minOf(size.width, size.height) / 100f
+        val v = if (still) 0f else t.value
+        val tw = 2f * PI.toFloat()
+        val bob = sin(v * tw) * 1.5f * u
+        val green = Color(0xFF5BC27A); val dark = Color(0xFF3E9B5C); val belly = Color(0xFFCFF2C2)
+        fun o(x: Float, y: Float) = Offset(x * u, y * u + bob)
+        fun sz(w: Float, h: Float) = androidx.compose.ui.geometry.Size(w * u, h * u)
+        // shadow
+        drawOval(Color.Black.copy(alpha = .12f), Offset(22 * u, 88 * u), sz(52f, 7f))
+        // tail (swishing)
+        val sw = sin(v * tw * 2) * 4f
+        drawPath(Path().apply { moveTo(30 * u, 72 * u + bob); quadraticTo(12 * u, (70 + sw) * u + bob, 6 * u, (60 + sw) * u + bob); quadraticTo(18 * u, 78 * u + bob, 34 * u, 82 * u + bob); close() }, green)
+        // body
+        drawOval(green, o(26f, 50f), sz(46f, 40f))
+        drawOval(belly, o(38f, 60f), sz(26f, 26f))
+        // back spikes
+        for (i in 0..3) {
+            val bx = 30f + i * 9f; val by = 52f - i * 2f
+            drawPath(Path().apply { moveTo(bx * u, (by + 6) * u + bob); lineTo((bx + 4) * u, (by - 4) * u + bob); lineTo((bx + 8) * u, (by + 6) * u + bob); close() }, dark)
+        }
+        // feet + arms
+        drawOval(dark, o(32f, 84f), sz(12f, 7f)); drawOval(dark, o(54f, 84f), sz(12f, 7f))
+        drawOval(green, o(62f, 64f), sz(8f, 5f))
+        // head
+        drawOval(green, o(48f, 22f), sz(40f, 34f))
+        drawOval(belly, o(66f, 38f), sz(20f, 12f))
+        // eye (blink)
+        val blink = if (!still && (v % 0.5f) in 0.46f..0.5f) 0.15f else 1f
+        drawOval(Color.White, Offset(60 * u, (28 + 5 * (1 - blink)) * u + bob), sz(11f, 11f * blink))
+        if (blink > 0.5f) { drawCircle(Color(0xFF1E2A22), 3.2f * u, o(67f, 34f)); drawCircle(Color.White, 1.2f * u, o(68.5f, 32.5f)) }
+        // nostril, smile, blush
+        drawCircle(dark, 1f * u, o(83f, 36f))
+        drawArc(Color(0xFF1E2A22), 10f, 120f, false, o(70f, 38f), sz(12f, 8f), style = Stroke(1.6f * u, cap = StrokeCap.Round))
+        drawCircle(Color(0xFFFF9AA8).copy(alpha = .7f), 3f * u, o(62f, 44f))
+        // tiny "rawr"
+        if (!still && v in 0.70f..0.95f) drawText(measurer.measure("rawr!", androidx.compose.ui.text.TextStyle(fontSize = (9 * u).toSp(), color = dark,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Black)), topLeft = Offset(74 * u, 6 * u), alpha = 1f - kotlin.math.abs(v - 0.82f) * 6f)
     }
 }

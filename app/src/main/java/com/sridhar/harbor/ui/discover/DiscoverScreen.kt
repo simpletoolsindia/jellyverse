@@ -97,8 +97,9 @@ class DiscoverViewModel(private val c: AppContainer) : ViewModel() {
                 val d = async { c.seerr.popularTv().results }
                 val e = async { runCatching { c.seerr.upcomingMovies().results }.getOrDefault(emptyList()) }
                 val f = async { runCatching { c.seerr.upcomingTv().results }.getOrDefault(emptyList()) }
-                trending = a.await().filter { it.mediaType != "person" }; movies = b.await(); tv = d.await()
-                upcomingMovies = e.await(); upcomingTv = f.await()
+                val ok = { m: SeerrMedia -> !c.parental.hideAdult(m) }
+                trending = a.await().filter { it.mediaType != "person" && ok(it) }; movies = b.await().filter(ok); tv = d.await().filter(ok)
+                upcomingMovies = e.await().filter(ok); upcomingTv = f.await().filter(ok)
             }
         }.onFailure { error = it.friendly() }
     }
@@ -106,7 +107,7 @@ class DiscoverViewModel(private val c: AppContainer) : ViewModel() {
     fun search(q: String) = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
         if (q.isBlank()) { results = emptyList(); return@launch }
         searching = true
-        results = runCatching { c.seerr.search(q).results.filter { it.mediaType != "person" } }.getOrDefault(emptyList())
+        results = runCatching { c.seerr.search(q).results.filter { it.mediaType != "person" && !c.parental.hideAdult(it) } }.getOrDefault(emptyList())
         searching = false
     }
 }
