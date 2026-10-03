@@ -1182,4 +1182,11 @@
     <string name="suggest_because">Because you like %1$s</string>
     <string name="suggest_watch">Watch now</string>
     <string name="suggest_not_interested">Not interested</string>
+    <string name="aq_title">Music audio quality</string>
+    <string name="aq_wifi">On Wi-Fi</string>
+    <string name="aq_wifi_hint">Original is the file as it is on your server (best, may be lossless)</string>
+    <string name="aq_mobile">On mobile data</string>
+    <string name="aq_mobile_hint">Lower uses less data – 128k is about 1 MB per minute</string>
+    <string name="aq_download">Downloads (offline songs)</string>
+    <string name="aq_download_hint">Lower saves storage; applies to new downloads</string>
 </resources>

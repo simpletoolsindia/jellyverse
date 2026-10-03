@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sridhar.harbor.data.ServerConfig
 import com.sridhar.harbor.ui.components.LocalContainer
 import com.sridhar.harbor.ui.components.NetImage
@@ -119,6 +120,15 @@ fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () 
         Spacer(Modifier.height(24.dp))
         com.sridhar.harbor.ui.components.LanguagePicker(Modifier.fillMaxWidth())
         Spacer(Modifier.height(24.dp))
+        if (cfg.navidromeReady) {
+            Text(stringResource(R.string.aq_title), style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)
+            Spacer(Modifier.height(4.dp))
+            Column(Modifier.glass().padding(horizontal = 16.dp).padding(bottom = 14.dp)) {
+                com.sridhar.harbor.ui.music.AudioQualityControls()
+                Text(stringResource(R.string.mu_quality_note), color = Harbor.TextDim, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+            Spacer(Modifier.height(24.dp))
+        }
         Text(stringResource(R.string.alerts_privacy), style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)
         Spacer(Modifier.height(8.dp))
         val ctx = androidx.compose.ui.platform.LocalContext.current

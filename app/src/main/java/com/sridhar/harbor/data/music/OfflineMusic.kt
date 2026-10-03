@@ -57,7 +57,13 @@ class OfflineMusic(
             _songs.value = todo + _songs.value.filterNot { s -> todo.any { it.id == s.id } }
             save()
             todo.forEach { s ->
-                downloader.enqueue(key(s.id), "♪ ${s.displayTitle}", repo.downloadUrl(cfg, s.id), fileOf(s))
+                // Original = the server's file; otherwise a smaller copy transcoded by Navidrome (same file name –
+                // the player detects the format from the content).
+                val kbps = com.sridhar.harbor.music.StreamQuality.of(
+                    context.getSharedPreferences("music_engine", Context.MODE_PRIVATE).getInt(com.sridhar.harbor.music.DOWNLOAD_QUALITY_KEY, 0),
+                    com.sridhar.harbor.music.StreamQuality.Original).kbps
+                val url = if (kbps == 0) repo.downloadUrl(cfg, s.id) else repo.streamUrl(cfg, s.id, kbps)
+                downloader.enqueue(key(s.id), "♪ ${s.displayTitle}", url, fileOf(s))
                 // Cover art once per album, for offline Now Playing and lock screen.
                 s.coverArt?.let { c -> File(covers, "$c.jpg").takeIf { !it.exists() }?.let { f ->
                     runCatching { http.newCall(Request.Builder().url(repo.coverUrl(cfg, c, 600)!!).build()).execute().use { r ->

@@ -1,0 +1,1 @@
+JellyVerse 2.15.0: choose your music audio quality – separately for Wi-Fi, mobile data and offline downloads (Original, 320k, 192k, 128k or 96k). Find it in Settings → Music audio quality or in Now Playing → Sound.

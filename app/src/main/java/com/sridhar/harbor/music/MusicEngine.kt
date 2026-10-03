@@ -48,7 +48,17 @@ import java.io.File
 
 enum class RepeatMode { Off, All, One }
 
-enum class StreamQuality(val kbps: Int) { Original(0), High(320), Normal(192), Saver(128) }
+/** Music audio quality. Stored by ordinal – only ever append. [ordered] is the display order. */
+/** Shared with OfflineMusic (same "music_engine" prefs). */
+internal const val DOWNLOAD_QUALITY_KEY = "quality_download"
+
+enum class StreamQuality(val kbps: Int) {
+    Original(0), High(320), Normal(192), Saver(128), Low(96);
+    companion object {
+        val ordered = listOf(Original, High, Normal, Saver, Low)
+        internal fun of(i: Int, def: StreamQuality) = entries.getOrElse(i) { def }
+    }
+}
 
 data class MusicState(
     val queue: List<Song> = emptyList(),
@@ -224,16 +234,26 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
 
     // ---------------- quality / data saver ----------------
 
+    /** Streaming quality on Wi-Fi / Ethernet. */
     var quality: StreamQuality
-        get() = StreamQuality.entries.getOrElse(prefs.getInt("quality", 0)) { StreamQuality.Original }
+        get() = StreamQuality.of(prefs.getInt("quality", 0), StreamQuality.Original)
         set(v) = prefs.edit().putInt("quality", v.ordinal).apply()
+    /** Streaming quality on mobile data (or any metered network). Before 2.15 this was the "data saver" switch. */
+    var mobileQuality: StreamQuality
+        get() = if (prefs.contains("quality_mobile")) StreamQuality.of(prefs.getInt("quality_mobile", 3), StreamQuality.Saver)
+            else if (saveDataOnMobile) StreamQuality.Saver else quality
+        set(v) = prefs.edit().putInt("quality_mobile", v.ordinal).apply()
+    /** Quality of songs saved for offline (Original = the file as it is on the server). */
+    var downloadQuality: StreamQuality
+        get() = StreamQuality.of(prefs.getInt(DOWNLOAD_QUALITY_KEY, 0), StreamQuality.Original)
+        set(v) = prefs.edit().putInt(DOWNLOAD_QUALITY_KEY, v.ordinal).apply()
     var saveDataOnMobile: Boolean
         get() = prefs.getBoolean("data_saver", true)
         set(v) = prefs.edit().putBoolean("data_saver", v).apply()
 
     private fun bitrateNow(): Int {
         val metered = (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).isActiveNetworkMetered
-        return if (metered && saveDataOnMobile) StreamQuality.Saver.kbps else quality.kbps
+        return if (metered) mobileQuality.kbps else quality.kbps
     }
 
     private suspend fun toItem(s: Song): MediaItem {

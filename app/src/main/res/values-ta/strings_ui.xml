@@ -1182,4 +1182,11 @@
     <string name="suggest_because">நீங்கள் %1$s விரும்புவதால்</string>
     <string name="suggest_watch">இப்போது பார்</string>
     <string name="suggest_not_interested">விருப்பமில்லை</string>
+    <string name="aq_title">இசை ஒலித் தரம்</string>
+    <string name="aq_wifi">Wi-Fi இல்</string>
+    <string name="aq_wifi_hint">Original என்பது சர்வரில் உள்ளபடியே (சிறந்தது)</string>
+    <string name="aq_mobile">மொபைல் டேட்டாவில்</string>
+    <string name="aq_mobile_hint">குறைவானது குறைந்த டேட்டா – 128k ≈ நிமிடத்திற்கு 1 MB</string>
+    <string name="aq_download">பதிவிறக்கங்கள் (ஆஃப்லைன் பாடல்கள்)</string>
+    <string name="aq_download_hint">குறைவானது சேமிப்பிடத்தைச் சேமிக்கும்; புதிய பதிவிறக்கங்களுக்கு மட்டும்</string>
 </resources>

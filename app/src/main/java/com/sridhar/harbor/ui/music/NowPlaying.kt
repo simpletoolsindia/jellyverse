@@ -466,14 +466,40 @@ fun SleepSheet(s: MusicState, onDismiss: () -> Unit) {
     }
 }
 
+/** Audio quality for Wi-Fi streaming, mobile data and offline downloads (Now Playing → Sound, and Settings). */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun AudioQualityControls() {
+    val engine = LocalContainer.current.musicEngine
+    var wifi by remember { mutableStateOf(engine.quality) }
+    var mobile by remember { mutableStateOf(engine.mobileQuality) }
+    var dl by remember { mutableStateOf(engine.downloadQuality) }
+    val chip = FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet, selectedLabelColor = Color.White)
+    @Composable fun row(title: Int, hint: Int, value: StreamQuality, pick: (StreamQuality) -> Unit) {
+        Text(stringResource(title), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp))
+        Text(stringResource(hint), color = Harbor.TextDim, fontSize = 12.sp)
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            StreamQuality.ordered.forEach { q ->
+                FilterChip(value == q, { pick(q) }, colors = chip, label = {
+                    Text(when (q) {
+                        StreamQuality.Original -> stringResource(R.string.original)
+                        else -> "${q.kbps}k"
+                    })
+                })
+            }
+        }
+    }
+    row(R.string.aq_wifi, R.string.aq_wifi_hint, wifi) { wifi = it; engine.quality = it }
+    row(R.string.aq_mobile, R.string.aq_mobile_hint, mobile) { mobile = it; engine.mobileQuality = it }
+    row(R.string.aq_download, R.string.aq_download_hint, dl) { dl = it; engine.downloadQuality = it }
+}
+
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SoundSheet(onDismiss: () -> Unit) {
     val engine = LocalContainer.current.musicEngine
     var preset by remember { mutableIntStateOf(engine.eqPreset) }
     var bass by remember { mutableFloatStateOf(engine.bassBoost / 1000f) }
-    var quality by remember { mutableStateOf(engine.quality) }
-    var saver by remember { mutableStateOf(engine.saveDataOnMobile) }
     val chip = FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet, selectedLabelColor = Color.White)
     ModalBottomSheet(onDismiss, containerColor = Harbor.Surface) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 20.dp)) {
@@ -490,20 +516,7 @@ fun SoundSheet(onDismiss: () -> Unit) {
             Text(stringResource(R.string.mu_bass_boost), color = Harbor.TextDim, fontSize = 13.sp)
             Slider(bass, { bass = it }, onValueChangeFinished = { engine.bassBoost = (bass * 1000).toInt() })
             Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.mu_stream_quality), color = Harbor.TextDim, fontSize = 13.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                StreamQuality.entries.forEach { q ->
-                    FilterChip(quality == q, { quality = q; engine.quality = q },
-                        label = { Text(if (q == StreamQuality.Original) stringResource(R.string.original) else "${q.kbps}k") }, colors = chip)
-                }
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.mu_data_saver), fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.mu_data_saver_hint), color = Harbor.TextDim, fontSize = 12.sp)
-                }
-                Switch(saver, { saver = it; engine.saveDataOnMobile = it })
-            }
+            AudioQualityControls()
             Text(stringResource(R.string.mu_quality_note), color = Harbor.TextDim, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
         }
     }
