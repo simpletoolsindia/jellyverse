@@ -1,0 +1,1 @@
+JellyVerse 2.20.1: Discover no longer fails with a server error when Jellyseerr/Seerr can't load Trending – it retries, and other rows still show.

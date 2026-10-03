@@ -1,0 +1,1 @@
+JellyVerse 2.20.1: Jellyseerr/Seerr Trending ஏற்ற முடியாதபோது Discover இனி பிழை காட்டாது – மீண்டும் முயலும், மற்ற வரிசைகள் காட்டப்படும்.

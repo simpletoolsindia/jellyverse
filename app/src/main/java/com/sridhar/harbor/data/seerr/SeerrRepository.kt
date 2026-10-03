@@ -64,7 +64,15 @@ class SeerrRepository(private val settings: SettingsStore, private val baseHttp:
     }
 
     suspend fun me() = api().me()
-    suspend fun trending(page: Int = 1) = api().trending(page)
+    /**
+     * Trending. Seerr sometimes fails one page with a 500 when a single TMDB entry trips it ("Unable to retrieve
+     * trending items") – retry in English, then the next page, before giving up.
+     */
+    suspend fun trending(page: Int = 1): PageResult<SeerrMedia> =
+        runCatching { api().trending(page) }
+            .recoverCatching { api().trending(page, language = "en") }
+            .recoverCatching { api().trending(page + 1) }
+            .getOrThrow()
     suspend fun popularMovies(page: Int = 1) = api().popularMovies(page)
     suspend fun popularTv(page: Int = 1) = api().popularTv(page)
     suspend fun upcomingMovies(page: Int = 1) = api().upcomingMovies(page)

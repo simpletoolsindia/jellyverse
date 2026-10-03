@@ -14,7 +14,7 @@ interface SeerrApi {
     @GET("api/v1/auth/me") suspend fun me(): SeerrUser
 
     @GET("api/v1/discover/trending")
-    suspend fun trending(@Query("page") page: Int = 1): PageResult<SeerrMedia>
+    suspend fun trending(@Query("page") page: Int = 1, @Query("language") language: String? = null): PageResult<SeerrMedia>
     @GET("api/v1/discover/movies")
     suspend fun popularMovies(@Query("page") page: Int = 1): PageResult<SeerrMedia>
     @GET("api/v1/discover/tv")

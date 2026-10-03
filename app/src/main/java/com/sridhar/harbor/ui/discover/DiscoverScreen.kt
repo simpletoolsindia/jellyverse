@@ -92,9 +92,10 @@ class DiscoverViewModel(private val c: AppContainer) : ViewModel() {
         error = null
         runCatching {
             coroutineScope {
-                val a = async { c.seerr.trending().results }
-                val b = async { c.seerr.popularMovies().results }
-                val d = async { c.seerr.popularTv().results }
+                // Each row on its own: one failing Seerr endpoint must not blank the whole Discover screen.
+                val a = async { runCatching { c.seerr.trending().results }.getOrDefault(emptyList()) }
+                val b = async { runCatching { c.seerr.popularMovies().results }.getOrDefault(emptyList()) }
+                val d = async { runCatching { c.seerr.popularTv().results }.getOrDefault(emptyList()) }
                 val e = async { runCatching { c.seerr.upcomingMovies().results }.getOrDefault(emptyList()) }
                 val f = async { runCatching { c.seerr.upcomingTv().results }.getOrDefault(emptyList()) }
                 val ok = { m: SeerrMedia -> !c.parental.hideAdult(m) }
