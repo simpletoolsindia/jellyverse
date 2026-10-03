@@ -1,0 +1,1 @@
+JellyVerse 2.19.0: step-by-step setup you can skip, smarter search that forgives typos and partial names (with "Did you mean"), Cast from any title or Live TV, "Play on TV" to hand a video to the JellyVerse TV app, Chromecast controls in the background, and fixed TV updates.

@@ -1,4 +1,7 @@
 package com.sridhar.harbor.ui.watch
+import androidx.compose.material.icons.rounded.Tv
+import androidx.compose.material.icons.rounded.CastConnected
+import androidx.compose.material.icons.rounded.Cast
 
 import com.sridhar.harbor.ui.components.fadeInOnce
 
@@ -211,6 +214,7 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit, o
     val downloadingIds = remember(offline, dlState) { offline.filter { container.offline.progress(it).let { p -> !p.done } }.map { it.itemId }.toSet() }
     val list = rememberLazyListState()
     val toast: (String) -> Unit = { Toast.makeText(ctx, it, Toast.LENGTH_SHORT).show() }
+    val castScope = androidx.compose.runtime.rememberCoroutineScope()
 
     val item = vm.item
     Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
@@ -279,6 +283,37 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit, o
                         val fav = item.userData?.isFavorite == true
                         ActionIcon(if (fav) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, stringResource(R.string.favorite),
                             if (fav) Harbor.Rose else Harbor.Fg) { vm.toggleFavorite() }
+                        // Paired JellyVerse TV app: open it there directly.
+                        val pairedTv = remember { container.remote.pairedTv }
+                        if (playTarget != null && pairedTv != null) ActionIcon(Icons.Rounded.Tv, stringResource(R.string.play_on_tv)) {
+                            if (container.parental.needsPin(playTarget)) toast(ctx.getString(R.string.cast_unlock_first))
+                            else castScope.launch(com.sridhar.harbor.CrashGuard) {
+                                val tv = container.remote.playOnTv(playTarget.id, -1)
+                                toast(if (tv != null) ctx.getString(R.string.playing_on_tv, tv) else ctx.getString(R.string.tv_not_reachable))
+                            }
+                        }
+                        // Chromecast: send this film (or the next episode) straight to the TV, no need to open the player.
+                        if (playTarget != null) {
+                            val castStatus by container.cast.status.collectAsState()
+                            val castingThis = castStatus?.itemId == playTarget.id
+                            var pickCast by remember { mutableStateOf(false) }
+                            ActionIcon(if (castingThis) Icons.Rounded.CastConnected else Icons.Rounded.Cast, stringResource(R.string.cast),
+                                if (castingThis) Harbor.Sky else Harbor.Fg) {
+                                if (container.parental.needsPin(playTarget)) toast(ctx.getString(R.string.cast_unlock_first)) else pickCast = true
+                            }
+                            if (pickCast) com.sridhar.harbor.cast.CastPicker({ pickCast = false }) { d ->
+                                pickCast = false
+                                castScope.launch(com.sridhar.harbor.CrashGuard) {
+                                    runCatching {
+                                        val dev = container.cast.connect(d)
+                                        val cfg = container.config.value!!
+                                        container.cast.load(playTarget.id, container.jellyfin.castUrl(playTarget.id), playTarget.seriesName ?: playTarget.name,
+                                            playTarget.episodeLabel ?: playTarget.year?.toString(), container.jellyfin.posterUrl(cfg, playTarget), resumeMs)
+                                        dev
+                                    }.onSuccess { dev -> toast(ctx.getString(R.string.casting_to_1_s, dev)) }.onFailure { e -> toast(e.message ?: "Cast failed") }
+                                }
+                            }
+                        }
                         // Parental lock: needs the PIN to change, and then to play.
                         val locked = parental.locked.contains(item.id)
                         ActionIcon(if (locked) Icons.Rounded.Lock else Icons.Rounded.LockOpen, stringResource(if (locked) R.string.unlock_title else R.string.lock_title),

@@ -219,6 +219,35 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
             .sortedByDescending { it.second }.map { it.first }.take(8)
     }
 
+    /** Search-screen results plus "did you mean" spellings when nothing matches well. */
+    data class TitleSearch(val items: List<BaseItem>, val suggestions: List<String>)
+
+    /**
+     * The Search screen: every film and show in the library scored with the forgiving [TitleMatcher.match]
+     * (partial words, typos, transliteration, spacing, year), merged with the server's own substring search.
+     */
+    suspend fun searchTitles(query: String): TitleSearch {
+        if (query.isBlank()) return TitleSearch(emptyList(), emptyList())
+        val direct = runCatching { search(query) }.getOrDefault(emptyList()).filter { it.type == "Movie" || it.type == "Series" }.map { it.id }.toSet()
+        val all = libraryTitles()
+        val scored = all.map { item ->
+            val sc = maxOf(TitleMatcher.match(query, item.name, item.year), item.originalTitle?.let { TitleMatcher.match(query, it, item.year) } ?: 0f)
+            item to if (item.id in direct) maxOf(sc, 0.7f) else sc
+        }.sortedByDescending { it.second }
+        val hits = scored.filter { it.second >= 0.55f }.take(40).map { it.first }
+        val top = scored.firstOrNull()?.second ?: 0f
+        // Weak or no hits: offer the closest spellings from the library.
+        val suggestions = if (top >= 0.85f) emptyList() else scored.filter { it.second in 0.4f..0.85f }
+            .map { it.first.name }.distinct().take(3)
+        return TitleSearch(hits, suggestions)
+    }
+
+    private suspend fun libraryTitles(): List<BaseItem> = titleCache?.takeIf { System.currentTimeMillis() - it.first < 600_000 }?.second ?: run {
+        val (a, c) = api()
+        a.items(c.jellyfinUserId, types = "Movie,Series", limit = 6000, sortBy = "SortName", fields = "OriginalTitle,ProductionYear,Genres,Overview").items
+            .also { titleCache = System.currentTimeMillis() to it }
+    }
+
     suspend fun filtered(term: String?, genres: String?, years: String?, types: String = "Movie,Series"): List<BaseItem> {
         val (a, c) = api()
         return a.items(c.jellyfinUserId, types = types, search = term?.ifBlank { null }, genres = genres?.ifBlank { null }, years = years?.ifBlank { null },

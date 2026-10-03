@@ -1,5 +1,7 @@
 package com.sridhar.harbor.ui.watch
 
+import androidx.compose.foundation.layout.sizeIn
+
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
@@ -231,6 +233,8 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
     var results by mutableStateOf<List<BaseItem>>(emptyList()); private set
     var loading by mutableStateOf(false); private set
     var smart by mutableStateOf(false); private set
+    /** "Did you mean…" – closest library titles (and online spellings) when the query matches nothing well. */
+    var suggestions by mutableStateOf<List<String>>(emptyList()); private set
 
     /** Jellyseerr matches that aren't in the library yet – requestable right from Search. */
     var seerr by mutableStateOf<List<com.sridhar.harbor.data.seerr.SeerrMedia>>(emptyList()); private set
@@ -238,7 +242,7 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
     val requested = androidx.compose.runtime.mutableStateMapOf<Int, String>()
 
     fun search(q: String) = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
-        if (q.length < 2) { results = emptyList(); seerr = emptyList(); return@launch }
+        if (q.length < 2) { results = emptyList(); seerr = emptyList(); suggestions = emptyList(); return@launch }
         loading = true; smart = false
         kotlinx.coroutines.coroutineScope {
             val s = async {
@@ -248,8 +252,19 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
                     .filter { it.status != com.sridhar.harbor.data.seerr.MediaStatus.Available }
                     .filter { !(c.parental.state.value.enabled && c.parental.state.value.protectAdult) || it.adult != true }
             }
-            results = runCatching { c.jellyfin.fuzzyFind(q) }.getOrDefault(emptyList())
-            seerr = s.await()
+            val found = runCatching { c.jellyfin.searchTitles(q) }.getOrNull()
+            results = found?.items.orEmpty()
+            var online = s.await()
+            // Online (TMDB via Jellyseerr): a misspelt query often finds nothing – retry with the closest spelling.
+            if (online.isEmpty() && c.settings.current().seerrReady) found?.suggestions?.firstOrNull()?.let { alt ->
+                online = runCatching { c.seerr.search(alt).results }.getOrDefault(emptyList())
+                    .filter { (it.mediaType == "movie" || it.mediaType == "tv") && it.status != com.sridhar.harbor.data.seerr.MediaStatus.Available }
+            }
+            seerr = online
+            // Suggestions: library near-misses, plus what TMDB thinks you meant when the library has nothing.
+            val fromTmdb = if (results.isEmpty()) online.mapNotNull { it.displayTitle.takeIf { t -> t.isNotBlank() } }.take(2) else emptyList()
+            suggestions = (found?.suggestions.orEmpty() + fromTmdb).distinctBy { it.lowercase() }
+                .filter { com.sridhar.harbor.data.jellyfin.TitleMatcher.match(q, it) < 0.97f }.take(4)
         }
         loading = false
     }
@@ -269,7 +284,7 @@ class SearchViewModel(private val c: AppContainer) : ViewModel() {
     }
 }
 
-@OptIn(FlowPreview::class)
+@OptIn(FlowPreview::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(onItem: (String) -> Unit, onBack: () -> Unit, onSeerr: (String, Int) -> Unit = { _, _ -> }) {
     val container = LocalContainer.current
@@ -298,13 +313,25 @@ fun SearchScreen(onItem: (String) -> Unit, onBack: () -> Unit, onSeerr: (String,
             FilterChip(vm.smart, { vm.smartSearch() }, { Text(if (vm.loading && vm.smart) stringResource(R.string.thinking) else stringResource(R.string.smart_search)) },
                 colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(selectedContainerColor = Harbor.Violet.copy(.35f)))
         }
-        if (vm.query.length >= 2 && !vm.loading && vm.results.isEmpty() && vm.seerr.isEmpty())
+        if (vm.query.length >= 2 && !vm.loading && vm.results.isEmpty() && vm.seerr.isEmpty() && vm.suggestions.isEmpty())
             MessageState(stringResource(R.string.no_matches), stringResource(R.string.nothing_in_your_library_matches_1, vm.query), Modifier.padding(pad), icon = Icons.Rounded.Search)
         LazyVerticalGrid(
             GridCells.Adaptive(112.dp), Modifier.fillMaxSize().padding(pad).padding(top = if (vm.query.trim().contains(' ')) 44.dp else 0.dp),
             contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // "Did you mean…" – tap a spelling to search for it.
+            if (vm.suggestions.isNotEmpty()) item(key = "didyoumean", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                Column(Modifier.animateItem()) {
+                    Text(stringResource(R.string.search_did_you_mean), color = Harbor.TextDim, style = androidx.compose.material3.MaterialTheme.typography.labelLarge)
+                    androidx.compose.foundation.layout.FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        vm.suggestions.forEach { sug ->
+                            androidx.compose.material3.SuggestionChip({ vm.query = sug }, { Text(sug, maxLines = 1) },
+                                icon = { Icon(Icons.Rounded.Search, null, Modifier.sizeIn(maxWidth = 16.dp, maxHeight = 16.dp)) })
+                        }
+                    }
+                }
+            }
             itemsIndexed(vm.results, key = { _, it -> it.id }) { i, item ->
                 Box(Modifier.animateItem().enterRise(i)) { PosterCard(
                     container.jellyfin.posterUrl(cfg, item), item.name,

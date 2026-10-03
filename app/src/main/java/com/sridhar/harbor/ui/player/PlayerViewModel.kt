@@ -298,7 +298,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         start(itemId, offlinePath, offlineTitle, fromStart)
     }
 
-    fun start(itemId: String, offlinePath: String?, offlineTitle: String?, fromStart: Boolean) {
+    fun start(itemId: String, offlinePath: String?, offlineTitle: String?, fromStart: Boolean, startMs: Long = -1) {
         if (started) return
         started = true
         if (offlinePath != null) {
@@ -313,7 +313,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             }
             return
         }
-        load(itemId, fromStart)
+        load(itemId, fromStart, startMs)
     }
 
     private fun startOffline(itemId: String, offlinePath: String, offlineTitle: String?) {
@@ -350,7 +350,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    private fun load(itemId: String, fromStart: Boolean) = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
+    private fun load(itemId: String, fromStart: Boolean, startMs: Long = -1) = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
         // New title: forget the previous title's server-side track picks.
         autoLangTried = false
         ui = ui.copy(audioIndex = null, subIndex = null, serverForAudio = false, quality = if (ui.serverForAudio) prefs.quality else ui.quality)
@@ -365,7 +365,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             ?: run { ui = ui.copy(error = L10n.s(R.string.play_nothing_inside, requested.name)); return@launch }
         applyItem(it, offline = false)
         ui = ui.copy(download = if (c.offline.isDownloaded(it.id)) DownloadState.Done else DownloadState.None)
-        val resumeMs = if (fromStart) 0 else (it.userData?.positionTicks ?: 0) / TICKS_PER_MS
+        val resumeMs = when { startMs >= 0 -> startMs; fromStart -> 0; else -> (it.userData?.positionTicks ?: 0) / TICKS_PER_MS }
         val go = { prepare(resumeMs); startTicker(); startReporting() }
         // Parental control: 18+ / locked titles wait for the PIN before a single frame plays.
         if (c.parental.needsPin(it)) { pinGate = it.seriesName ?: it.name; afterPin = go } else go()
@@ -705,7 +705,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     var casting by mutableStateOf<String?>(null); private set
 
     fun castTo(deviceHint: String) {
-        val it = item ?: return notice(L10n.s(R.string.wait_for_the_video_to_load))
+        // Live TV: send the channel's own stream to the TV.
+        if (ui.live) {
+            val ch = ui.channels.getOrNull(ui.channelIndex) ?: return
+            viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
+                runCatching { val d = c.cast.connect(deviceHint); c.cast.load("live:${ch.id}", ch.url, ch.name, L10n.s(R.string.live_2), ch.logo, 0); d }
+                    .onSuccess { d -> player.pause(); casting = d; notice(L10n.s(R.string.casting_to_1_s, d)) }.onFailure { e -> notice(e.message ?: "Cast failed") }
+            }
+            return
+        }
+        // Downloads play from the file; casting streams the same title from the server, so it needs to be reachable.
+        val it = item ?: return notice(L10n.s(if (ui.offline) R.string.cast_needs_server else R.string.wait_for_the_video_to_load))
         viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
             runCatching {
                 val device = c.cast.connect(deviceHint)
@@ -713,6 +723,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 c.cast.load(it.id, c.jellyfin.castUrl(it.id), ui.title, ui.subtitle, c.jellyfin.posterUrl(cfg, it), player.currentPosition)
                 device
             }.onSuccess { d -> player.pause(); casting = d; notice(L10n.s(R.string.casting_to_1_s, d)) }.onFailure { e -> notice(e.message ?: "Cast failed") }
+        }
+    }
+
+    /** Hand this video to the paired JellyVerse TV app (same spot), then stop here. Calls [onHanded] on success. */
+    fun playOnTv(onHanded: () -> Unit) {
+        val it = item ?: return notice(L10n.s(R.string.wait_for_the_video_to_load))
+        val pos = player.currentPosition
+        viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
+            val tv = c.remote.playOnTv(it.id, pos)
+            if (tv != null) { player.pause(); report(); notice(L10n.s(R.string.playing_on_tv, tv)); kotlinx.coroutines.delay(900); onHanded() }
+            else notice(L10n.s(R.string.tv_not_reachable))
         }
     }
 

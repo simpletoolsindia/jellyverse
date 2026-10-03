@@ -37,6 +37,7 @@ class PlayerActivity : ComponentActivity() {
             offlinePath = intent.getStringExtra(EXTRA_OFFLINE),
             offlineTitle = intent.getStringExtra(EXTRA_TITLE),
             fromStart = intent.getBooleanExtra(EXTRA_FROM_START, false),
+            startMs = intent.getLongExtra(EXTRA_START_MS, -1),
         )
         // Headset / Bluetooth / system media controls.
         session = androidx.media3.session.MediaSession.Builder(this, vm.player).setId("harbor-${System.nanoTime()}").build()
@@ -127,6 +128,7 @@ class PlayerActivity : ComponentActivity() {
         private const val EXTRA_OFFLINE = "offline"
         private const val EXTRA_TITLE = "title"
         private const val EXTRA_FROM_START = "from_start"
+        private const val EXTRA_START_MS = "start_ms"
         private const val EXTRA_LIVE_PLAYLIST = "live_playlist"
 
         fun startLive(ctx: Context, playlistId: String, channelId: String) {
@@ -134,9 +136,10 @@ class PlayerActivity : ComponentActivity() {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK.takeIf { ctx !is android.app.Activity } ?: 0))
         }
 
-        fun start(ctx: Context, itemId: String, fromStart: Boolean = false, offlinePath: String? = null, title: String? = null) {
+        /** [startMs] ≥ 0 starts there (e.g. handed over from the phone); otherwise the saved resume point. */
+        fun start(ctx: Context, itemId: String, fromStart: Boolean = false, offlinePath: String? = null, title: String? = null, startMs: Long = -1) {
             ctx.startActivity(Intent(ctx, PlayerActivity::class.java)
-                .putExtra(EXTRA_ID, itemId).putExtra(EXTRA_FROM_START, fromStart)
+                .putExtra(EXTRA_ID, itemId).putExtra(EXTRA_FROM_START, fromStart).putExtra(EXTRA_START_MS, startMs)
                 .putExtra(EXTRA_OFFLINE, offlinePath).putExtra(EXTRA_TITLE, title)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK.takeIf { ctx !is android.app.Activity } ?: 0))
         }

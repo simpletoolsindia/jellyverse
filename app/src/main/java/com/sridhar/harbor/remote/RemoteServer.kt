@@ -267,6 +267,19 @@ object RemoteServer {
                     }
                 }
                 "home" -> main.post { com.sridhar.harbor.HarborApp.instance?.container?.navRequests?.tryEmit("home") }
+                // "Play on TV" from a paired phone: open this title in the TV player, from where the phone was.
+                "play" -> {
+                    val id = str(m, "id")?.takeIf { it.isNotBlank() && it.all { c -> c.isLetterOrDigit() || c == '-' } } ?: return
+                    val pos = str(m, "pos")?.toLongOrNull() ?: -1L
+                    val signedIn = com.sridhar.harbor.HarborApp.instance?.container?.config?.value?.jellyfinReady == true
+                    if (!signedIn) { send(buildJsonObject { put("t", "playFailed"); put("why", "signin") }); return }
+                    main.post {
+                        val ctx: Context = current ?: app
+                        runCatching { com.sridhar.harbor.ui.player.PlayerActivity.start(ctx, id, startMs = pos) }
+                            .onSuccess { send(buildJsonObject { put("t", "playing") }) }
+                            .onFailure { send(buildJsonObject { put("t", "playFailed"); put("why", it.message ?: "error") }) }
+                    }
+                }
                 "ping" -> send(buildJsonObject { put("t", "pong") })
             }
         }

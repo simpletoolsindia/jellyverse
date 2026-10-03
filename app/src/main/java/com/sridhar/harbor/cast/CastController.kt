@@ -29,6 +29,20 @@ class CastOptionsProvider : OptionsProvider {
     override fun getCastOptions(context: Context): CastOptions = CastOptions.Builder()
         .setReceiverApplicationId(CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID)
         .setStopReceiverApplicationWhenEndingSession(true)
+        // Keeps playing on the TV when you leave the app: controls in the notification and on the lock screen.
+        .setCastMediaOptions(com.google.android.gms.cast.framework.media.CastMediaOptions.Builder()
+            .setMediaSessionEnabled(true)
+            .setNotificationOptions(com.google.android.gms.cast.framework.media.NotificationOptions.Builder()
+                .setActions(listOf(
+                    com.google.android.gms.cast.framework.media.MediaIntentReceiver.ACTION_REWIND,
+                    com.google.android.gms.cast.framework.media.MediaIntentReceiver.ACTION_TOGGLE_PLAYBACK,
+                    com.google.android.gms.cast.framework.media.MediaIntentReceiver.ACTION_FORWARD,
+                    com.google.android.gms.cast.framework.media.MediaIntentReceiver.ACTION_STOP_CASTING,
+                ), intArrayOf(1, 3))
+                .setSkipStepMs(30_000)
+                .setTargetActivityClassName(com.sridhar.harbor.MainActivity::class.java.name)
+                .build())
+            .build())
         .build()
     override fun getAdditionalSessionProviders(context: Context): List<SessionProvider>? = null
 }

@@ -128,6 +128,8 @@ data class BaseItem(
     @SerialName("Trickplay") val trickplay: Map<String, Map<String, TrickplayInfo>> = emptyMap(),
     @SerialName("ChildCount") val childCount: Int? = null,
     @SerialName("PremiereDate") val premiereDate: String? = null,
+    /** Title in its original language/spelling (searched too). */
+    @SerialName("OriginalTitle") val originalTitle: String? = null,
     /** When it was added to the Jellyfin library. */
     @SerialName("DateCreated") val dateCreated: String? = null,
 ) {

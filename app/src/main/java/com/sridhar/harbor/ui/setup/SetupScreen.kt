@@ -9,6 +9,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +36,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.Terminal
@@ -121,13 +125,24 @@ class SetupViewModel(private val c: AppContainer) : ViewModel() {
         a2State = runCatching { c.aria2.test(a2Url, a2Secret.trim()) }.fold({ ConnState.Ok(L10n.s(R.string.aria2_v_1_s, it)) }, { ConnState.Failed(it.friendly()) })
     }
 
+    var ndUrl by mutableStateOf("")
+    var ndUser by mutableStateOf("")
+    var ndPass by mutableStateOf("")
+    var ndState by mutableStateOf<ConnState>(ConnState.Idle)
+
+    fun connectNavidrome() = viewModelScope.launch(com.sridhar.harbor.CrashGuard) {
+        ndState = ConnState.Working
+        ndState = runCatching { c.music.signIn(ndUrl, ndUser.trim(), ndPass) }
+            .fold({ ConnState.Ok(L10n.s(R.string.setup_nd_ok, it)) }, { ConnState.Failed(it.friendly()) })
+    }
+
     var sshHost by mutableStateOf("")
     var sshPort by mutableStateOf("22")
     var sshUser by mutableStateOf("")
     var sshPass by mutableStateOf("")
     var sshState by mutableStateOf<ConnState>(ConnState.Idle)
 
-    val anyConnected get() = listOf(jfState, qbState, jsState, snState, rdState, sshState, a2State).any { it is ConnState.Ok }
+    val anyConnected get() = listOf(jfState, qbState, jsState, snState, rdState, sshState, a2State, ndState).any { it is ConnState.Ok }
 
     private fun arrCreds(): Pair<String, String> =
         if (arrSameLogin) jfUser.trim() to jfPass else arrUser.trim() to arrPass
@@ -206,152 +221,290 @@ class SetupViewModel(private val c: AppContainer) : ViewModel() {
             if (cfg.sonarrReady) snState = ConnState.Ok(L10n.s(R.string.configured))
             if (cfg.radarrUrl.isNotBlank()) rdUrl = cfg.radarrUrl
             if (cfg.radarrReady) rdState = ConnState.Ok(L10n.s(R.string.configured))
+            if (cfg.navidromeUrl.isNotBlank()) ndUrl = cfg.navidromeUrl
+            if (cfg.navidromeUser.isNotBlank()) ndUser = cfg.navidromeUser
+            if (cfg.navidromeReady) ndState = ConnState.Ok(L10n.s(R.string.configured))
             c.ssh.primary?.let { h -> sshHost = h.host; sshPort = h.port.toString(); sshUser = h.user; sshPass = h.password; sshState = ConnState.Ok("${h.user}@${h.host}") }
         }
     }
 }
 
+/** What the user wants JellyVerse for – each choice adds one setup step. */
+private enum class Svc(val icon: ImageVector, val title: Int, val sub: Int, val tint: () -> Color) {
+    Movies(Icons.Rounded.PlayCircle, R.string.setup_svc_movies, R.string.setup_svc_movies_sub, { Harbor.Violet }),
+    Music(Icons.Rounded.MusicNote, R.string.setup_svc_music, R.string.setup_svc_music_sub, { Harbor.Coral }),
+    Requests(Icons.Rounded.Inbox, R.string.setup_svc_requests, R.string.setup_svc_requests_sub, { Harbor.Amber }),
+    Downloads(Icons.Rounded.SwapVert, R.string.setup_svc_downloads, R.string.setup_svc_downloads_sub, { Harbor.Sky }),
+    Library(Icons.Rounded.Tune, R.string.setup_svc_library, R.string.setup_svc_library_sub, { Harbor.Mint }),
+    Homelab(Icons.Rounded.Terminal, R.string.setup_svc_homelab, R.string.setup_svc_homelab_sub, { Harbor.Mint }),
+}
+
+private fun SetupViewModel.stateOf(s: Svc): ConnState = when (s) {
+    Svc.Movies -> jfState
+    Svc.Music -> ndState
+    Svc.Requests -> jsState
+    Svc.Downloads -> listOf(qbState, a2State).firstOrNull { it is ConnState.Ok } ?: listOf(qbState, a2State).firstOrNull { it !is ConnState.Idle } ?: ConnState.Idle
+    Svc.Library -> listOf(snState, rdState).firstOrNull { it is ConnState.Ok } ?: listOf(snState, rdState).firstOrNull { it !is ConnState.Idle } ?: ConnState.Idle
+    Svc.Homelab -> sshState
+}
+
+/**
+ * First-run setup as a short, friendly wizard: welcome → pick what you use → one step per service (each can be
+ * skipped) → done. Nothing is mandatory: with nothing connected the app starts as a stand-alone radio.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SetupScreen(onDone: () -> Unit) {
     val container = LocalContainer.current
     val vm = viewModel { SetupViewModel(container) }
+    // Chosen services (already-connected ones start ticked; Movies is the usual first pick).
+    var chosen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(listOf(Svc.Movies.name)) }
+    // Re-running setup from Settings: services that are already connected get ticked too (never un-ticks a choice).
+    val connected = Svc.entries.filter { vm.stateOf(it) is ConnState.Ok }.map { it.name }
+    androidx.compose.runtime.LaunchedEffect(connected) { val add = connected - chosen.toSet(); if (add.isNotEmpty()) chosen = chosen + add }
+    val services = Svc.entries.filter { it.name in chosen }
+    // 0 = welcome, 1..n = services, n+1 = done
+    var step by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(0) }
+    val last = services.size + 1
+    var forward by remember { mutableStateOf(true) }
+    fun go(to: Int) { forward = to > step; step = to.coerceIn(0, last) }
+    fun finish() { if (!vm.anyConnected) container.radioOnly = true; onDone() }
+    androidx.activity.compose.BackHandler(step > 0) { go(step - 1) }
 
     Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
-        // Ambient glow
-        Box(Modifier.fillMaxSize().background(
-            Brush.radialGradient(listOf(Harbor.Violet.copy(alpha = .10f), Color.Transparent),
-                center = androidx.compose.ui.geometry.Offset(200f, 150f), radius = 1100f)))
-        Column(
-            Modifier.fillMaxSize().statusBarsPadding().imePadding().verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp).navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Spacer(Modifier.height(24.dp))
-            com.sridhar.harbor.ui.components.HarborLogo(72.dp)
-            Text(stringResource(R.string.welcome_to_njellyverse), style = MaterialTheme.typography.headlineLarge)
-            com.sridhar.harbor.ui.components.LanguagePicker(Modifier.padding(top = 12.dp), showTitle = false)
-            Text(
-                stringResource(R.string.connect_the_services_running_on_your),
-                color = Harbor.TextDim, style = MaterialTheme.typography.bodyLarge,
-            )
-
-            ServiceCard(stringResource(R.string.jellyfin), stringResource(R.string.stream_download_your_library), Icons.Rounded.PlayCircle, Harbor.Violet, vm.jfState) {
-                Field(stringResource(R.string.server_url), vm.jfUrl, { vm.jfUrl = it }, KeyboardType.Uri, placeholder = "http://192.168.1.10:8096")
-                Field(stringResource(R.string.username), vm.jfUser, { vm.jfUser = it })
-                Field(stringResource(R.string.password), vm.jfPass, { vm.jfPass = it }, password = true)
-                ConnectButton(vm.jfState, stringResource(R.string.sign_in)) { vm.connectJellyfin() }
-                var qc by remember { mutableStateOf(false) }
-                androidx.compose.material3.TextButton({ qc = !qc }, Modifier.fillMaxWidth()) {
-                    Text(if (qc) stringResource(R.string.hide_quick_connect) else stringResource(R.string.sign_in_with_quick_connect_instead), color = Harbor.VioletSoft)
-                }
-                if (qc) com.sridhar.harbor.ui.quickconnect.QuickConnectPanel(vm.jfUrl) { vm.quickConnectDone() }
+        val glowTint = when (step) { 0 -> Harbor.Violet; last -> Harbor.Mint; else -> services.getOrNull(step - 1)?.tint?.invoke() ?: Harbor.Violet }
+        val glow by androidx.compose.animation.animateColorAsState(glowTint.copy(alpha = .16f), androidx.compose.animation.core.tween(600), label = "glow")
+        Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(glow, Color.Transparent),
+            center = androidx.compose.ui.geometry.Offset(300f, 200f), radius = 1300f)))
+        Column(Modifier.fillMaxSize().statusBarsPadding().imePadding().navigationBarsPadding()) {
+            // Progress
+            if (step > 0) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                val p by androidx.compose.animation.core.animateFloatAsState(step.toFloat() / last, androidx.compose.animation.core.spring(stiffness = 120f), label = "p")
+                androidx.compose.material3.LinearProgressIndicator({ p }, Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)),
+                    color = Harbor.Violet, trackColor = Harbor.line(.08f), drawStopIndicator = {})
+                Spacer(Modifier.width(12.dp))
+                Text(stringResource(R.string.setup_step_of, step.coerceAtMost(last), last), color = Harbor.TextDim, style = MaterialTheme.typography.labelMedium)
             }
+            androidx.compose.animation.AnimatedContent(step, Modifier.weight(1f), label = "step",
+                transitionSpec = {
+                    val dir = if (forward) 1 else -1
+                    (androidx.compose.animation.slideInHorizontally(androidx.compose.animation.core.tween(380)) { it / 3 * dir } + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300, 80))) togetherWith
+                        (androidx.compose.animation.slideOutHorizontally(androidx.compose.animation.core.tween(300)) { -it / 4 * dir } + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(160)))
+                }) { st ->
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    when {
+                        st == 0 -> WelcomeStep(chosen, onToggle = { n -> chosen = if (n in chosen) chosen - n else chosen + n })
+                        st == last -> DoneStep(vm, services)
+                        else -> services.getOrNull(st - 1)?.let { ServiceStep(it, vm) }
+                    }
+                }
+            }
+            // Bottom actions
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                when (step) {
+                    0 -> {
+                        GradientButton(stringResource(if (services.isEmpty()) R.string.setup_continue_radio else R.string.setup_lets_go), onClick = { go(1) }, modifier = Modifier.fillMaxWidth())
+                        androidx.compose.material3.TextButton({ container.radioOnly = true; onDone() }, Modifier.fillMaxWidth()) {
+                            Icon(Icons.Rounded.RadioIconDef, null, tint = Harbor.TextDim); Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.setup_radio_only), color = Harbor.TextDim)
+                        }
+                    }
+                    last -> GradientButton(stringResource(R.string.enter_jellyverse), onClick = { finish() }, modifier = Modifier.fillMaxWidth())
+                    else -> {
+                        val svc = services[step - 1]
+                        val ok = vm.stateOf(svc) is ConnState.Ok
+                        // Connected → move on by itself after a beat.
+                        androidx.compose.runtime.LaunchedEffect(ok, step) { if (ok) { kotlinx.coroutines.delay(1100); if (vm.stateOf(svc) is ConnState.Ok && step == services.indexOf(svc) + 1) go(step + 1) } }
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.TextButton({ go(step - 1) }) { Text(stringResource(R.string.setup_back), color = Harbor.TextDim) }
+                            Spacer(Modifier.weight(1f))
+                            if (ok) GradientButton(stringResource(R.string.setup_next), onClick = { go(step + 1) }, modifier = Modifier.width(160.dp))
+                            else androidx.compose.material3.OutlinedButton({ go(step + 1) }, Modifier.height(48.dp)) { Text(stringResource(R.string.setup_skip)) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
-            ServiceCard(stringResource(R.string.qbittorrent), stringResource(R.string.manage_torrents_speed_limits), Icons.Rounded.SwapVert, Harbor.Sky, vm.qbState) {
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun androidx.compose.foundation.layout.ColumnScope.WelcomeStep(chosen: List<String>, onToggle: (String) -> Unit) {
+    Spacer(Modifier.height(20.dp))
+    Box(Modifier.fillMaxWidth(), Alignment.Center) { com.sridhar.harbor.ui.ai.JellyBuddy(120.dp) }
+    Text(stringResource(R.string.setup_hi), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Black,
+        modifier = Modifier.align(Alignment.CenterHorizontally), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    Text(stringResource(R.string.setup_hi_sub), color = Harbor.TextDim, style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.align(Alignment.CenterHorizontally), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    Box(Modifier.fillMaxWidth(), Alignment.Center) { com.sridhar.harbor.ui.components.LanguagePicker(Modifier, showTitle = false) }
+    Text(stringResource(R.string.setup_what_use), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val w = (maxWidth - 10.dp) / 2 - 1.dp
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Svc.entries.forEachIndexed { i, s ->
+                val on = s.name in chosen
+                val tint = s.tint()
+                val scale by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0.97f, androidx.compose.animation.core.spring(dampingRatio = .5f), label = "s")
+                Column(Modifier.width(w).graphicsLayer { scaleX = scale; scaleY = scale }
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (on) tint.copy(alpha = .16f) else Harbor.line(.04f))
+                    .border(1.5.dp, if (on) tint else Harbor.line(.08f), RoundedCornerShape(20.dp))
+                    .clickable { onToggle(s.name) }.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(tint.copy(alpha = .2f)), Alignment.Center) { Icon(s.icon, null, tint = tint) }
+                        Spacer(Modifier.weight(1f))
+                        androidx.compose.animation.AnimatedVisibility(on, enter = androidx.compose.animation.scaleIn(), exit = androidx.compose.animation.scaleOut()) {
+                            Icon(Icons.Rounded.CheckCircle, null, tint = tint)
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(stringResource(s.title), fontWeight = FontWeight.Bold)
+                    Text(stringResource(s.sub), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                }
+            }
+        }
+    }
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Harbor.line(.04f)).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Rounded.RadioIconDef, null, tint = Harbor.Rose)
+        Spacer(Modifier.width(10.dp))
+        Text(stringResource(R.string.setup_radio_always), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+    }
+    Spacer(Modifier.height(8.dp))
+}
+
+@Composable
+private fun StepHeader(s: Svc, state: ConnState) {
+    Spacer(Modifier.height(12.dp))
+    val tint = s.tint()
+    val pop = remember { androidx.compose.animation.core.Animatable(0.6f) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = .45f, stiffness = 300f)) }
+    Box(Modifier.size(84.dp).graphicsLayer { scaleX = pop.value; scaleY = pop.value }.clip(RoundedCornerShape(26.dp)).background(tint.copy(alpha = .18f)), Alignment.Center) {
+        androidx.compose.animation.Crossfade(state is ConnState.Ok, label = "ok") { ok ->
+            Icon(if (ok) Icons.Rounded.CheckCircle else s.icon, null, tint = if (ok) Harbor.Mint else tint, modifier = Modifier.size(44.dp))
+        }
+    }
+    Text(stringResource(s.title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+    Text(stringResource(s.sub), color = Harbor.TextDim, style = MaterialTheme.typography.bodyLarge)
+    if (state is ConnState.Ok) Text("✓ " + state.detail, color = Harbor.Mint, fontWeight = FontWeight.SemiBold)
+    if (state is ConnState.Failed) Text(state.error, color = Harbor.Rose, style = MaterialTheme.typography.bodyMedium)
+}
+
+@Composable
+private fun ServiceStep(s: Svc, vm: SetupViewModel) {
+    StepHeader(s, vm.stateOf(s))
+    when (s) {
+        Svc.Movies -> {
+            Field(stringResource(R.string.server_url), vm.jfUrl, { vm.jfUrl = it }, KeyboardType.Uri, placeholder = "http://192.168.1.10:8096")
+            Field(stringResource(R.string.username), vm.jfUser, { vm.jfUser = it })
+            Field(stringResource(R.string.password), vm.jfPass, { vm.jfPass = it }, password = true)
+            ConnectButton(vm.jfState, stringResource(R.string.sign_in)) { vm.connectJellyfin() }
+            var qc by remember { mutableStateOf(false) }
+            androidx.compose.material3.TextButton({ qc = !qc }, Modifier.fillMaxWidth()) {
+                Text(if (qc) stringResource(R.string.hide_quick_connect) else stringResource(R.string.sign_in_with_quick_connect_instead), color = Harbor.VioletSoft)
+            }
+            if (qc) com.sridhar.harbor.ui.quickconnect.QuickConnectPanel(vm.jfUrl) { vm.quickConnectDone() }
+        }
+        Svc.Music -> {
+            Field(stringResource(R.string.server_url), vm.ndUrl, { vm.ndUrl = it }, KeyboardType.Uri, placeholder = "http://192.168.1.10:4533")
+            Field(stringResource(R.string.username), vm.ndUser, { vm.ndUser = it })
+            Field(stringResource(R.string.password), vm.ndPass, { vm.ndPass = it }, password = true)
+            ConnectButton(vm.ndState, stringResource(R.string.sign_in)) { vm.connectNavidrome() }
+        }
+        Svc.Requests -> {
+            Field(stringResource(R.string.server_url), vm.jsUrl, { vm.jsUrl = it }, KeyboardType.Uri, placeholder = "http://192.168.1.10:5055")
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                SegmentedButton(vm.jsUseJellyfin, { vm.jsUseJellyfin = true }, SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.jellyfin_login)) }
+                SegmentedButton(!vm.jsUseJellyfin, { vm.jsUseJellyfin = false }, SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.api_key)) }
+            }
+            if (vm.jsUseJellyfin) Text(stringResource(R.string.uses_the_jellyfin_username_password_entered), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+            else Field(stringResource(R.string.api_key_settings_general), vm.jsKey, { vm.jsKey = it }, password = true)
+            ConnectButton(vm.jsState, stringResource(R.string.connect)) { vm.connectSeerr() }
+        }
+        Svc.Downloads -> {
+            Text(stringResource(R.string.setup_dl_either), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+            SubCard(stringResource(R.string.qbittorrent), vm.qbState) {
                 Field(stringResource(R.string.webui_url), vm.qbUrl, { vm.qbUrl = it }, KeyboardType.Uri, placeholder = "http://192.168.1.10:8080")
                 Field(stringResource(R.string.username), vm.qbUser, { vm.qbUser = it })
                 Field(stringResource(R.string.password), vm.qbPass, { vm.qbPass = it }, password = true)
                 ConnectButton(vm.qbState, stringResource(R.string.connect)) { vm.connectQbit() }
             }
-
-            ServiceCard(stringResource(R.string.jellyseerr), stringResource(R.string.request_movies_series_manage_users), Icons.Rounded.Inbox, Harbor.Coral, vm.jsState) {
-                Field(stringResource(R.string.server_url), vm.jsUrl, { vm.jsUrl = it }, KeyboardType.Uri, placeholder = "http://192.168.1.10:5055")
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(vm.jsUseJellyfin, { vm.jsUseJellyfin = true }, SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.jellyfin_login)) }
-                    SegmentedButton(!vm.jsUseJellyfin, { vm.jsUseJellyfin = false }, SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.api_key)) }
-                }
-                if (vm.jsUseJellyfin) Text(stringResource(R.string.uses_the_jellyfin_username_password_entered), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
-                else Field(stringResource(R.string.api_key_settings_general), vm.jsKey, { vm.jsKey = it }, password = true)
-                ConnectButton(vm.jsState, stringResource(R.string.connect)) { vm.connectSeerr() }
-            }
-
-            ServiceCard("aria2", stringResource(R.string.http_ftp_magnet_downloader), Icons.Rounded.SwapVert, Harbor.Sky, vm.a2State) {
+            SubCard("aria2", vm.a2State) {
                 Field(stringResource(R.string.rpc_url), vm.a2Url, { vm.a2Url = it }, KeyboardType.Uri, placeholder = "http://192.168.1.10:6800")
                 Field(stringResource(R.string.rpc_secret_rpc_secret), vm.a2Secret, { vm.a2Secret = it }, password = true)
                 ConnectButton(vm.a2State, stringResource(R.string.connect)) { vm.connectAria2() }
             }
-
-            ServiceCard(stringResource(R.string.sonarr_radarr), stringResource(R.string.queue_calendar_missing_media_manual_search), Icons.Rounded.Tune, Harbor.Amber,
-                if (vm.snState is ConnState.Ok && vm.rdState is ConnState.Ok) ConnState.Ok(stringResource(R.string.both_connected))
-                else listOf(vm.snState, vm.rdState).firstOrNull { it !is ConnState.Idle && it !is ConnState.Ok } ?: vm.snState) {
-                Field(stringResource(R.string.sonarr_url), vm.snUrl, { vm.snUrl = it }, KeyboardType.Uri, placeholder = "http://192.168.1.10:8989")
-                Field(stringResource(R.string.radarr_url), vm.rdUrl, { vm.rdUrl = it }, KeyboardType.Uri, placeholder = "http://192.168.1.10:7878")
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    SegmentedButton(vm.arrSameLogin, { vm.arrSameLogin = true }, SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.jellyfin_login)) }
-                    SegmentedButton(!vm.arrSameLogin, { vm.arrSameLogin = false }, SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.other_login)) }
-                }
-                if (!vm.arrSameLogin) {
-                    Field(stringResource(R.string.username), vm.arrUser, { vm.arrUser = it })
-                    Field(stringResource(R.string.password), vm.arrPass, { vm.arrPass = it }, password = true)
-                }
-                Text(stringResource(R.string.jellyverse_signs_in_once_and_stores), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
-                StatusLine(stringResource(R.string.sonarr), vm.snState); StatusLine(stringResource(R.string.radarr), vm.rdState)
-                ConnectButton(if (vm.snState is ConnState.Working || vm.rdState is ConnState.Working) ConnState.Working else vm.snState, stringResource(R.string.connect_both)) {
-                    vm.connectArr(com.sridhar.harbor.data.arr.ArrKind.Sonarr); vm.connectArr(com.sridhar.harbor.data.arr.ArrKind.Radarr)
-                }
-            }
-
-            ServiceCard(stringResource(R.string.homelab_ssh), stringResource(R.string.terminal_system_health_containers), Icons.Rounded.Terminal, Harbor.Mint, vm.sshState) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.weight(1f)) { Field(stringResource(R.string.host_ip), vm.sshHost, { vm.sshHost = it }, KeyboardType.Uri, placeholder = "192.168.1.10") }
-                    Box(Modifier.width(96.dp)) { Field(stringResource(R.string.port), vm.sshPort, { vm.sshPort = it.filter(Char::isDigit) }, KeyboardType.Number) }
-                }
-                Field(stringResource(R.string.username), vm.sshUser, { vm.sshUser = it })
-                Field(stringResource(R.string.password), vm.sshPass, { vm.sshPass = it }, password = true)
-                Text(stringResource(R.string.stored_encrypted_on_this_phone_the), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
-                ConnectButton(vm.sshState, stringResource(R.string.connect)) { vm.connectSsh() }
-            }
-
-            GradientButton(stringResource(R.string.enter_jellyverse), onClick = onDone, modifier = Modifier.fillMaxWidth(), enabled = vm.anyConnected)
-            // No servers? The radio works on its own (internet / FM stations, recording, reminders).
-            if (!vm.anyConnected) {
-                val c = com.sridhar.harbor.ui.components.LocalContainer.current
-                androidx.compose.material3.OutlinedButton({ c.radioOnly = true; onDone() }, Modifier.fillMaxWidth().height(52.dp)) {
-                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.RadioIconDef, null)
-                    Spacer(Modifier.width(10.dp))
-                    Text(stringResource(R.string.setup_radio_only))
-                }
-                Text(stringResource(R.string.setup_radio_only_hint), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.align(Alignment.CenterHorizontally))
-            }
-            com.sridhar.harbor.ui.components.MadeWithLove(Modifier.align(Alignment.CenterHorizontally))
-            Spacer(Modifier.height(24.dp))
         }
+        Svc.Library -> {
+            Field(stringResource(R.string.sonarr_url), vm.snUrl, { vm.snUrl = it }, KeyboardType.Uri, placeholder = "http://192.168.1.10:8989")
+            Field(stringResource(R.string.radarr_url), vm.rdUrl, { vm.rdUrl = it }, KeyboardType.Uri, placeholder = "http://192.168.1.10:7878")
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                SegmentedButton(vm.arrSameLogin, { vm.arrSameLogin = true }, SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.jellyfin_login)) }
+                SegmentedButton(!vm.arrSameLogin, { vm.arrSameLogin = false }, SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.other_login)) }
+            }
+            if (!vm.arrSameLogin) {
+                Field(stringResource(R.string.username), vm.arrUser, { vm.arrUser = it })
+                Field(stringResource(R.string.password), vm.arrPass, { vm.arrPass = it }, password = true)
+            }
+            Text(stringResource(R.string.jellyverse_signs_in_once_and_stores), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+            StatusLine(stringResource(R.string.sonarr), vm.snState); StatusLine(stringResource(R.string.radarr), vm.rdState)
+            ConnectButton(if (vm.snState is ConnState.Working || vm.rdState is ConnState.Working) ConnState.Working else vm.snState, stringResource(R.string.connect_both)) {
+                vm.connectArr(com.sridhar.harbor.data.arr.ArrKind.Sonarr); vm.connectArr(com.sridhar.harbor.data.arr.ArrKind.Radarr)
+            }
+        }
+        Svc.Homelab -> {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.weight(1f)) { Field(stringResource(R.string.host_ip), vm.sshHost, { vm.sshHost = it }, KeyboardType.Uri, placeholder = "192.168.1.10") }
+                Box(Modifier.width(96.dp)) { Field(stringResource(R.string.port), vm.sshPort, { vm.sshPort = it.filter(Char::isDigit) }, KeyboardType.Number) }
+            }
+            Field(stringResource(R.string.username), vm.sshUser, { vm.sshUser = it })
+            Field(stringResource(R.string.password), vm.sshPass, { vm.sshPass = it }, password = true)
+            Text(stringResource(R.string.stored_encrypted_on_this_phone_the), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+            ConnectButton(vm.sshState, stringResource(R.string.connect)) { vm.connectSsh() }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+}
+
+@Composable
+private fun SubCard(title: String, state: ConnState, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(20.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            if (state is ConnState.Ok) Icon(Icons.Rounded.CheckCircle, null, tint = Harbor.Mint)
+        }
+        if (state is ConnState.Failed) Text(state.error, color = Harbor.Rose, style = MaterialTheme.typography.bodySmall)
+        content()
     }
 }
 
 @Composable
-private fun ServiceCard(
-    title: String, subtitle: String, icon: ImageVector, tint: Color, state: ConnState,
-    content: @Composable () -> Unit,
-) {
-    var open by remember { mutableStateOf(state !is ConnState.Ok) }
-    Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(24.dp)).animateContentSize()) {
-        Row(Modifier.fillMaxWidth().clickable { open = !open }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(tint.copy(alpha = .18f)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = tint)
-            }
+private fun androidx.compose.foundation.layout.ColumnScope.DoneStep(vm: SetupViewModel, services: List<Svc>) {
+    Spacer(Modifier.height(28.dp))
+    Box(Modifier.fillMaxWidth(), Alignment.Center) { com.sridhar.harbor.ui.ai.JellyBuddy(130.dp, busy = true) }
+    Text(stringResource(if (vm.anyConnected) R.string.setup_done else R.string.setup_done_radio), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Black,
+        modifier = Modifier.align(Alignment.CenterHorizontally), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    Text(stringResource(if (vm.anyConnected) R.string.setup_done_sub else R.string.setup_done_radio_sub), color = Harbor.TextDim, style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.align(Alignment.CenterHorizontally), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    Spacer(Modifier.height(4.dp))
+    services.forEachIndexed { i, s ->
+        val ok = vm.stateOf(s) is ConnState.Ok
+        Row(Modifier.fillMaxWidth().then(Modifier).clip(RoundedCornerShape(16.dp)).background(Harbor.line(.04f)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(s.icon, null, tint = s.tint())
             Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    when (state) { is ConnState.Ok -> state.detail; is ConnState.Failed -> state.error; else -> subtitle },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = when (state) { is ConnState.Ok -> Harbor.Mint; is ConnState.Failed -> Harbor.Rose; else -> Harbor.TextDim },
-                    maxLines = 2,
-                )
-            }
-            when (state) {
-                is ConnState.Ok -> Icon(Icons.Rounded.CheckCircle, null, tint = Harbor.Mint)
-                is ConnState.Failed -> Icon(Icons.Rounded.Error, null, tint = Harbor.Rose)
-                is ConnState.Working -> com.sridhar.harbor.ui.components.JellyLoader(Modifier.size(20.dp), strokeWidth = 2.dp)
-                else -> Box(Modifier.size(10.dp).clip(CircleShape).background(Harbor.TextDim.copy(alpha = .4f)))
-            }
-        }
-        AnimatedVisibility(open) {
-            Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
+            Text(stringResource(s.title), Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+            if (ok) Icon(Icons.Rounded.CheckCircle, null, tint = Harbor.Mint)
+            else Text(stringResource(R.string.setup_skipped), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
         }
     }
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Harbor.line(.04f)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Rounded.RadioIconDef, null, tint = Harbor.Rose)
+        Spacer(Modifier.width(14.dp))
+        Text(stringResource(R.string.tab_radio), Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+        Icon(Icons.Rounded.CheckCircle, null, tint = Harbor.Mint)
+    }
+    Text(stringResource(R.string.setup_change_later), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+    com.sridhar.harbor.ui.components.MadeWithLove(Modifier.align(Alignment.CenterHorizontally))
 }
 
 @Composable

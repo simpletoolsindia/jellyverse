@@ -188,19 +188,38 @@ class Updater(private val context: Context, private val http: OkHttpClient) {
         }
     }
 
-    /** Same package and same signing certificate as the running app – otherwise refuse to install. */
+    /**
+     * Same package and same signing certificate as the running app – otherwise refuse to install.
+     *
+     * Android 9–10 (common on TVs) can't read the certificate of a v2-signed APK that isn't installed yet: the archive
+     * comes back with no signers. Then we can't compare – and don't need to: Android's installer itself refuses an
+     * update signed with a different key (INSTALL_FAILED_UPDATE_INCOMPATIBLE), so we leave the final word to it.
+     * A *readable* mismatch is still refused here.
+     */
     private fun verify(apk: File) {
         val pm = context.packageManager
-        val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else @Suppress("DEPRECATION") PackageManager.GET_SIGNATURES
-        val archive = pm.getPackageArchiveInfo(apk.path, flags) ?: error("Downloaded file isn't a valid app")
+        val archive = archiveInfo(pm, apk) ?: error("Downloaded file isn't a valid app")
         if (archive.packageName != context.packageName) error("Update is for a different app")
-        val installed = pm.getPackageInfo(context.packageName, flags)
-        if (certs(archive) != certs(installed)) error("Update isn't signed by the JellyVerse developer – not installing")
+        val theirs = certs(archive).ifEmpty {
+            @Suppress("DEPRECATION") pm.getPackageArchiveInfo(apk.path, PackageManager.GET_SIGNATURES)?.let(::certs).orEmpty()
+        }
+        if (theirs.isEmpty()) return   // unreadable on this Android version – the system installer verifies it
+        val ours = certs(installedInfo(pm))
+        if (ours.isNotEmpty() && theirs.intersect(ours).isEmpty()) error("Update isn't signed by the JellyVerse developer – not installing")
     }
 
+    private fun archiveInfo(pm: PackageManager, apk: File): android.content.pm.PackageInfo? =
+        if (Build.VERSION.SDK_INT >= 28) pm.getPackageArchiveInfo(apk.path, PackageManager.GET_SIGNING_CERTIFICATES)
+        else @Suppress("DEPRECATION") pm.getPackageArchiveInfo(apk.path, PackageManager.GET_SIGNATURES)
+
+    private fun installedInfo(pm: PackageManager): android.content.pm.PackageInfo =
+        if (Build.VERSION.SDK_INT >= 28) pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        else @Suppress("DEPRECATION") pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
+
     private fun certs(p: android.content.pm.PackageInfo): Set<String> {
-        val sigs = if (Build.VERSION.SDK_INT >= 28) p.signingInfo?.apkContentsSigners?.toList().orEmpty() else @Suppress("DEPRECATION") p.signatures?.toList().orEmpty()
-        return sigs.map { MessageDigest.getInstance("SHA-256").digest(it.toByteArray()).joinToString("") { b -> "%02x".format(b) } }.toSet()
+        val sigs = (if (Build.VERSION.SDK_INT >= 28) p.signingInfo?.let { si -> if (si.hasMultipleSigners()) si.apkContentsSigners else si.signingCertificateHistory }?.toList() else null)
+            ?: @Suppress("DEPRECATION") p.signatures?.toList().orEmpty()
+        return sigs.filterNotNull().map { MessageDigest.getInstance("SHA-256").digest(it.toByteArray()).joinToString("") { b -> "%02x".format(b) } }.toSet()
     }
 
     /**

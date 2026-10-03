@@ -1,5 +1,7 @@
 package com.sridhar.harbor.ui.player
 
+import androidx.compose.material.icons.rounded.Tv
+
 import androidx.compose.material.icons.automirrored.rounded.Toc
 import com.sridhar.harbor.L10n
 import com.sridhar.harbor.R
@@ -450,7 +452,10 @@ fun PlayerScreen(vm: PlayerViewModel, inPip: Boolean, onBack: () -> Unit, onPip:
                     if (ui.quality.bitrate != null && !ui.live) QualityTag(stringResource(R.string.transcode))
                     if (ui.offline) QualityTag(stringResource(R.string.offline_2))
                     if (!isTv) DownloadButton(ui.download) { vm.download() }
-                    if (!ui.offline && !isTv && !ui.live) TopIcon(if (vm.casting != null) Icons.Rounded.CastConnected else Icons.Rounded.Cast, stringResource(R.string.cast),
+                    // Hand over to the paired JellyVerse TV app (opens there at the same spot, stops here).
+                    if (!isTv && !ui.live && LocalContainer.current.remote.pairedTv != null)
+                        TopIcon(Icons.Rounded.Tv, stringResource(R.string.play_on_tv)) { vm.playOnTv(onBack) }
+                    if (!isTv) TopIcon(if (vm.casting != null) Icons.Rounded.CastConnected else Icons.Rounded.Cast, stringResource(R.string.cast),
                         tint = if (vm.casting != null) Harbor.Sky else Color.White) { if (vm.casting != null) vm.stopCasting() else showCast = true }
                     if (ui.episodes.size > 1) TopIcon(Icons.Rounded.VideoLibrary, stringResource(R.string.episodes)) { panel = Panel.Episodes; interaction++ }
                     if (ui.chapters.isNotEmpty()) TopIcon(Icons.AutoMirrored.Rounded.Toc, stringResource(R.string.chapters)) { panel = Panel.Chapters; interaction++ }

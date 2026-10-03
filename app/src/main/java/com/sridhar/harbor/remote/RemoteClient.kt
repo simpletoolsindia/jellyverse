@@ -1,5 +1,7 @@
 package com.sridhar.harbor.remote
 
+import kotlinx.coroutines.flow.first
+
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
@@ -214,6 +216,24 @@ class RemoteClient(private val context: Context) {
     fun text(s: String) { if (s.isNotEmpty()) send(buildJsonObject { put("t", "text"); put("s", s) }) }
     fun volume(dir: String) = send(buildJsonObject { put("t", "vol"); put("d", dir) })
     fun home() = send(buildJsonObject { put("t", "home") })
+
+    /** A JellyVerse TV this phone has paired with before (for "Play on TV"). */
+    val pairedTv: TvDevice? get() = lastTv()?.takeIf { prefs.contains(tokenKey(it)) }
+
+    /**
+     * "Play on TV": open [itemId] on the paired JellyVerse TV app at [posMs]. Connects first if needed.
+     * Returns the TV's name, or null if it couldn't be reached.
+     */
+    suspend fun playOnTv(itemId: String, posMs: Long): String? {
+        val tv = (state.value as? RemoteState.Connected)?.tv ?: pairedTv ?: return null
+        if (state.value !is RemoteState.Connected) {
+            connect(tv)
+            kotlinx.coroutines.withTimeoutOrNull(6000) { state.first { it is RemoteState.Connected || it is RemoteState.Failed || it is RemoteState.NeedCode } }
+            if (state.value !is RemoteState.Connected) return null
+        }
+        send(buildJsonObject { put("t", "play"); put("id", itemId); put("pos", posMs) })
+        return (state.value as? RemoteState.Connected)?.tv?.name ?: tv.name
+    }
 
     /** Mirrors a phone text box into the TV field: deletes what changed, then types the rest. */
     fun mirror(old: String, new: String) {
