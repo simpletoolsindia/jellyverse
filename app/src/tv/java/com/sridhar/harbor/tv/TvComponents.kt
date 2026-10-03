@@ -1,4 +1,8 @@
 package com.sridhar.harbor.tv
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import kotlinx.coroutines.launch
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.fadeIn
 
@@ -212,5 +216,59 @@ fun Top10Badge(rank: Int) {
         }
         Spacer(Modifier.width(8.dp))
         Text("#$rank", color = Harbor.Fg, fontSize = 16.sp, fontWeight = FontWeight.Black)
+    }
+}
+
+/**
+ * D-pad up/down between the rows of a TV LazyColumn. Compose's own focus search moves sideways inside a LazyRow
+ * when the next row is off-screen (focus bounced between two tiles and never left the row), so rows are entered
+ * explicitly: scroll the neighbouring row into view, then focus it through its FocusRequester (its first tile).
+ */
+class TvRowNav(val list: androidx.compose.foundation.lazy.LazyListState) {
+    var focusedKey: Any? = null
+    val requesters = mutableMapOf<Any, androidx.compose.ui.focus.FocusRequester>()
+
+    /** [onTop]: up from the first row – the caller moves focus to whatever sits above the list. */
+    fun onKey(e: androidx.compose.ui.input.key.KeyEvent, scope: kotlinx.coroutines.CoroutineScope, onTop: () -> Unit = {}): Boolean {
+        if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return false
+        val down = e.key == androidx.compose.ui.input.key.Key.DirectionDown
+        if (!down && e.key != androidx.compose.ui.input.key.Key.DirectionUp) return false
+        val info = list.layoutInfo
+        val cur = info.visibleItemsInfo.firstOrNull { it.key == focusedKey }?.index ?: return false
+        val target = if (down) cur + 1 else cur - 1
+        if (target < 0) { onTop(); return true }
+        if (target >= info.totalItemsCount) return true    // nothing below: stay put
+        scope.launch {
+            runCatching { list.animateScrollToItem(target) }
+            val key = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }?.key ?: return@launch
+            androidx.compose.runtime.withFrameNanos { }
+            runCatching { requesters[key]?.requestFocus() }
+        }
+        return true
+    }
+}
+
+fun androidx.compose.foundation.lazy.LazyListScope.tvItem(nav: TvRowNav, key: Any, content: @Composable androidx.compose.foundation.lazy.LazyItemScope.() -> Unit) =
+    item(key = key) {
+        val req = remember { androidx.compose.ui.focus.FocusRequester() }
+        androidx.compose.runtime.DisposableEffect(key) { nav.requesters[key] = req; onDispose { nav.requesters.remove(key) } }
+        Box(Modifier.focusRequester(req).onFocusChanged { if (it.hasFocus) nav.focusedKey = key }) { content() }
+    }
+
+
+/** Live TV channel tile for the TV home rows: logo card with a LIVE badge, name and what's on now. */
+@Composable
+fun ChannelTile(ch: com.sridhar.harbor.data.iptv.Channel, nn: com.sridhar.harbor.data.iptv.NowNext, plays: Int = 0, onClick: () -> Unit) {
+    Column(Modifier.width(220.dp)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).tvFocusable(onClick = onClick).clip(RoundedCornerShape(14.dp))
+            .background(Brush.linearGradient(listOf(Harbor.SurfaceHigh, Harbor.Surface)))) {
+            com.sridhar.harbor.ui.components.NetImage(ch.logo, Modifier.fillMaxSize().padding(22.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit, fallback = ch.name.take(3))
+            com.sridhar.harbor.ui.components.LiveBadge(Modifier.align(Alignment.TopStart).padding(8.dp), small = true)
+            if (plays > 1) Text("×$plays", Modifier.align(Alignment.TopEnd).padding(8.dp).clip(RoundedCornerShape(6.dp)).background(Color.Black.copy(.45f))
+                .padding(horizontal = 6.dp, vertical = 1.dp), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            nn.now?.let { com.sridhar.harbor.ui.components.GradientProgress(it.progress, Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp, vertical = 8.dp), height = 3.dp) }
+        }
+        Text(ch.name, color = Harbor.Fg, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+        Text(nn.now?.title ?: ch.group, color = Harbor.TextDim, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

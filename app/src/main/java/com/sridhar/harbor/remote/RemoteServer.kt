@@ -1,5 +1,6 @@
 package com.sridhar.harbor.remote
 
+import kotlinx.serialization.json.contentOrNull
 import android.app.Activity
 import android.app.Application
 import android.content.Context
@@ -78,8 +79,32 @@ object RemoteServer {
         val key = (1..10).map { "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".random() }.joinToString("")
         qrSecret = key; qrIssued = System.currentTimeMillis()
         val name = java.net.URLEncoder.encode("JellyVerse TV · ${android.os.Build.MODEL}", "UTF-8")
-        return "jellyverse://tv?h=$ip&p=${port}&k=$key&n=$name".also { if (com.sridhar.harbor.BuildConfig.DEBUG) Log.d(TAG, "qr $it") }
+        // One-time public key for sealed setup (Navidrome login): it only ever travels inside the on-screen QR.
+        val kp = SetupCrypto.newKeyPair()
+        setupKeys = (listOf(kp) + setupKeys).take(2)
+        return "jellyverse://tv?h=$ip&p=${port}&k=$key&n=$name&e=${SetupCrypto.encodePublic(kp.public)}".also { if (com.sridhar.harbor.BuildConfig.DEBUG) Log.d(TAG, "qr $it") }
     }
+    /** The current and previous QR's private keys (the QR refreshes every 9 min; a slow scan may hold the old one). */
+    @Volatile private var setupKeys: List<java.security.KeyPair> = emptyList()
+
+    /**
+     * A QR-paired phone sealed its Navidrome login for this TV. Applied only while the TV has no music server,
+     * so a paired phone can't swap a working TV's account. Returns true if music is now set up.
+     */
+    private fun applySealedNavidrome(m: JsonObject): Boolean {
+        val c = com.sridhar.harbor.HarborApp.instance?.container ?: return false
+        if (c.config.value?.navidromeReady == true) return true
+        val sealed = SetupCrypto.Sealed(m["epk"]?.jsonPrimitive?.contentOrNull ?: return false, m["iv"]?.jsonPrimitive?.contentOrNull ?: return false,
+            m["ct"]?.jsonPrimitive?.contentOrNull ?: return false)
+        val plain = setupKeys.firstNotNullOfOrNull { SetupCrypto.open(it.private, sealed) } ?: return false
+        val o = runCatching { kotlinx.serialization.json.Json.parseToJsonElement(plain).jsonObject }.getOrNull() ?: return false
+        fun f(k: String) = o[k]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val url = f("url"); val user = f("user"); val salt = f("salt"); val token = f("token")
+        if (!url.startsWith("http") || user.isBlank() || salt.isBlank() || token.isBlank()) return false
+        kotlinx.coroutines.runBlocking { c.settings.update { it.copy(navidromeUrl = url, navidromeUser = user, navidromeSalt = salt, navidromeToken = token) } }
+        return true
+    }
+
     private fun qrValid(k: String?) = k != null && k == qrSecret && System.currentTimeMillis() - qrIssued < 10 * 60_000L
     @Volatile private var port = RemoteProtocol.PORT
 
@@ -267,6 +292,10 @@ object RemoteServer {
                         if (setupServer.value != url) { lastQc = null; setupServer.value = url }   // new server → new code comes from TvSetup
                         lastQc?.let { send(buildJsonObject { put("t", "qc"); put("code", it) }) }
                     }
+                }
+                "setupNavidrome" -> {
+                    val ok = runCatching { applySealedNavidrome(m) }.getOrDefault(false)
+                    send(buildJsonObject { put("t", if (ok) "navidromeOk" else "navidromeFailed") })
                 }
                 "home" -> main.post { com.sridhar.harbor.HarborApp.instance?.container?.navRequests?.tryEmit("home") }
                 // "Play on TV" from a paired phone: open this title in the TV player, from where the phone was.

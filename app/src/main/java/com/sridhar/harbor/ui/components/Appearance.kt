@@ -106,7 +106,7 @@ fun AppearancePicker(modifier: Modifier = Modifier, tv: Boolean = false) {
                 if (tv && sec == HomeSection.Shortcuts) return@forEach   // the TV side menu already has these
                 Chip(stringResource(when (sec) {
                     HomeSection.Shortcuts -> R.string.look_row_shortcuts; HomeSection.Continue -> R.string.continue_watching; HomeSection.ForYou -> R.string.reco_for_you
-                    HomeSection.NextUp -> R.string.next_up; HomeSection.Top10 -> R.string.look_row_top10; HomeSection.Latest -> R.string.look_row_latest
+                    HomeSection.NextUp -> R.string.next_up; HomeSection.Top10 -> R.string.look_row_top10; HomeSection.LiveTv -> R.string.home_live_rows; HomeSection.Latest -> R.string.look_row_latest
                 }), look.shows(sec), check = true) {
                     Looks.update { l -> l.copy(hidden = if (sec in l.hidden) l.hidden - sec else l.hidden + sec) }
                 }

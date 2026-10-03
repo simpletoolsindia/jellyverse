@@ -59,7 +59,7 @@ enum class ThemeMode(val id: String) { System("system"), Dark("dark"), Light("li
 enum class HomeStyle(val id: String) { Spotlight("spotlight"), Billboard("billboard") }
 
 /** Optional Home sections the user can hide. */
-enum class HomeSection(val id: String) { Shortcuts("shortcuts"), Continue("continue"), ForYou("foryou"), NextUp("nextup"), Top10("top10"), Latest("latest") }
+enum class HomeSection(val id: String) { Shortcuts("shortcuts"), Continue("continue"), ForYou("foryou"), NextUp("nextup"), Top10("top10"), LiveTv("livetv"), Latest("latest") }
 
 data class Look(
     val skin: Skin = Skin.BlueBird,

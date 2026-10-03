@@ -16,7 +16,7 @@ import java.io.ByteArrayOutputStream
  * Colours are derived from the name, so each station keeps its own look. No text: Android draws the title over it.
  */
 object RadioArt {
-    private val cache = LruCache<String, ByteArray>(12)
+    private val cache = LruCache<String, ByteArray>(96)   // a whole station list, so re-tuning never re-renders
 
     fun png(name: String, recording: Boolean): ByteArray {
         val key = "$recording|$name"

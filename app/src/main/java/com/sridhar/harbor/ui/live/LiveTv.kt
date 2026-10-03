@@ -1,5 +1,7 @@
 package com.sridhar.harbor.ui.live
 
+import androidx.compose.foundation.layout.aspectRatio
+import com.sridhar.harbor.ui.components.pressable
 import com.sridhar.harbor.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
@@ -319,5 +321,24 @@ fun IptvRefreshRow(vm: LiveTvViewModel, modifier: Modifier = Modifier) {
             if (vm.refreshing) { com.sridhar.harbor.ui.components.JellyLoader(Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.iptv_refreshing), fontSize = 13.sp) }
             else { Icon(Icons.Rounded.Refresh, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.iptv_refresh_source), fontSize = 13.sp) }
         }
+    }
+}
+
+
+/** Home-screen channel tile: logo on a soft card, LIVE badge, the channel name and what's on now. */
+@Composable
+fun ChannelCard(ch: Channel, nn: com.sridhar.harbor.data.iptv.NowNext, plays: Int = 0, onPlay: () -> Unit) {
+    Column(Modifier.width(150.dp).pressable(onClick = onPlay)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 11f).clip(RoundedCornerShape(16.dp))
+            .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Harbor.SurfaceHigh, Harbor.Surface)))) {
+            NetImage(ch.logo, Modifier.fillMaxSize().padding(18.dp), contentScale = ContentScale.Fit, fallback = ch.name.take(3))
+            com.sridhar.harbor.ui.components.LiveBadge(Modifier.align(Alignment.TopStart).padding(6.dp), small = true)
+            if (plays > 1) Text("×$plays", Modifier.align(Alignment.TopEnd).padding(6.dp).clip(RoundedCornerShape(6.dp))
+                .background(androidx.compose.ui.graphics.Color.Black.copy(.45f)).padding(horizontal = 5.dp, vertical = 1.dp),
+                color = androidx.compose.ui.graphics.Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            nn.now?.let { GradientProgress(it.progress, Modifier.align(Alignment.BottomCenter).padding(horizontal = 10.dp, vertical = 6.dp), height = 3.dp) }
+        }
+        Text(ch.name, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+        Text(nn.now?.title ?: ch.group, color = Harbor.TextDim, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

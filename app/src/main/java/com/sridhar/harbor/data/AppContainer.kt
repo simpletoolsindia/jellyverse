@@ -80,7 +80,9 @@ class AppContainer(context: Context) {
     val qbit = QbitRepository(settings, http)
     val music by lazy { com.sridhar.harbor.data.music.NavidromeRepository(settings, http) }
     val offlineMusic by lazy { com.sridhar.harbor.data.music.OfflineMusic(context, settings, music, downloader, http) }
-    private val musicEngineLazy = lazy { com.sridhar.harbor.music.MusicEngine(context, music, settings, http) { offlineMusic } }
+    private val musicEngineLazy = lazy {
+        com.sridhar.harbor.music.MusicEngine(context, music, settings, http) { offlineMusic }.also { e -> e.radioRelocate = { id -> radio.relocate(id) } }
+    }
     val musicEngine by musicEngineLazy
     /** False until something plays music – widgets don't spin up the player just to draw themselves. */
     val musicEngineCreated get() = musicEngineLazy.isInitialized()

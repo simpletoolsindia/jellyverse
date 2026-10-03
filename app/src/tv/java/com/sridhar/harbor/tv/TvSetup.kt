@@ -1,4 +1,7 @@
 package com.sridhar.harbor.tv
+import androidx.compose.material.icons.rounded.QrCodeScanner
+import androidx.compose.material.icons.rounded.SettingsRemote
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.input.key.onKeyEvent
@@ -379,10 +382,11 @@ fun PhoneQrCard(big: Boolean) {
         .border(if (focused) 2.dp else 0.dp, if (focused) Harbor.Sky else Color.Transparent, RoundedCornerShape(20.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(if (big) 200.dp else 150.dp).clip(RoundedCornerShape(12.dp))) { com.sridhar.harbor.ui.components.QrCode(p, Modifier.fillMaxSize()) }
         Spacer(Modifier.width(16.dp))
-        Column(Modifier.width(if (big) 220.dp else 170.dp)) {
+        Column(Modifier.width(if (big) 300.dp else 170.dp)) {
             Text("📱 " + stringResource(R.string.qr_title), color = Harbor.Fg, fontWeight = FontWeight.Bold, fontSize = if (big) 22.sp else 17.sp)
             Spacer(Modifier.height(6.dp))
             Text(stringResource(R.string.qr_hint), color = Harbor.TextDim, fontSize = if (big) 16.sp else 13.sp)
+            if (big) QrHowTo()
             if (paired > 0) Text("✓ " + stringResource(R.string.qr_connected), color = Harbor.Mint, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
         }
     }
@@ -404,6 +408,49 @@ fun TvConnectPhone() {
                 }
             }
             if (ip != null) Text(stringResource(R.string.remote_not_listed) + "  " + ip, color = Harbor.Sky, fontSize = 16.sp)
+        }
+    }
+}
+
+
+/**
+ * Where to scan from, for people who don't know the phone app has a scanner: three numbered steps beside a tiny
+ * animated phone whose remote button pulses – the exact button to tap.
+ */
+@Composable
+private fun QrHowTo() {
+    val clock = androidx.compose.animation.core.rememberInfiniteTransition(label = "qrHow")
+    val pulse by clock.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1400)), label = "pulse")
+    Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Mini phone: JellyVerse top bar with the remote button pulsing, then a "Scan TV QR code" chip.
+        Box(Modifier.size(78.dp, 140.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF0E1320)).border(2.dp, Harbor.Fg.copy(.35f), RoundedCornerShape(14.dp))) {
+            Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 6.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(Harbor.Violet))
+                Spacer(Modifier.weight(1f))
+                Box(contentAlignment = Alignment.Center) {
+                    Box(Modifier.size((16 + 14 * pulse).dp).clip(RoundedCornerShape(50)).background(Harbor.Sky.copy(alpha = .45f * (1f - pulse))))
+                    Box(Modifier.size(16.dp).clip(RoundedCornerShape(50)).background(Harbor.Sky), contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.SettingsRemote, null, tint = Color.White, modifier = Modifier.size(11.dp))
+                    }
+                }
+            }
+            Column(Modifier.align(Alignment.Center).padding(top = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.clip(RoundedCornerShape(6.dp)).background(Harbor.Violet.copy(alpha = .5f + .5f * pulse)).padding(horizontal = 5.dp, vertical = 3.dp)) {
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.QrCodeScanner, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(R.string.qr_how1, R.string.qr_how2, R.string.qr_how3).forEachIndexed { i, r ->
+                Row(verticalAlignment = Alignment.Top) {
+                    Box(Modifier.size(22.dp).clip(RoundedCornerShape(50)).background(Harbor.Sky), contentAlignment = Alignment.Center) {
+                        Text("${i + 1}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(r), color = Harbor.Fg, fontSize = 14.sp, lineHeight = 18.sp)
+                }
+            }
         }
     }
 }

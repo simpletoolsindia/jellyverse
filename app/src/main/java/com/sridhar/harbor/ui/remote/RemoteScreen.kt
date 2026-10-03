@@ -122,6 +122,9 @@ fun RemoteScreen(onBack: () -> Unit) {
                 Text(text, color = color, fontWeight = FontWeight.SemiBold)
             }
         }
+        val tvMusic by client.tvMusic.collectAsState()
+        if (tvMusic) Text("✓ " + stringResource(R.string.qr_tv_music), Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(14.dp))
+            .background(Harbor.Mint.copy(alpha = .15f)).padding(14.dp), color = Harbor.Mint, fontWeight = FontWeight.SemiBold)
         Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.back)) }
             Column(Modifier.weight(1f)) {

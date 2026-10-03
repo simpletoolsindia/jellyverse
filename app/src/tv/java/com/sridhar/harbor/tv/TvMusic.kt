@@ -226,6 +226,9 @@ private fun TvNowPlayingBody() {
                     Text("LIVE", color = Color.White, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp)
                 }
                 Spacer(Modifier.width(12.dp)); EqualizerBars(s.playing, Modifier.size(22.dp), Color.White)
+                // Tuning (or re-pulling the station's link after an error) / the station really won't play.
+                if (s.buffering && s.error == null) { Spacer(Modifier.width(12.dp)); com.sridhar.harbor.ui.components.ProgressRing(null, size = 24.dp, stroke = 2.5.dp) }
+                s.error?.let { Spacer(Modifier.width(12.dp)); Text(it, color = Harbor.Rose, fontSize = 14.sp, maxLines = 2) }
             } else {
             val frac = if (s.durationMs > 0) (pos.toFloat() / s.durationMs).coerceIn(0f, 1f) else 0f
             Box(Modifier.width(artSize).height(5.dp).clip(RoundedCornerShape(3.dp)).background(Harbor.line(.25f))) { Box(Modifier.fillMaxWidth(frac).height(5.dp).background(Color.White)) }
@@ -288,6 +291,9 @@ private fun TvIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, on: Bo
 private fun TvRadioRow(onNowPlaying: () -> Unit) {
     val c = LocalContainer.current
     val stations by c.radio.stations.collectAsState()
+    // No stations yet (first launch was offline): fetch the preset list now.
+    val netOnline by com.sridhar.harbor.net.NetworkMonitor.online.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(stations.isEmpty(), netOnline) { if (stations.isEmpty() && netOnline) runCatching { c.radio.sync() } }
     val s by c.musicEngine.state.collectAsState()
     if (stations.isEmpty()) return
     TvRow(stringResource(R.string.radio_title), stations, key = { it.id }) { st ->

@@ -131,7 +131,7 @@ fun UpdatePrompt() {
                     else -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton({ updater.dismiss() }, Modifier.focusRing()) { Text(stringResource(R.string.update_later), color = Harbor.TextDim) }
                         TextButton({ updater.startDownload() }, Modifier.focusRequester(first).focusRing()) {
-                            Text(stringResource(R.string.update_now), fontWeight = FontWeight.Bold)
+                            Text(stringResource(if (updater.viaStore) R.string.update_on_play else R.string.update_now), fontWeight = FontWeight.Bold)
                         }
                     }
                 }

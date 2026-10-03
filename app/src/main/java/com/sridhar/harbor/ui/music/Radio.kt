@@ -62,6 +62,9 @@ import kotlinx.coroutines.launch
 fun RadioShelf(grid: Boolean = false) {
     val c = LocalContainer.current
     val stations by c.radio.stations.collectAsState()
+    // No stations yet (first launch was offline): fetch the preset list now.
+    val netOnline by com.sridhar.harbor.net.NetworkMonitor.online.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(stations.isEmpty(), netOnline) { if (stations.isEmpty() && netOnline) runCatching { c.radio.sync() } }
     val shared by c.sharedRadioLink.collectAsState()
     val playing by c.musicEngine.state.collectAsState()
     var adding by remember { mutableStateOf<String?>(null) }   // null = closed, else prefilled URL

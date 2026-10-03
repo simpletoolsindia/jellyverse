@@ -1337,4 +1337,13 @@
     <string name="dup_select_extras">Select extras</string>
     <string name="dup_series_warn">Deleting a show entry deletes its whole folder.</string>
     <string name="dup_same_file">Same file as another entry – can\'t delete separately</string>
+    <string name="home_live_rows">Live TV channels</string>
+    <string name="home_live_frequent">Your most-watched channels</string>
+    <string name="home_live_favorites">Favourite channels</string>
+    <string name="home_live_foryou">Live TV for you</string>
+    <string name="qr_how1">Open JellyVerse on your phone</string>
+    <string name="qr_how2">Tap the remote button at the top of Watch</string>
+    <string name="qr_how3">Tap “Scan TV QR code” and point it here</string>
+    <string name="qr_tv_music">Music (Navidrome) is set up on your TV too</string>
+    <string name="update_on_play">Update on Google Play</string>
 </resources>

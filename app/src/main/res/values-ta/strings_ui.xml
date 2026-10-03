@@ -1337,4 +1337,13 @@
     <string name="dup_select_extras">கூடுதலைத் தேர்வு செய்</string>
     <string name="dup_series_warn">தொடர் பதிவை நீக்கினால் அதன் முழு கோப்புறையும் நீக்கப்படும்.</string>
     <string name="dup_same_file">மற்றொரு பதிவின் அதே கோப்பு – தனியாக நீக்க முடியாது</string>
+    <string name="home_live_rows">நேரலை TV சேனல்கள்</string>
+    <string name="home_live_frequent">நீங்கள் அதிகம் பார்க்கும் சேனல்கள்</string>
+    <string name="home_live_favorites">பிடித்த சேனல்கள்</string>
+    <string name="home_live_foryou">உங்களுக்கான நேரலை TV</string>
+    <string name="qr_how1">உங்கள் போனில் JellyVerse ஐத் திறக்கவும்</string>
+    <string name="qr_how2">Watch மேலே உள்ள ரிமோட் பொத்தானைத் தட்டவும்</string>
+    <string name="qr_how3">“TV QR குறியீட்டை ஸ்கேன் செய்” தட்டி இங்கே காட்டவும்</string>
+    <string name="qr_tv_music">இசை (Navidrome) உங்கள் TV யிலும் அமைக்கப்பட்டது</string>
+    <string name="update_on_play">Google Play இல் புதுப்பி</string>
 </resources>

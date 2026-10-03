@@ -659,6 +659,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private var livePlaylistId: String? = null
+    private var playCountJob: kotlinx.coroutines.Job? = null
     var liveRefreshing by mutableStateOf(false); private set
 
     /**
@@ -685,6 +686,9 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     private fun prepareLive(forceHls: Boolean = false) {
         val ch = ui.channels.getOrNull(ui.channelIndex) ?: return
         c.iptv.lastChannel = ch.id
+        // Counts as "watched" (for the home rows) only after 45 s on the channel – zapping past it doesn't.
+        playCountJob?.cancel()
+        playCountJob = viewModelScope.launch { kotlinx.coroutines.delay(45_000); if (ui.channels.getOrNull(ui.channelIndex)?.id == ch.id) c.iptv.recordPlay(ch) }
         httpFactory.setUserAgent(ch.userAgent ?: "JellyVerse/2.1 (Android) ExoPlayer")
         httpFactory.setDefaultRequestProperties(buildMap { ch.referrer?.let { put("Referer", it) } })
         val builder = MediaItem.Builder().setUri(ch.url).setMediaMetadata(MediaMetadata.Builder().setTitle(ch.name).setArtworkUri(ch.logo?.let(Uri::parse)).build())

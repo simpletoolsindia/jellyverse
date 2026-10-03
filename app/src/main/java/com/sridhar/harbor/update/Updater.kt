@@ -41,14 +41,18 @@ sealed interface UpdateState {
 /**
  * Self-update for GitHub (sideload) builds: checks the latest GitHub release, downloads this app's APK,
  * verifies it is signed with the same key as the installed app, then installs it with a PackageInstaller session.
- * Play Store builds never compile this in (BuildConfig.SELF_UPDATE = false).
+ * Play Store builds (BuildConfig.SELF_UPDATE = false) never download APKs: they learn about a new version from
+ * Google Play (or, where Play's in-app update API isn't available – Android TV – the GitHub release) and "Update"
+ * opens the app's Play Store page.
  */
 class Updater(private val context: Context, private val http: OkHttpClient) {
     private val prefs = context.getSharedPreferences("harbor_update", Context.MODE_PRIVATE)
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
 
-    val enabled get() = BuildConfig.SELF_UPDATE
+    val enabled get() = true
+    /** Play Store build: updates are installed by Google Play. */
+    val viaStore get() = !BuildConfig.SELF_UPDATE
     val currentVersion: String = BuildConfig.VERSION_NAME.substringBefore('-')
     private val assetName = if (BuildConfig.FLAVOR == "tv") "JellyVerseTV-tv.apk" else "JellyVerse-phone.apk"
 
@@ -62,7 +66,7 @@ class Updater(private val context: Context, private val http: OkHttpClient) {
     /** Background worker path: no UI state changes; returns the newer release, if any. */
     suspend fun checkQuietly(): UpdateInfo? {
         prefs.edit().putLong("last_check", System.currentTimeMillis()).apply()
-        return fetchLatest()?.takeIf { isNewer(it.version, currentVersion) }?.also { _state.value = UpdateState.Available(it) }
+        return latestNewer()?.also { _state.value = UpdateState.Available(it) }
     }
 
     /** True the first time a version is announced by notification (so each release notifies once). */
@@ -82,12 +86,12 @@ class Updater(private val context: Context, private val http: OkHttpClient) {
     suspend fun check(userInitiated: Boolean = true) {
         if (!enabled) return
         _state.value = UpdateState.Checking
-        val result = runCatching { fetchLatest() }
+        val result = runCatching { latestNewer() }
         prefs.edit().putLong("last_check", System.currentTimeMillis()).apply()
         _state.value = result.fold(
             onSuccess = { info ->
                 when {
-                    info == null || !isNewer(info.version, currentVersion) -> UpdateState.UpToDate
+                    info == null -> UpdateState.UpToDate
                     !userInitiated && prefs.getString("dismissed", null) == info.version -> UpdateState.Idle
                     else -> UpdateState.Available(info)
                 }
@@ -101,19 +105,51 @@ class Updater(private val context: Context, private val http: OkHttpClient) {
         _state.value = UpdateState.Idle
     }
 
-    private suspend fun fetchLatest(): UpdateInfo? = withContext(Dispatchers.IO) {
+    /** A newer version than the installed one, or null. Play builds ask Google Play first. */
+    private suspend fun latestNewer(): UpdateInfo? {
+        if (!viaStore) return fetchLatest()?.takeIf { isNewer(it.version, currentVersion) }
+        val play = runCatching { playUpdateCode() }.getOrNull()
+        val github = runCatching { fetchLatest(requireAsset = false) }.getOrNull()
+        return when {
+            play == null -> github?.takeIf { isNewer(it.version, currentVersion) }   // no Play API here (TV): trust the release
+            play <= 0 -> null                                                          // Play says up to date
+            else -> github?.takeIf { isNewer(it.version, currentVersion) } ?: UpdateInfo("${currentVersion}+", "", "", 0)
+        }
+    }
+
+    /** Google Play's available version code (0 = none), or null when Play's update API can't be used. */
+    private suspend fun playUpdateCode(): Int? = withContext(Dispatchers.Main) {
+        val m = com.google.android.play.core.appupdate.AppUpdateManagerFactory.create(context)
+        val info = kotlinx.coroutines.suspendCancellableCoroutine<com.google.android.play.core.appupdate.AppUpdateInfo?> { c ->
+            m.appUpdateInfo.addOnSuccessListener { c.resumeWith(Result.success(it)) }.addOnFailureListener { c.resumeWith(Result.success(null)) }
+        } ?: return@withContext null
+        if (info.updateAvailability() == com.google.android.play.core.install.model.UpdateAvailability.UPDATE_AVAILABLE) info.availableVersionCode() else 0
+    }
+
+    /** Opens JellyVerse in the Play Store app (or the Play website if the Store app isn't there). */
+    fun openStore() {
+        val id = context.packageName
+        val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$id")).setPackage("com.android.vending").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { context.startActivity(market) }.onFailure {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$id")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        }
+        _state.value = UpdateState.Idle
+    }
+
+    private suspend fun fetchLatest(requireAsset: Boolean = true): UpdateInfo? = withContext(Dispatchers.IO) {
         val req = Request.Builder().url("https://api.github.com/repos/${BuildConfig.UPDATE_REPO}/releases/latest")
             .header("Accept", "application/vnd.github+json").build()
         http.newCall(req).execute().use { r ->
             if (!r.isSuccessful) error("GitHub HTTP ${r.code}")
             val o = com.sridhar.harbor.data.HarborJson.parseToJsonElement(r.body!!.string()).jsonObject
             val tag = o["tag_name"]?.jsonPrimitive?.content ?: return@use null
-            val asset = o["assets"]?.jsonArray?.map { it.jsonObject }?.firstOrNull { it["name"]?.jsonPrimitive?.content == assetName } ?: return@use null
+            val asset = o["assets"]?.jsonArray?.map { it.jsonObject }?.firstOrNull { it["name"]?.jsonPrimitive?.content == assetName }
+            if (asset == null && requireAsset) return@use null
             UpdateInfo(
                 version = tag.removePrefix("v"),
                 notes = o["body"]?.jsonPrimitive?.content.orEmpty().trim(),
-                apkUrl = asset["browser_download_url"]!!.jsonPrimitive.content,
-                size = asset["size"]?.jsonPrimitive?.content?.toLongOrNull() ?: 0,
+                apkUrl = asset?.get("browser_download_url")?.jsonPrimitive?.content.orEmpty(),
+                size = asset?.get("size")?.jsonPrimitive?.content?.toLongOrNull() ?: 0,
             )
         }
     }
@@ -129,6 +165,7 @@ class Updater(private val context: Context, private val http: OkHttpClient) {
      * from where it stopped after a network drop, then verifies it.
      */
     fun startDownload() {
+        if (viaStore) { openStore(); return }
         val info = when (val s = state.value) { is UpdateState.Available -> s.info; is UpdateState.Failed -> s.info ?: return; else -> return }
         if (job?.isActive == true) return
         job = scope.launch { download(info) }

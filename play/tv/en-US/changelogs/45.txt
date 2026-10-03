@@ -1,0 +1,1 @@
+2.24.0: Live TV rows on Home (most-watched, favourites, for you). Fixed remote navigation between Home rows and the details page. Radio switches instantly; FM links update automatically. Phone QR setup now shows clear steps and also sets up Navidrome music. Updates via Google Play.

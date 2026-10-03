@@ -51,12 +51,17 @@ class RemoteClient(private val context: Context) {
     enum class TvSetup { Working, Done, Failed }
     val tvSetup = MutableStateFlow<TvSetup?>(null)
     @Volatile private var qrKey: String? = null
+    /** The TV's one-time public key from its QR (only set when connecting by scanning). */
+    @Volatile private var qrTvKey: String? = null
+    /** The TV took this phone's Navidrome login (one-scan setup) – shown as "Music is set up on your TV too". */
+    val tvMusic = MutableStateFlow(false)
     @Volatile private var tvNeedsSignIn = false
 
     /** Connect from a scanned QR code (jellyverse://tv?h=…&p=…&k=…&n=…). Returns false if it isn't one. */
     fun connectFromQr(raw: String): Boolean {
         val q = parseQr(raw) ?: return false
-        qrKey = q.second; tvSetup.value = null
+        qrKey = q.second; tvSetup.value = null; tvMusic.value = false
+        qrTvKey = runCatching { android.net.Uri.parse(raw.trim()).getQueryParameter("e") }.getOrNull()
         connect(q.first)
         return true
     }
@@ -169,7 +174,7 @@ class RemoteClient(private val context: Context) {
                         known = tv.copy(id = str("id") ?: tv.id, name = str("name") ?: tv.name)
                         send(buildJsonObject { put("t", "hello"); prefs.getString(tokenKey(known), null)?.let { put("token", it) } })
                     }
-                    "ready" -> { remember(known); _state.value = RemoteState.Connected(known); offerSetup() }
+                    "ready" -> { remember(known); _state.value = RemoteState.Connected(known); offerSetup(); offerMusic() }
                     // Scanned QR: pair with its one-time key – no code to type.
                     "unpaired" -> qrKey?.let { k -> send(buildJsonObject { put("t", "pair"); put("qr", k); put("phone", android.os.Build.MODEL) }) }
                         ?: send(buildJsonObject { put("t", "pairRequest") })
@@ -177,7 +182,7 @@ class RemoteClient(private val context: Context) {
                     "badCode" -> _state.value = RemoteState.NeedCode(known, wrong = true)
                     "paired" -> {
                         prefs.edit().putString(tokenKey(known), str("token")).apply()
-                        remember(known); _state.value = RemoteState.Connected(known); qrKey = null; offerSetup()
+                        remember(known); _state.value = RemoteState.Connected(known); qrKey = null; offerSetup(); offerMusic()
                     }
                     "qc" -> str("code")?.let { code ->
                         if (com.sridhar.harbor.BuildConfig.DEBUG) android.util.Log.d("RemoteClient", "qc received")
@@ -188,6 +193,7 @@ class RemoteClient(private val context: Context) {
                         }
                     }
                     "signedIn" -> tvSetup.value = TvSetup.Done
+                    "navidromeOk" -> tvMusic.value = true
                     "field" -> tvField.value = if (str("focused") == "true") (str("label") ?: "") else null
                 }
             }
@@ -203,6 +209,21 @@ class RemoteClient(private val context: Context) {
         if (!cfg.jellyfinReady) return
         tvSetup.value = TvSetup.Working
         send(buildJsonObject { put("t", "setupJellyfin"); put("url", cfg.jellyfinUrl) })
+    }
+
+    /**
+     * QR setup: also hand the TV this phone's Navidrome login, sealed to the public key from the TV's QR code
+     * (the remote socket itself is plain LAN, so the token is never sent readable). The TV ignores it if it
+     * already has a music server.
+     */
+    private fun offerMusic() {
+        val key = qrTvKey ?: return
+        qrTvKey = null
+        val cfg = com.sridhar.harbor.HarborApp.instance?.container?.config?.value ?: return
+        if (!cfg.navidromeReady) return
+        val plain = buildJsonObject { put("url", cfg.navidromeUrl); put("user", cfg.navidromeUser); put("salt", cfg.navidromeSalt); put("token", cfg.navidromeToken) }.toString()
+        val sealed = runCatching { SetupCrypto.seal(SetupCrypto.decodePublic(key), plain) }.getOrNull() ?: return
+        send(buildJsonObject { put("t", "setupNavidrome"); put("epk", sealed.epk); put("iv", sealed.iv); put("ct", sealed.ct) })
     }
 
     private fun remember(tv: TvDevice) = prefs.edit().putString("last_host", tv.host).putInt("last_port", tv.port)

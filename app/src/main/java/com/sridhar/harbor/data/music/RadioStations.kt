@@ -23,20 +23,68 @@ data class RadioStation(val id: String = UUID.randomUUID().toString(), val name:
 class RadioStations(context: Context, private val http: OkHttpClient) {
     private val prefs = context.getSharedPreferences("harbor_radio", Context.MODE_PRIVATE)
     private val ser = ListSerializer(RadioStation.serializer())
-    private val _stations = MutableStateFlow(seeded(load()))
+    private val _stations = MutableStateFlow(load())
     val stations: StateFlow<List<RadioStation>> = _stations.asStateFlow()
 
-    /** First run: preload popular Tamil FM stations (removable like any other). */
-    private fun seeded(list: List<RadioStation>): List<RadioStation> {
-        // Each seed batch is added once; stations a user removed are not re-added by an older batch.
-        var merged = list
-        val e = prefs.edit()
-        if (!prefs.getBoolean("seeded_tamil_v1", false)) { merged = merged + TAMIL_FM.filterNot { s -> merged.any { it.url == s.url } }; e.putBoolean("seeded_tamil_v1", true) }
-        if (!prefs.getBoolean("seeded_tamilnadu_v2", false)) { merged = TAMILNADU_FM + merged.filterNot { s -> TAMILNADU_FM.any { it.url == s.url } }; e.putBoolean("seeded_tamilnadu_v2", true) }
-        if (merged !== list) e.putString("stations", HarborJson.encodeToString(ser, merged))
-        e.apply()
-        return merged
+    /**
+     * The preset stations come from the public repo (see [RadioDirectory]), not from the app: downloaded once,
+     * kept on the device, refreshed at most daily, and re-pulled when a station stops playing.
+     */
+    private val dirFile = java.io.File(context.filesDir, "radio/stations.json")
+    /** Installs that got the old built-in presets already have them – the directory then only refreshes links. */
+    private var seeded: Boolean
+        get() = prefs.getBoolean("seeded_directory", false) || prefs.getBoolean("seeded_tamilnadu_v2", false) || prefs.getBoolean("seeded_tamil_v1", false)
+        set(v) = prefs.edit().putBoolean("seeded_directory", v).apply()
+    private var edited: Set<String>
+        get() = prefs.getStringSet("edited_ids", emptySet()).orEmpty()
+        set(v) = prefs.edit().putStringSet("edited_ids", v).apply()
+    private val syncLock = kotlinx.coroutines.sync.Mutex()
+
+    /** Downloads the directory (raw GitHub, then the jsDelivr mirror); null if neither answers with a valid list. */
+    private suspend fun download(): Pair<String, List<RadioDirectory.Entry>>? = withContext(Dispatchers.IO) {
+        for (url in RadioDirectory.URLS) {
+            val text = runCatching {
+                http.newCall(Request.Builder().url(url).header("Cache-Control", "no-cache").build()).execute().use { r -> if (r.isSuccessful) r.body?.string() else null }
+            }.getOrNull() ?: continue
+            RadioDirectory.parse(text)?.let { return@withContext text to it }
+        }
+        null
     }
+
+    private fun cached(): List<RadioDirectory.Entry>? = runCatching { dirFile.readText() }.getOrNull()?.let(RadioDirectory::parse)
+
+    /**
+     * Brings the preset stations up to date. Uses the copy on the device unless it's missing, older than a day or
+     * [force]d; a failed download falls back to that copy. Returns true when a directory (fresh or cached) was applied.
+     */
+    suspend fun sync(force: Boolean = false): Boolean = syncLock.withLockCompat {
+        val age = System.currentTimeMillis() - prefs.getLong("dir_fetched", 0)
+        val fresh = if (force || !dirFile.exists() || age > 24 * 3_600_000L) download() else null
+        if (fresh != null) withContext(Dispatchers.IO) {
+            dirFile.parentFile?.mkdirs(); dirFile.writeText(fresh.first)
+            prefs.edit().putLong("dir_fetched", System.currentTimeMillis()).apply()
+        }
+        val entries = fresh?.second ?: cached() ?: return@withLockCompat false
+        // First directory sync after upgrading from built-in presets: keep links the user changed as theirs.
+        if (!prefs.getBoolean("seeded_directory", false) && seeded) edited = edited + RadioDirectory.userEdited(_stations.value, entries)
+        val merged = RadioDirectory.merge(_stations.value, entries, firstTime = !seeded, edited = edited)
+        if (merged != _stations.value) save(merged)
+        seeded = true
+        true
+    }
+
+    /**
+     * A preset station won't play: pull the directory again and, if the station's link changed there, switch to it.
+     * Returns the updated station, or null when there's nothing new to try (offline, same link, user-edited station).
+     */
+    suspend fun relocate(id: String): RadioStation? {
+        val before = byId(id) ?: return null
+        if (id in edited) return null
+        if (!sync(force = true)) return null
+        return byId(id)?.takeIf { it.url != before.url }
+    }
+
+    private suspend fun <T> kotlinx.coroutines.sync.Mutex.withLockCompat(block: suspend () -> T): T { lock(); try { return block() } finally { unlock() } }
 
     /** Live list of working Tamil stations from Radio Browser (community directory, health-checked). */
     suspend fun discoverTamil(): List<RadioStation> = withContext(Dispatchers.IO) {
@@ -78,6 +126,7 @@ class RadioStations(context: Context, private val http: OkHttpClient) {
     suspend fun update(id: String, name: String, url: String): RadioStation {
         val stream = resolve(url.trim())
         val updated = RadioStation(id = id, name = name.trim().ifBlank { guessName(stream) }, url = stream)
+        edited = edited + id   // the user's own link wins over later directory updates
         save(_stations.value.map { if (it.id == id) updated else it })
         return updated
     }
@@ -93,42 +142,6 @@ class RadioStations(context: Context, private val http: OkHttpClient) {
     }
 
     companion object {
-        /** Tamil Nadu FM stations – listed first in the Radio row. */
-        val TAMILNADU_FM = listOf(
-            RadioStation(id = "tn-suryan", name = "Suryan FM 93.5 Chennai", url = "http://radios.crabdance.com:8002/1"),
-            RadioStation(id = "tn-radiocity", name = "Radio City 91.1 Chennai", url = "http://radios.crabdance.com:8002/5"),
-            RadioStation(id = "tn-bigfm", name = "Big FM Tamil", url = "https://stream.zeno.fm/r2gn1pgm4qruv"),
-            RadioStation(id = "tn-hellofm", name = "Hello FM 106.4 Chennai", url = "http://radios.crabdance.com:8002/3"),
-            RadioStation(id = "tn-airgold", name = "AIR FM Gold Chennai", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio021/chunklist.m3u8"),
-            RadioStation(id = "tn-vividh", name = "Vividh Bharati Chennai", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio024/chunklist.m3u8"),
-            RadioStation(id = "tn-chennailive", name = "Chennai Live", url = "http://c2.radioboss.fm:8332/stream"),
-        )
-
-        val TAMIL_FM = listOf(
-        RadioStation(id = "tamil-0", name = "AIR Kodaikanal FM", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio051/chunklist.m3u8"),
-        RadioStation(id = "tamil-1", name = "AIR Madurai FM", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio126/chunklist.m3u8"),
-        RadioStation(id = "tamil-2", name = "AIR Puducherry FM", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio098/chunklist.m3u8"),
-        RadioStation(id = "tamil-3", name = "AIR Nagercoil FM", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio129/chunklist.m3u8"),
-        RadioStation(id = "tamil-4", name = "AIR Tirunelveli FM", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio062/chunklist.m3u8"),
-        RadioStation(id = "tamil-5", name = "AIR Tuticorin", url = "https://air.pc.cdn.bitgravity.com/air/live/pbaudio025/masterlist.m3u8"),
-        RadioStation(id = "tamil-6", name = "Tamil Panpalai Gold", url = "https://tamilpanpalai.radioca.st/ind"),
-        RadioStation(id = "tamil-7", name = "M S Viswanathan FM", url = "http://stream.zeno.fm/x7wc1xgllvsvv"),
-        RadioStation(id = "tamil-8", name = "Harris Jayaraj FM", url = "http://stream.zeno.fm/ob6tjg8gulptv"),
-        RadioStation(id = "tamil-9", name = "Sooriyan FM", url = "https://radio.lotustechnologieslk.net:8006/"),
-        RadioStation(id = "tamil-10", name = "Shakthi FM", url = "https://mbc.thestreamtech.com:8086/stream"),
-        RadioStation(id = "tamil-11", name = "Tube Tamil FM", url = "http://s2.voscast.com:12084/;stream1619441439791/1"),
-        RadioStation(id = "tamil-12", name = "Boom Tamil", url = "https://streaming.boomtamil.com/Toronto"),
-        RadioStation(id = "tamil-13", name = "Vasantham FM", url = "https://cp12.serverse.com/proxy/vasanthamfm?mp=/stream"),
-        RadioStation(id = "tamil-14", name = "Jei FM Klang", url = "https://usa3.fastcast4u.com/proxy/jeifm?mp=/1"),
-        RadioStation(id = "tamil-15", name = "Star FM Sri Lanka", url = "https://stream.starfm.lk:12025/stream"),
-        RadioStation(id = "tamil-16", name = "Vanavil FM Maestro", url = "https://s7.yesstreaming.net:8092/stream"),
-        RadioStation(id = "tamil-17", name = "Vanavil FM ARR", url = "https://s7.yesstreaming.net:8038/stream"),
-        RadioStation(id = "tamil-18", name = "Mohan Radio", url = "https://psrlive4.listenon.in/mohan?station=mohanradio"),
-        RadioStation(id = "tamil-19", name = "American Tamil Radio", url = "https://cp11.serverse.com/proxy/hgsmgluv?mp=/stream"),
-        RadioStation(id = "tamil-20", name = "Tamil Murasam FM", url = "https://tamilmurasam.radioca.st/live"),
-        RadioStation(id = "tamil-21", name = "Lankasri FM", url = "http://media2.lankasri.fm/;stream.mp3")
-        )
-
         /** First stream URL in a PLS ("File1=http…") or M3U (plain lines) playlist. */
         fun parsePlaylist(text: String): String? = text.lineSequence().map { it.trim() }
             .map { if (it.startsWith("File", true) && '=' in it) it.substringAfter('=').trim() else it }

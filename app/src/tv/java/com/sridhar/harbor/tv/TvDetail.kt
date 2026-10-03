@@ -79,11 +79,15 @@ fun TvDetail(id: String, onOpen: (String) -> Unit) {
     val item = vm.item ?: return Box(Modifier.fillMaxSize(), Alignment.Center) { com.sridhar.harbor.ui.components.JellyLoader(color = Harbor.VioletSoft) }
     val playFocus = remember { FocusRequester() }
     var focusedEp by remember { mutableStateOf<BaseItem?>(null) }
-    LaunchedEffect(item.id) { runCatching { playFocus.requestFocus() } }
+    val list = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(item.id) {
+        runCatching { playFocus.requestFocus() }
+        // Focusing Play scrolls it "into view", which pushed the title off the top: settle back on the header.
+        repeat(3) { kotlinx.coroutines.delay(150); if (list.firstVisibleItemIndex + list.firstVisibleItemScrollOffset > 0) runCatching { list.scrollToItem(0) } }
+    }
 
     Box(Modifier.fillMaxSize()) {
         AmbientBackdrop(jf.backdropUrl(cfg, focusedEp ?: item, if (container.lowRam) 1280 else 1920), preview = if (focusedEp == null) item else null)
-        val list = androidx.compose.foundation.lazy.rememberLazyListState()
         val scope = androidx.compose.runtime.rememberCoroutineScope()
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(top = 64.dp, bottom = 48.dp)) {
             item {

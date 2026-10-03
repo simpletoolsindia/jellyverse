@@ -109,6 +109,58 @@ class IptvRepository(private val context: Context, private val http: OkHttpClien
         favorites.value = next; prefs.edit().putStringSet("favorites", next).apply()
     }
 
+    /** How often each channel was really watched (45 s+, so zapping doesn't count): id → (plays, last played). */
+    val plays: MutableStateFlow<Map<String, Pair<Int, Long>>> = MutableStateFlow(
+        prefs.getString("plays", null).orEmpty().lines().mapNotNull { l ->
+            l.split('\t').takeIf { it.size == 3 }?.let { (id, n, t) -> id to ((n.toIntOrNull() ?: 0) to (t.toLongOrNull() ?: 0L)) }
+        }.toMap())
+
+    fun recordPlay(ch: Channel) {
+        val cur = plays.value[ch.id]
+        val next = (plays.value + (ch.id to ((cur?.first ?: 0) + 1 to System.currentTimeMillis())))
+            .entries.sortedByDescending { it.value.second }.take(300).associate { it.key to it.value }
+        plays.value = next
+        prefs.edit().putString("plays", next.entries.joinToString("\n") { "${it.key}\t${it.value.first}\t${it.value.second}" }).apply()
+    }
+
+    /** A channel together with the playlist it belongs to (needed to tune it). */
+    data class Tuned(val playlist: Playlist, val channel: Channel)
+
+    /** Home-screen rows: picked for you, frequently watched and favourites – from already-downloaded lists only. */
+    data class HomeRows(val forYou: List<Tuned>, val frequent: List<Tuned>, val favorites: List<Tuned>) {
+        val isEmpty get() = forYou.isEmpty() && frequent.isEmpty() && favorites.isEmpty()
+    }
+
+    suspend fun homeRows(): HomeRows = withContext(Dispatchers.IO) {
+        val all = _playlists.value.flatMap { p ->
+            val list = channelCache[p.id] ?: cacheFile(p).takeIf { it.exists() }?.let { f ->
+                runCatching { HarborJson.decodeFromString(chSer, f.readText()) }.getOrNull()?.also { channelCache[p.id] = it }
+            }
+            // Never opened Live TV yet: fetch the shipped free list so "Live TV for you" isn't empty on day one.
+            (list ?: if (p.builtin) runCatching { channels(p) }.getOrNull() else null).orEmpty().map { Tuned(p, it) }
+        }.filterNot { isOffline(it.channel) }
+        if (all.isEmpty()) return@withContext HomeRows(emptyList(), emptyList(), emptyList())
+        val byId = all.associateBy { it.channel.id }
+        val pl = plays.value
+        val frequent = pl.entries.filter { it.value.first >= 2 || pl.size < 6 }
+            .sortedWith(compareByDescending<Map.Entry<String, Pair<Int, Long>>> { it.value.first }.thenByDescending { it.value.second })
+            .mapNotNull { byId[it.key] }.take(15)
+        val favs = favorites.value.mapNotNull { byId[it] }.take(30)
+        // For you: more from the groups (language / category) you watch most, logos first, not already shown above.
+        val shown = (frequent + favs).map { it.channel.id }.toSet()
+        val watched = pl.entries.mapNotNull { e -> byId[e.key]?.channel?.group?.let { it to e.value.first } }
+            .groupBy({ it.first }, { it.second }).mapValues { it.value.sum() }
+        // Nothing watched yet: start from the app's and the phone's languages (Tamil / English …), not the alphabet.
+        val langs = listOf(java.util.Locale.getDefault(), context.resources.configuration.locales[0])
+            .mapNotNull { it?.getDisplayLanguage(java.util.Locale.ENGLISH)?.lowercase() } + "english"
+        val groupWeight: (String) -> Int = { g -> watched[g] ?: if (langs.any { g.lowercase().contains(it) }) 1 else 0 }
+        val forYou = all.asSequence().filter { it.channel.id !in shown }
+            .sortedWith(compareByDescending<Tuned> { groupWeight(it.channel.group) }.thenByDescending { it.channel.logo != null }
+                .thenByDescending { nowNext(it.channel).now != null })
+            .distinctBy { it.channel.name.lowercase() }.take(15).toList()
+        HomeRows(forYou, frequent, favs)
+    }
+
     var lastChannel: String? get() = prefs.getString("last_channel", null); set(v) = prefs.edit().putString("last_channel", v).apply()
 
     private fun cacheFile(p: Playlist) = File(context.filesDir, "iptv/${p.id}.json").apply { parentFile?.mkdirs() }

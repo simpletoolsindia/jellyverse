@@ -99,14 +99,25 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
     val player: ExoPlayer by lazy {
         // DefaultDataSource routes file:// (offline downloads) to local storage and http(s) to OkHttp.
         val upstream = androidx.media3.datasource.DefaultDataSource.Factory(context, OkHttpDataSource.Factory(http))
-        val cached = CacheDataSource.Factory().setCache(cache).setUpstreamDataSourceFactory(upstream).setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        // Live radio has no length: skip the disk cache for it (writing an endless stream into the song cache stalled tuning).
+        val cached = CacheDataSource.Factory().setCache(cache).setUpstreamDataSourceFactory(upstream)
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR or CacheDataSource.FLAG_IGNORE_CACHE_FOR_UNSET_LENGTH_REQUESTS)
+        // Radio recordings are raw MP3/AAC files with no length header: estimate duration (and allow seeking) from the
+        // constant bitrate, so Now Playing shows played / total time. Only for recordings – on a live AAC station the
+        // extractor first reads ~1000 frames (≈25 s of audio arriving in real time) to average them: stations hung.
+        val recordings = DefaultMediaSourceFactory(cached, androidx.media3.extractor.DefaultExtractorsFactory()
+            .setConstantBitrateSeekingEnabled(true).setConstantBitrateSeekingAlwaysEnabled(true))
+        val everything = DefaultMediaSourceFactory(cached)
+        val sources = object : androidx.media3.exoplayer.source.MediaSource.Factory by everything {
+            override fun createMediaSource(mediaItem: MediaItem) =
+                (if (mediaItem.mediaId.startsWith("rec:")) recordings else everything).createMediaSource(mediaItem)
+        }
         ExoPlayer.Builder(context)
-            // Radio recordings are raw MP3/AAC streams with no length header: estimate duration (and allow seeking)
-            // from the constant bitrate, so Now Playing shows played / total time.
-            .setMediaSourceFactory(DefaultMediaSourceFactory(cached, androidx.media3.extractor.DefaultExtractorsFactory()
-                .setConstantBitrateSeekingEnabled(true).setConstantBitrateSeekingAlwaysEnabled(true)))
+            .setMediaSourceFactory(sources)
             .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             .setHandleAudioBecomingNoisy(true)
+            // Start after 1 s of audio instead of 2.5 s – station switches feel instant.
+            .setLoadControl(androidx.media3.exoplayer.DefaultLoadControl.Builder().setBufferDurationsMs(15_000, 50_000, 1_000, 2_000).build())
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build().also { p -> p.addListener(listener); p.pauseAtEndOfMediaItems = false }
     }
@@ -115,6 +126,10 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
     private fun knownDuration(): Long = player.duration.takeIf { it != C.TIME_UNSET && it > 0 }
         ?: _state.value.queue.getOrNull(player.currentMediaItemIndex)?.duration?.takeIf { it > 0 }?.let { it * 1000L } ?: 0L
 
+    /** A radio station won't play: ask for its current link (the directory may have fixed it). Set by AppContainer. */
+    var radioRelocate: (suspend (String) -> com.sridhar.harbor.data.music.RadioStation?)? = null
+    /** Stations already re-pulled after an error this session – one retry each, never a loop. */
+    private val radioRetried = mutableSetOf<String>()
     private var controller: MediaController? = null
     private var ticker: Job? = null
     private var scrobbled = false
@@ -130,6 +145,7 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
             _state.update { it.copy(durationMs = knownDuration()) }
         }
         override fun onPlaybackStateChanged(s: Int) {
+            if (s == Player.STATE_READY) _state.value.current?.id?.let { radioRetried.remove(it.removePrefix("radio:")) }
             _state.update { it.copy(buffering = s == Player.STATE_BUFFERING, durationMs = knownDuration()) }
         }
         override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
@@ -141,24 +157,63 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
         }
         override fun onShuffleModeEnabledChanged(on: Boolean) = _state.update { it.copy(shuffle = on) }
         override fun onPlayerError(e: PlaybackException) {
+            val cur = _state.value.queue.getOrNull(player.currentMediaItemIndex)
+            // Live radio: re-pull the station list and retry with the fresh link (once), instead of jumping stations.
+            if (cur != null && cur.isLive && cur.id.startsWith("radio:")) { retryRadio(cur, player.currentMediaItemIndex, e); return }
             _state.update { it.copy(error = com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.mu_cant_play, e.errorCodeName)) }
             if (player.hasNextMediaItem()) { player.seekToNextMediaItem(); player.prepare(); player.play() }
         }
         override fun onAudioSessionIdChanged(id: Int) = attachEffects(id)
     }
 
+    private fun retryRadio(cur: Song, index: Int, e: PlaybackException) {
+        val stationId = cur.id.removePrefix("radio:")
+        val failed = { _state.update { it.copy(error = com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.mu_cant_play, e.errorCodeName), buffering = false) } }
+        val relocate = radioRelocate
+        if (relocate == null || !radioRetried.add(stationId)) { failed(); return }
+        _state.update { it.copy(buffering = true, error = null) }
+        scope.launch {
+            val fixed = runCatching { relocate(stationId) }.getOrNull()
+            // The user may have moved on while we were fetching.
+            if (_state.value.queue.getOrNull(index)?.id != cur.id || player.currentMediaItemIndex != index) return@launch
+            if (fixed == null) { failed(); return@launch }
+            val song = fixed.toSong()
+            player.replaceMediaItem(index, toItem(song))
+            _state.update { s -> s.copy(queue = s.queue.toMutableList().also { q -> if (index in q.indices) q[index] = song }) }
+            player.prepare(); player.play()
+        }
+    }
+
     // ---------------- queue ----------------
 
+    private var playJob: Job? = null
+
+    /**
+     * Plays [songs] from [startIndex]. The chosen one starts on its own right away – the old one stops at once and
+     * the UI switches immediately – and the rest of the queue (e.g. every radio station, each with rendered
+     * artwork) is built off the main thread and added around it. Tapping another station while one is still
+     * loading cancels the first.
+     */
     fun play(songs: List<Song>, startIndex: Int = 0, shuffle: Boolean = false, source: String? = null) {
         if (songs.isEmpty()) return
-        scope.launch {
+        val start = (if (shuffle && startIndex == 0) songs.indices.random() else startIndex).coerceIn(songs.indices)
+        playJob?.cancel()
+        radioRetried.clear()   // a fresh tap may re-pull a station's link again
+        player.stop()
+        _state.update { it.copy(queue = songs, index = start, source = source, shuffle = shuffle, error = null, playing = false, buffering = true) }
+        playJob = scope.launch {
             ensureService()
-            val items = songs.map { toItem(it) }
             player.shuffleModeEnabled = shuffle
-            val start = if (shuffle && startIndex == 0) (songs.indices).random() else startIndex
-            player.setMediaItems(items, start, 0)
+            val first = kotlinx.coroutines.withContext(Dispatchers.Default) { toItem(songs[start]) }
+            player.setMediaItem(first)
             player.prepare(); player.play()
-            _state.update { it.copy(queue = songs, index = start, source = source, shuffle = shuffle, error = null) }
+            if (songs.size > 1) {
+                val before = kotlinx.coroutines.withContext(Dispatchers.Default) { songs.subList(0, start).map { toItem(it) } }
+                val after = kotlinx.coroutines.withContext(Dispatchers.Default) { songs.subList(start + 1, songs.size).map { toItem(it) } }
+                if (after.isNotEmpty()) player.addMediaItems(after)
+                if (before.isNotEmpty()) player.addMediaItems(0, before)
+                _state.update { it.copy(index = player.currentMediaItemIndex) }
+            }
         }
     }
 

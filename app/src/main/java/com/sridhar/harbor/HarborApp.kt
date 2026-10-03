@@ -32,6 +32,8 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
             com.sridhar.harbor.update.UpdateWorker.schedule(this@HarborApp)
             com.sridhar.harbor.radio.RecordService.channels(this@HarborApp)
             com.sridhar.harbor.radio.RadioScheduler.rearmAll(this@HarborApp)
+            // Preset FM stations come from the public repo: fetch on first run, then refresh daily (offline: the copy on the device).
+            launch { runCatching { container.radio.sync() } }
             // Home-screen widgets follow playback and recordings (only collected when a widget is placed).
             val app = this@HarborApp
             launch(kotlinx.coroutines.Dispatchers.Main) {

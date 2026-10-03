@@ -1,0 +1,1 @@
+2.24.0: Live TV rows on Home – most-watched, favourite and recommended channels. Radio switches stations instantly (no more stuck tuning) and FM links now update automatically from our server. QR setup also signs your TV into Navidrome music. Updates now come from Google Play. Smoother TV remote navigation.

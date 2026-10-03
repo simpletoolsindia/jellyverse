@@ -178,6 +178,12 @@ fun WatchHomeScreen(
     val ctx = LocalContext.current
     val jf = container.jellyfin
     val play: (BaseItem) -> Unit = { PlayerActivity.start(ctx, it.id) }
+    // Live TV rows (frequently watched / favourites / for you) – rebuilt when either changes.
+    val liveFavs by container.iptv.favorites.collectAsState()
+    val livePlays by container.iptv.plays.collectAsState()
+    val liveRows by androidx.compose.runtime.produceState<com.sridhar.harbor.data.iptv.IptvRepository.HomeRows?>(null, liveFavs, livePlays) {
+        value = runCatching { container.iptv.homeRows() }.getOrNull()
+    }
 
     var removing by remember { androidx.compose.runtime.mutableStateOf<BaseItem?>(null) }
     removing?.let { it ->
@@ -288,6 +294,24 @@ fun WatchHomeScreen(
                 }
             }
             if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Top10)) item(key = "top10") { Top10Row(vm.top10, onItem) }
+            liveRows?.takeIf { look.shows(com.sridhar.harbor.ui.theme.HomeSection.LiveTv) }?.let { rows ->
+                val livePlay = { t: com.sridhar.harbor.data.iptv.IptvRepository.Tuned -> com.sridhar.harbor.ui.player.PlayerActivity.startLive(ctx, t.playlist.id, t.channel.id) }
+                if (rows.frequent.isNotEmpty()) item(key = "live-frequent") {
+                    Rail(stringResource(R.string.home_live_frequent), rows.frequent, key = { it.channel.id }) { t ->
+                        com.sridhar.harbor.ui.live.ChannelCard(t.channel, container.iptv.nowNext(t.channel), livePlays[t.channel.id]?.first ?: 0) { livePlay(t) }
+                    }
+                }
+                if (rows.favorites.isNotEmpty()) item(key = "live-favorites") {
+                    Rail(stringResource(R.string.home_live_favorites), rows.favorites, key = { it.channel.id }) { t ->
+                        com.sridhar.harbor.ui.live.ChannelCard(t.channel, container.iptv.nowNext(t.channel)) { livePlay(t) }
+                    }
+                }
+                if (rows.forYou.isNotEmpty()) item(key = "live-foryou") {
+                    Rail(stringResource(R.string.home_live_foryou), rows.forYou, key = { it.channel.id }) { t ->
+                        com.sridhar.harbor.ui.live.ChannelCard(t.channel, container.iptv.nowNext(t.channel)) { livePlay(t) }
+                    }
+                }
+            }
             if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.NextUp)) item(key = "nextup") {
                 Rail(stringResource(R.string.next_up), vm.nextUp, key = { it.id }) { item ->
                     WideCard(jf.thumbUrl(cfg, item), item.seriesName ?: item.name,

@@ -1,5 +1,7 @@
 package com.sridhar.harbor.tv
 
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.draw.drawBehind
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.collectAsState
@@ -122,6 +124,11 @@ fun TvHome(onOpen: (String) -> Unit) {
     val jf = container.jellyfin
     val vm = viewModel { WatchHomeViewModel(container) }
     val extra = viewModel { TvRowsViewModel(container) }
+    val liveFavs by container.iptv.favorites.collectAsState()
+    val livePlays by container.iptv.plays.collectAsState()
+    val liveRows by androidx.compose.runtime.produceState<com.sridhar.harbor.data.iptv.IptvRepository.HomeRows?>(null, liveFavs, livePlays) {
+        value = runCatching { container.iptv.homeRows() }.getOrNull()
+    }
     // What the hero shows. Focus changes go through [focusTarget] and only reach it once the remote rests on a
     // title (~280 ms): scrolling along a row no longer starts a full-screen backdrop load + crossfade per press.
     var display by remember { mutableStateOf<BaseItem?>(null) }
@@ -131,6 +138,9 @@ fun TvHome(onOpen: (String) -> Unit) {
     }
     var heroIndex by remember { mutableIntStateOf(0) }
     var heroFocused by remember { mutableStateOf(true) }
+    // Browsing the rows: the hero folds to just the title and synopsis (Netflix / Prime style) so a whole row
+    // fits under it – otherwise a row taller than the space left traps D-pad focus.
+    var rowsFocused by remember { mutableStateOf(false) }
     // A trailer playing holds the spotlight (Hotstar-style), up to 45 s, then rotation resumes.
     var trailerOn by remember { mutableStateOf(false) }
     val watchFocus = remember { FocusRequester() }
@@ -181,7 +191,8 @@ fun TvHome(onOpen: (String) -> Unit) {
                 AnimatedContent(display, transitionSpec = { (fadeIn(tween(350)) + slideInVertically(tween(350)) { it / 12 }) togetherWith fadeOut(tween(150)) }, label = "info") { item ->
                     if (item != null) Column {
                         val logo = jf.logoUrl(cfg, item)
-                        Box(Modifier.height(96.dp).fillMaxWidth(), contentAlignment = Alignment.BottomStart) {
+                        val logoH by androidx.compose.animation.core.animateDpAsState(if (rowsFocused) 52.dp else 96.dp, label = "logoH")
+                        Box(Modifier.height(logoH).fillMaxWidth(), contentAlignment = Alignment.BottomStart) {
                             if (logo != null) Box(Modifier.width(340.dp).fillMaxHeight()) { NetImage(logo, Modifier.fillMaxSize(), contentScale = ContentScale.Fit, fallback = item.name, alignment = Alignment.BottomStart) }
                             else Text(item.seriesName ?: item.name, color = Harbor.Fg, fontSize = 36.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 40.sp)
                         }
@@ -197,6 +208,8 @@ fun TvHome(onOpen: (String) -> Unit) {
                         Text(item.overview.orEmpty(), color = Harbor.Fg.copy(.8f), fontSize = 15.sp, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 22.sp)
                     }
                 }
+                androidx.compose.animation.AnimatedVisibility(!rowsFocused, enter = androidx.compose.animation.expandVertically() + fadeIn(), exit = androidx.compose.animation.shrinkVertically() + fadeOut()) {
+                Column {
                 Spacer(Modifier.height(16.dp))
                 Row(Modifier.onFocusChanged { heroFocused = it.hasFocus }, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     TvButton(stringResource(R.string.watch), Icons.Rounded.PlayArrow, primary = true, modifier = Modifier.focusRequester(watchFocus)) {
@@ -204,19 +217,32 @@ fun TvHome(onOpen: (String) -> Unit) {
                     }
                     TvButton(stringResource(R.string.details), Icons.Rounded.Info) { display?.let { onOpen(it.seriesId ?: it.id) } }
                 }
+                }
+                }
             }
             // Billboard: the backdrop and title own the top; Spotlight adds the poster strip beside them.
-            if (vm.hero.size > 1 && !billboard) TvMarquee(vm.hero, heroIndex, rotating = heroFocused && !trailerOn,
+            if (vm.hero.size > 1 && !billboard && !rowsFocused) TvMarquee(vm.hero, heroIndex, rotating = heroFocused && !trailerOn,
                 onFocus = { i -> heroIndex = i; display = vm.hero[i] }, onOpen = { onOpen(it.seriesId ?: it.id) })
             }
-            LazyColumn(Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(top = 18.dp, bottom = 48.dp)) {
-                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Continue)) item(key = "resume") {
+            val rowList = androidx.compose.foundation.lazy.rememberLazyListState()
+            val rowNav = remember(rowList) { TvRowNav(rowList) }
+            val navScope = rememberCoroutineScope()
+            LazyColumn(Modifier.fillMaxWidth().weight(1f).onFocusChanged { rowsFocused = it.hasFocus }
+                .then(androidx.compose.ui.Modifier.onPreviewKeyEvent {
+                    rowNav.onKey(it, navScope) {
+                        // Up from the first row: unfold the hero, then focus Watch once it's back.
+                        rowsFocused = false
+                        navScope.launch { androidx.compose.runtime.withFrameNanos { }; androidx.compose.runtime.withFrameNanos { }; runCatching { watchFocus.requestFocus() } }
+                    }
+                }), state = rowList,
+                contentPadding = PaddingValues(top = 18.dp, bottom = 48.dp)) {
+                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Continue)) tvItem(rowNav, key = "resume") {
                     TvRow(stringResource(R.string.continue_watching_2), vm.resume, key = { it.id }) { it2 ->
                         LandscapeTile(it2.seriesName ?: it2.name, it2.episodeLabel ?: it2.year?.toString(), jf.thumbUrl(cfg, it2, 600), progress = it2.progress,
                             onFocus = { focusTarget = it2 }, onMenu = { removing = it2 }) { PlayerActivity.start(ctx, it2.id) }
                     }
                 }
-                if (consent == null && vm.resume.isNotEmpty()) item(key = "reco-consent") {
+                if (consent == null && vm.resume.isNotEmpty()) tvItem(rowNav, key = "reco-consent") {
                     Column(Modifier.padding(start = 48.dp, end = 48.dp, bottom = 22.dp).clip(RoundedCornerShape(20.dp)).background(Harbor.Surface).padding(22.dp)) {
                         Text(stringResource(R.string.reco_ask_title), color = Harbor.Fg, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         Text(stringResource(R.string.reco_ask_body), color = Harbor.TextDim, fontSize = 15.sp, modifier = Modifier.padding(vertical = 8.dp))
@@ -226,32 +252,43 @@ fun TvHome(onOpen: (String) -> Unit) {
                         }
                     }
                 }
-                if (consent == true && look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou) && recs.forYou.isNotEmpty()) item(key = "foryou") {
+                if (consent == true && look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou) && recs.forYou.isNotEmpty()) tvItem(rowNav, key = "foryou") {
                     TvRow(stringResource(R.string.reco_for_you), recs.forYou, key = { it.item.id }) { p ->
                         PosterTile(p.item.name, jf.posterUrl(cfg, p.item, 300), onFocus = { focusTarget = p.item }) { onOpen(p.item.id) }
                     }
                 }
-                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Top10) && vm.top10.isNotEmpty()) item(key = "top10") {
+                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Top10) && vm.top10.isNotEmpty()) tvItem(rowNav, key = "top10") {
                     TvTop10Row(vm.top10, onFocus = { focusTarget = it }) { onOpen(it.seriesId ?: it.id) }
                 }
-                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.NextUp)) item(key = "next") {
+                if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.NextUp)) tvItem(rowNav, key = "next") {
                     TvRow(stringResource(R.string.next_up_2), vm.nextUp, key = { it.id }) { it2 ->
                         LandscapeTile(it2.seriesName ?: it2.name, listOfNotNull(it2.episodeLabel, it2.name).joinToString(" · "), jf.thumbUrl(cfg, it2, 600),
                             onFocus = { focusTarget = it2 }) { PlayerActivity.start(ctx, it2.id) }
                     }
                 }
-                if (vm.picks.size >= 6) item(key = "picks") {
+                liveRows?.takeIf { look.shows(com.sridhar.harbor.ui.theme.HomeSection.LiveTv) }?.let { rows ->
+                    val tune = { t: com.sridhar.harbor.data.iptv.IptvRepository.Tuned -> PlayerActivity.startLive(ctx, t.playlist.id, t.channel.id) }
+                    listOf(Triple("live-frequent", R.string.home_live_frequent, rows.frequent), Triple("live-favorites", R.string.home_live_favorites, rows.favorites),
+                        Triple("live-foryou", R.string.home_live_foryou, rows.forYou)).forEach { (k, title, list) ->
+                        if (list.isNotEmpty()) tvItem(rowNav, key = k) {
+                            TvRow(stringResource(title), list, key = { it.channel.id }) { t ->
+                                ChannelTile(t.channel, container.iptv.nowNext(t.channel), livePlays[t.channel.id]?.first ?: 0) { tune(t) }
+                            }
+                        }
+                    }
+                }
+                if (vm.picks.size >= 6) tvItem(rowNav, key = "picks") {
                     TvGlideRow(stringResource(R.string.marquee_discover), vm.picks, onFocus = { focusTarget = it }) { onOpen(it.seriesId ?: it.id) }
                 }
                 if (consent == true && look.shows(com.sridhar.harbor.ui.theme.HomeSection.ForYou)) recs.because.forEach { row ->
-                    item(key = "because-${row.seed.id}") {
+                    tvItem(rowNav, key = "because-${row.seed.id}") {
                         TvRow(stringResource(R.string.reco_because, row.seed.name), row.picks, key = { it.item.id }) { p ->
                             PosterTile(p.item.name, jf.posterUrl(cfg, p.item, 300), onFocus = { focusTarget = p.item }) { onOpen(p.item.id) }
                         }
                     }
                 }
                 if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Latest)) vm.shelves.forEach { shelf ->
-                    item(key = "shelf-${shelf.view.id}") {
+                    tvItem(rowNav, key = "shelf-${shelf.view.id}") {
                         TvRow(stringResource(R.string.latest_1_s, shelf.view.name), shelf.items, key = { it.id }) { it2 ->
                             PosterTile(it2.seriesName ?: it2.name, jf.posterUrl(cfg, it2, 300),
                                 badge = it2.userData?.unplayedCount?.takeIf { n -> n > 0 }?.toString(), onFocus = { focusTarget = it2 }) { onOpen(it2.seriesId ?: it2.id) }
@@ -259,14 +296,14 @@ fun TvHome(onOpen: (String) -> Unit) {
                     }
                 }
                 extra.rows.forEach { (title, items) ->
-                    item(key = "row-$title") {
+                    tvItem(rowNav, key = "row-$title") {
                         TvRow(title, items, key = { it.id }) { it2 ->
                             PosterTile(it2.name, jf.posterUrl(cfg, it2, 300), progress = it2.progress,
                                 onFocus = { focusTarget = it2 }) { onOpen(it2.id) }
                         }
                     }
                 }
-                item(key = "spot") {
+                tvItem(rowNav, key = "spot") {
                     TvRow(stringResource(R.string.spotlight), vm.hero, key = { it.id }) { it2 ->
                         PosterTile(it2.name, jf.posterUrl(cfg, it2, 300), onFocus = { focusTarget = it2 }) { onOpen(it2.id) }
                     }
