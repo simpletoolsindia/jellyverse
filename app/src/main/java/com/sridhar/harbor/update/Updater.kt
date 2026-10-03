@@ -41,9 +41,9 @@ sealed interface UpdateState {
 /**
  * Self-update for GitHub (sideload) builds: checks the latest GitHub release, downloads this app's APK,
  * verifies it is signed with the same key as the installed app, then installs it with a PackageInstaller session.
- * Play Store builds (BuildConfig.SELF_UPDATE = false) never download APKs: they learn about a new version from
- * Google Play (or, where Play's in-app update API isn't available – Android TV – the GitHub release) and "Update"
- * opens the app's Play Store page.
+ * Updates always go through Google Play (BuildConfig.SELF_UPDATE = false in every build): the app learns about a
+ * new version from Google Play – or, where Play's in-app update API isn't available (Android TV, GitHub installs),
+ * the GitHub release – and "Update" opens JellyVerse's Play Store page. It never downloads or installs APKs.
  */
 class Updater(private val context: Context, private val http: OkHttpClient) {
     private val prefs = context.getSharedPreferences("harbor_update", Context.MODE_PRIVATE)

@@ -1,0 +1,1 @@
+2.24.1: App updates now always come from Google Play – tap Update and the Play Store opens. Fixes and stability improvements.

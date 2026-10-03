@@ -20,12 +20,12 @@ android {
         applicationId = "com.sridhar.jellyverse"
         minSdk = 26
         targetSdk = 36
-        versionCode = 45
-        versionName = "2.24.0"
+        versionCode = 46
+        versionName = "2.24.1"
         // Play Store builds (-Pstore) ship without preloaded IPTV directories – "bring your own playlist" per Play policy.
         buildConfigField("boolean", "PRELOAD_IPTV", if (project.hasProperty("store")) "false" else "true")
-        // GitHub builds update themselves from GitHub Releases; Play builds are updated by Play only.
-        buildConfigField("boolean", "SELF_UPDATE", if (project.hasProperty("store")) "false" else "true")
+        // Every build (Play and GitHub) is updated through the Google Play Store – the app never installs APKs itself.
+        buildConfigField("boolean", "SELF_UPDATE", "false")
         buildConfigField("String", "UPDATE_REPO", "\"simpletoolsindia/jellyverse\"")
         // MediaPipe LLM + JSch are native/JVM heavy; 64-bit ARM covers all modern phones.
         ndk { abiFilters += listOf("arm64-v8a") }
@@ -76,12 +76,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures { compose = true; buildConfig = true }
-    // Self-update permission + FileProvider only in sideload builds.
-    if (!project.hasProperty("store")) sourceSets.getByName("main") { res.srcDir("src/sideload/res") }
-    if (!project.hasProperty("store")) {
-        sourceSets.getByName("debug") { manifest.srcFile("src/sideload/AndroidManifest.xml") }
-        sourceSets.getByName("release") { manifest.srcFile("src/sideload/AndroidManifest.xml") }
-    }
     lint {
         // Debug lint runs produce a full report; release builds still fail on fatal issues (lintVital).
         abortOnError = false
