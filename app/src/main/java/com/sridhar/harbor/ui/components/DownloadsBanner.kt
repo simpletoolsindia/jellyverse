@@ -82,7 +82,7 @@ fun DownloadsBanner() {
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(10.dp))
-                GradientProgress(progress = activeProgress, height = 4.dp)
+                ProgressRing(activeProgress, size = 40.dp)
             }
         }
     }

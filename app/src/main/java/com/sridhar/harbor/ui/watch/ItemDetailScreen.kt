@@ -231,6 +231,11 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit, o
                         val z = 1f + (off / 4000f).coerceIn(0f, 0.12f); scaleX = z; scaleY = z
                         alpha = 1f - (off / 900f).coerceIn(0f, 0.6f)
                     })
+                    // Hotstar-style: rest on the page and a short muted clip (trailer, or from the film / episode 1) fades in.
+                    com.sridhar.harbor.ui.components.TrailerPreview(item, Modifier.fillMaxSize().graphicsLayer {
+                        val off = if (list.firstVisibleItemIndex == 0) list.firstVisibleItemScrollOffset.toFloat() else 0f
+                        translationY = off * 0.5f; alpha = 1f - (off / 600f).coerceIn(0f, 1f)
+                    }, delayMs = 1600)
                     Box(Modifier.fillMaxSize().background(Harbor.scrimBottom()))
                     Row(Modifier.align(Alignment.BottomStart).padding(20.dp), verticalAlignment = Alignment.Bottom) {
                         Box(Modifier.width(110.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(14.dp))) {

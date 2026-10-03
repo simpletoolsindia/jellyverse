@@ -405,11 +405,9 @@ private fun TorrentCard(t: Torrent, selected: Boolean, selectionMode: Boolean, m
                 Icon(if (t.isStopped) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, if (t.isStopped) stringResource(R.string.resume) else stringResource(R.string.pause), tint = color)
             }
         }
-        Spacer(Modifier.height(12.dp))
-        GradientProgress(progress, height = 6.dp, brush = if (t.phase == TorrentPhase.Downloading) Harbor.accentH else Brush.horizontalGradient(listOf(color, color)))
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("${(t.progress * 100).toInt()}%", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            com.sridhar.harbor.ui.components.ProgressRing(progress, size = 40.dp, color = if (t.phase == TorrentPhase.Downloading) Harbor.Violet else color, accent = if (t.phase == TorrentPhase.Downloading) Harbor.Sky else color)
             Text("  ${formatBytes((t.size * t.progress).toLong())} / ${formatBytes(t.size)}", color = Harbor.TextDim, fontSize = 12.sp, modifier = Modifier.weight(1f))
             if (t.dlspeed > 0) Text("↓ ${formatSpeed(t.dlspeed)}  ", color = Harbor.Sky, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             if (t.upspeed > 0) Text("↑ ${formatSpeed(t.upspeed)}", color = Harbor.Coral, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
@@ -436,7 +434,7 @@ private fun TorrentDetailSheet(t: Torrent, vm: TorrentsViewModel, onDismiss: () 
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { Pill(t.stateLabel, t.phase.color()); if (t.forceStart) Pill(stringResource(R.string.forced), Harbor.Amber) }
                 Spacer(Modifier.height(14.dp))
-                GradientProgress(t.progress, height = 8.dp)
+                com.sridhar.harbor.ui.components.ProgressRing(t.progress, Modifier.align(Alignment.CenterHorizontally), size = 84.dp, stroke = 7.dp)
                 Spacer(Modifier.height(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     SheetAction(if (t.isStopped) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, if (t.isStopped) stringResource(R.string.resume) else stringResource(R.string.pause)) { vm.toggle(t) }
@@ -505,10 +503,11 @@ private fun FilesList(hash: String, vm: TorrentsViewModel) {
             null -> Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) { com.sridhar.harbor.ui.components.JellyLoader() }
             else -> list.forEach { f ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    com.sridhar.harbor.ui.components.ProgressRing(f.progress, size = 32.dp, stroke = 3.dp)
+                    Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(f.name.substringAfterLast('/'), maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-                        Text("${formatBytes(f.size)} · ${(f.progress * 100).toInt()}%", color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
-                        Spacer(Modifier.height(4.dp)); GradientProgress(f.progress, height = 3.dp)
+                        Text(formatBytes(f.size), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
                     }
                     Spacer(Modifier.width(8.dp))
                     Switch(f.priority > 0, { on ->

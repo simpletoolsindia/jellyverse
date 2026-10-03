@@ -41,6 +41,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.AutoFixHigh
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material.icons.rounded.SwapHoriz
@@ -192,7 +193,7 @@ class DoctorViewModel(private val c: AppContainer) : ViewModel() {
 }
 
 @Composable
-fun LibraryDoctorScreen(itemId: String? = null, onBack: () -> Unit) {
+fun LibraryDoctorScreen(itemId: String? = null, onBack: () -> Unit, onDuplicates: () -> Unit = {}) {
     val container = LocalContainer.current
     val cfg = rememberConfig()
     val vm = viewModel { DoctorViewModel(container) }
@@ -215,6 +216,11 @@ fun LibraryDoctorScreen(itemId: String? = null, onBack: () -> Unit) {
                     Column {
                         Text(stringResource(R.string.library_doctor), style = MaterialTheme.typography.headlineMedium)
                         Text(stringResource(R.string.fix_messy_names_so_jellyfin_finds), color = Harbor.TextDim, fontSize = 12.sp)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    if (cfg.jellyfinReady) TextButton(onDuplicates) {
+                        Icon(androidx.compose.material.icons.Icons.Rounded.ContentCopy, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.dup_short))
                     }
                 }
             }

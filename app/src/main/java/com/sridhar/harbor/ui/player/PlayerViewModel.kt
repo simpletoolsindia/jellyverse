@@ -225,6 +225,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             override fun onIsPlayingChanged(isPlaying: Boolean) { ui = ui.copy(isPlaying = isPlaying); report() }
             override fun onPlaybackStateChanged(state: Int) {
                 ui = ui.copy(buffering = state == Player.STATE_BUFFERING)
+                // Live stream stuck buffering for 15 s = broken: show it and retry instead of spinning forever.
+                liveStall?.cancel()
+                if (ui.live && state == Player.STATE_BUFFERING) liveStall = viewModelScope.launch {
+                    kotlinx.coroutines.delay(15_000)
+                    if (ui.live && player.playbackState == Player.STATE_BUFFERING && ui.error == null) liveBroken(L10n.s(R.string.live_stalled))
+                }
+                if (state == Player.STATE_READY) { liveAttempts = 0; liveRetryIn = null }
                 if (state == Player.STATE_READY) {
                     ui = ui.copy(durationMs = player.duration.coerceAtLeast(0))
                     if (!reportedStart) { reportedStart = true; viewModelScope.launch(com.sridhar.harbor.CrashGuard) { item?.let { c.jellyfin.reportStart(reportBody()) } } }
@@ -237,7 +244,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 if (ui.live) {
                     // Extension-less IPTV URLs are often HLS: retry once as HLS before giving up.
                     if (!liveHlsRetry) { liveHlsRetry = true; prepareLive(forceHls = true); return }
-                    ui = ui.copy(error = "Channel unavailable – ${error.errorCodeName.removePrefix("ERROR_CODE_").replace('_', ' ').lowercase()}"); return
+                    liveBroken("Channel unavailable – ${error.errorCodeName.removePrefix("ERROR_CODE_").replace('_', ' ').lowercase()}"); return
                 }
                 val pos = player.currentPosition
                 // Recovery ladder before giving up: direct play → server remux → software decoder → full re-encode.
@@ -689,6 +696,30 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         player.stop(); player.clearMediaItems()
         runCatching { player.setMediaItem(builder.build()); player.prepare(); player.play() }
             .onFailure { e -> android.util.Log.e("Player", "live prepare failed", e); ui = ui.copy(error = e.friendly()) }
+    }
+
+    // ---------------- live: retry when a channel breaks ----------------
+    private var liveStall: kotlinx.coroutines.Job? = null
+    private var liveRetryJob: kotlinx.coroutines.Job? = null
+    private var liveAttempts = 0
+    /** Seconds until the automatic retry (null = none scheduled). */
+    var liveRetryIn by mutableStateOf<Int?>(null); private set
+
+    private fun liveBroken(message: String) {
+        ui = ui.copy(error = message)
+        liveRetryJob?.cancel()
+        if (liveAttempts >= 3) { liveRetryIn = null; return }   // stop retrying by itself; the button still works
+        liveRetryJob = viewModelScope.launch {
+            for (s in 10 downTo 1) { liveRetryIn = s; kotlinx.coroutines.delay(1000) }
+            liveRetryIn = null; liveAttempts++; retryLive()
+        }
+    }
+
+    /** Try the current channel again (button or countdown). */
+    fun retryLive() {
+        if (!ui.live) return
+        liveRetryJob?.cancel(); liveRetryIn = null
+        ui = ui.copy(error = null); liveHlsRetry = false; prepareLive()
     }
 
     fun zap(delta: Int) {

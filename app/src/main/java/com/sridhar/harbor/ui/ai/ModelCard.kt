@@ -84,7 +84,10 @@ fun ModelCard(modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(12.dp))
                 GradientButton(stringResource(R.string.download_ai_model), { llm.startDownload() }, Modifier.fillMaxWidth(), icon = Icons.Rounded.AutoAwesome)
             }
-            is ModelState.Downloading -> { Spacer(Modifier.height(12.dp)); GradientProgress(s.fraction, height = 6.dp) }
+            is ModelState.Downloading -> { Spacer(Modifier.height(12.dp)); Row(verticalAlignment = Alignment.CenterVertically) {
+                com.sridhar.harbor.ui.components.ProgressRing(s.fraction, size = 48.dp)
+                Text("  %.0f%%".format(s.fraction * 100), color = Harbor.TextDim, fontSize = 12.sp)
+            } }
             else -> {}
         }
         if (picking) ModelCatalog(onDismiss = { picking = false })

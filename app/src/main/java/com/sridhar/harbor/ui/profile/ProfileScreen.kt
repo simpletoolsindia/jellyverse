@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.FamilyRestroom
 import androidx.compose.material.icons.rounded.SettingsRemote
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.AutoFixHigh
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.AdminPanelSettings
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Terminal
@@ -66,7 +67,7 @@ import com.sridhar.harbor.ui.theme.Harbor
 import kotlinx.coroutines.launch
 
 @Composable
-fun ProfileScreen(onService: (String) -> Unit = {}, onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () -> Unit, onSetup: () -> Unit, onUsers: () -> Unit, onOffline: () -> Unit, onAdmin: () -> Unit = {}, onRemote: () -> Unit = {}) {
+fun ProfileScreen(onService: (String) -> Unit = {}, onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () -> Unit, onSetup: () -> Unit, onUsers: () -> Unit, onOffline: () -> Unit, onAdmin: () -> Unit = {}, onRemote: () -> Unit = {}, onDuplicates: () -> Unit = {}) {
     val container = LocalContainer.current
     val cfg = rememberConfig()
     val scope = rememberCoroutineScope()
@@ -161,6 +162,7 @@ fun ProfileScreen(onService: (String) -> Unit = {}, onDoctor: () -> Unit, onAssi
         Spacer(Modifier.height(8.dp))
         Column(Modifier.glass()) {
             MenuRow(Icons.Rounded.AutoFixHigh, stringResource(R.string.library_doctor), stringResource(R.string.fix_names_missing_posters_with_ai), onDoctor)
+            if (cfg.jellyfinReady) MenuRow(Icons.Rounded.ContentCopy, stringResource(R.string.dup_title), stringResource(R.string.dup_menu_sub), onDuplicates)
             MenuRow(Icons.Rounded.AutoAwesome, stringResource(R.string.jellyverse_ai), stringResource(R.string.on_device_qwen_assistant), onAssistant)
             MenuRow(Icons.Rounded.DownloadForOffline, stringResource(R.string.offline_downloads), stringResource(R.string.s_1_s_saved_on_this_phone, offline.size), onOffline)
             if (isAdmin) MenuRow(Icons.Rounded.AdminPanelSettings, stringResource(R.string.server_dashboard), stringResource(R.string.jellyfin_users_live_sessions_libraries_tasks), onAdmin)

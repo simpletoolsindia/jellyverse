@@ -1,4 +1,5 @@
 package com.sridhar.harbor.tv
+import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.material.icons.rounded.AccountCircle
@@ -282,6 +283,10 @@ private fun SettingsPane(c: SettingsCat, first: androidx.compose.ui.focus.FocusR
                 }
             }
             SettingInfo(Icons.Rounded.Info, stringResource(R.string.tvs_remote_tip_title), stringResource(R.string.tvs_remote_tip), null, first)
+            val ctxH = androidx.compose.ui.platform.LocalContext.current
+            var hints by remember { mutableStateOf(TvHintPrefs.on(ctxH)) }
+            SettingRow(Icons.Rounded.Lightbulb, stringResource(R.string.hint_setting), if (hints) stringResource(R.string.on_label) else stringResource(R.string.off_label),
+                stringResource(R.string.hint_setting_desc)) { hints = !hints; TvHintPrefs.set(ctxH, hints) }
             com.sridhar.harbor.ui.components.MadeWithLove()
         }
     }

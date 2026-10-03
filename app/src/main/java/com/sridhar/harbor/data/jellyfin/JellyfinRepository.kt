@@ -276,10 +276,42 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
     }
 
     /** Home "Top 10": the best-rated films and shows in the library. */
-    suspend fun top10(): List<BaseItem> {
+    /**
+     * Home "Top 10 this week": strong, unwatched titles with a boost for what was added recently, re-picked every
+     * week (and as you watch), so the row doesn't stay frozen on the same all-time-best list.
+     */
+    /** A series' first episode (for its preview clip). */
+    suspend fun firstEpisode(seriesId: String): BaseItem? {
         val (a, c) = api()
-        return a.items(c.jellyfinUserId, types = "Movie,Series", sortBy = "CommunityRating,SortName", sortOrder = "Descending", limit = 14)
-            .items.filter { (it.communityRating ?: 0f).toFloat() > 0f }
+        return a.items(c.jellyfinUserId, parentId = seriesId, types = "Episode", sortBy = "ParentIndexNumber,IndexNumber", sortOrder = "Ascending", limit = 1).items.firstOrNull()
+    }
+
+    /** Whole movie/show library with file details, grouped into duplicates. */
+    suspend fun duplicates(): List<DupGroup> {
+        val (a, c) = api()
+        val all = a.items(c.jellyfinUserId, types = "Movie,Series", sortBy = "SortName", limit = 5000,
+            fields = "ProviderIds,Path,MediaSources,ProductionYear", imageTypeLimit = 1).items
+        // Shows: size = sum of the episode files is too costly to fetch for every show, so only count the copies.
+        return Duplicates.find(all)
+    }
+
+    /** Deletes the item (or one version of it) and its files on the server. */
+    suspend fun deleteItem(id: String) {
+        val r = api().first.deleteItem(id)
+        if (!r.isSuccessful) throw IllegalStateException(when (r.code()) {
+            401, 403 -> com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.dup_no_permission)
+            404 -> com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.dup_gone)
+            else -> "HTTP ${r.code()}"
+        })
+    }
+
+    suspend fun top10(now: java.time.Instant = java.time.Instant.now()): List<BaseItem> {
+        val (a, c) = api()
+        val pool = runCatching {
+            a.items(c.jellyfinUserId, types = "Movie,Series", sortBy = "CommunityRating,SortName", sortOrder = "Descending", limit = 80, filters = "IsUnplayed").items
+        }.getOrDefault(emptyList()).filter { (it.communityRating ?: 0.0).toDouble() > 0.0 }
+            .ifEmpty { a.items(c.jellyfinUserId, types = "Movie,Series", sortBy = "CommunityRating,SortName", sortOrder = "Descending", limit = 14).items }
+        return Top10.pick(pool, now)
     }
 
     /** Home marquee: a random, unwatched mix to discover. */

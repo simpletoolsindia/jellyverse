@@ -9,8 +9,8 @@ import android.graphics.RectF
 import android.graphics.Shader
 
 /**
- * The assistant's face: a little Shih Tzu – cream face, long brown ear fur, two top-knot pigtails with hair ties,
- * big brown eyes, black button nose and a bell on the collar. Drawn in a 100-unit box with plain Android graphics,
+ * The app's face: a little Shih Tzu wearing headphones – cream face, long brown ear fur, two top-knot pigtails,
+ * big sparkly eyes, rosy cheeks, status lights on one ear cup (homelab) and a play-button tag on the collar (media). Drawn in a 100-unit box with plain Android graphics,
  * so the same art serves the animated in-app mascot ([JellyBuddy]) and the notification icon.
  *
  * [open] eye openness (1 open, 0 closed) · [sway] pigtail wiggle (-1..1) · [bob] head bob in units ·
@@ -35,9 +35,9 @@ object PetArt {
         p.reset(); p.isAntiAlias = true
         // Round tile
         if (tile) {
-            p.shader = LinearGradient(0f, 0f, 100f, 100f, 0xFF27324F.toInt(), 0xFF101828.toInt(), Shader.TileMode.CLAMP)
+            p.alpha = 255; p.shader = LinearGradient(0f, 0f, 100f, 100f, 0xFF27324F.toInt(), 0xFF101828.toInt(), Shader.TileMode.CLAMP)
             c.drawCircle(50f, 50f, 50f, p)
-            p.shader = RadialGradient(50f, 40f, 42f, 0x33FFD9A8, 0x00FFD9A8, Shader.TileMode.CLAMP)
+            p.alpha = 255; p.shader = RadialGradient(50f, 40f, 42f, 0x33FFD9A8, 0x00FFD9A8, Shader.TileMode.CLAMP)
             c.drawCircle(50f, 50f, 50f, p)
             p.shader = null
         }
@@ -48,7 +48,7 @@ object PetArt {
         // Long, wavy ear fur hanging down both sides (behind the head)
         for (side in listOf(-1f, 1f)) {
             val cx = 50f + side * 25f
-            p.shader = LinearGradient(0f, 34f, 0f, 90f, FUR, FUR_DARK, Shader.TileMode.CLAMP)
+            p.alpha = 255; p.shader = LinearGradient(0f, 34f, 0f, 90f, FUR, FUR_DARK, Shader.TileMode.CLAMP)
             path.reset()
             path.moveTo(cx - side * 6f, 36f)
             path.cubicTo(cx + side * 12f, 40f, cx + side * 16f, 70f, cx + side * 10f, 88f)
@@ -69,6 +69,12 @@ object PetArt {
             p.style = Paint.Style.FILL
         }
 
+        // Headphones band over the head (media), drawn behind the pigtails
+        p.style = Paint.Style.STROKE; p.strokeCap = Paint.Cap.ROUND; p.strokeWidth = 4.2f
+        p.alpha = 255; p.shader = LinearGradient(20f, 20f, 80f, 20f, 0xFF6E56CF.toInt(), 0xFF38BDF8.toInt(), Shader.TileMode.CLAMP)
+        r.set(21f, 20f, 79f, 76f); c.drawArc(r, 200f, 140f, false, p)
+        p.shader = null; p.style = Paint.Style.FILL
+
         // Two top-knot pigtails: fluffy sprays of hair fanning out from a dark hair tie; they wiggle
         for (side in listOf(-1f, 1f)) {
             val bx = 50f + side * 12f; val by = 31f
@@ -82,7 +88,8 @@ object PetArt {
                 path.quadTo((bx + tx) / 2 + nx * 1.4f + side * 1.5f, (by + ty) / 2 + ny * 1.4f, tx, ty)
                 path.quadTo((bx + tx) / 2 - nx * 0.6f, (by + ty) / 2 - ny * 0.6f, bx - nx, by - ny)
                 path.close()
-                p.shader = LinearGradient(bx, by, tx, ty, if (k % 2 == 0) FUR else FUR_DARK, FUR_LIGHT, Shader.TileMode.CLAMP)
+                p.alpha = 255   // a shader is drawn with the paint's alpha – don't inherit the translucent highlight
+                p.alpha = 255; p.shader = LinearGradient(bx, by, tx, ty, if (k % 2 == 0) FUR else FUR_DARK, FUR_LIGHT, Shader.TileMode.CLAMP)
                 c.drawPath(path, p)
             }
             p.shader = null
@@ -118,7 +125,7 @@ object PetArt {
                 p.color = 0xFF2B170A.toInt(); c.drawCircle(ex, ey, 6.6f, p)
                 p.color = 0xFF6B3A17.toInt(); c.drawCircle(ex, ey + 0.4f, 5.2f, p)
                 p.color = 0xFF140A04.toInt(); c.drawCircle(ex, ey + 0.4f, 3.2f, p)
-                p.color = 0xFFFFFFFF.toInt(); c.drawCircle(ex + 2f, ey - 2.2f, 1.7f, p)
+                p.color = 0xFFFFFFFF.toInt(); c.drawCircle(ex + 2f, ey - 2.2f, 2.1f, p)
                 c.drawCircle(ex - 1.8f, ey + 2.2f, 0.7f, p)
                 c.restore()
             } else {
@@ -127,6 +134,11 @@ object PetArt {
                 p.style = Paint.Style.FILL
             }
         }
+
+        // Rosy cheeks
+        p.color = 0x55FF8FA3; r.set(30f, 58f, 38f, 63f); c.drawOval(r, p); r.set(62f, 58f, 70f, 63f); c.drawOval(r, p)
+        // Soft light on the forehead
+        p.alpha = 255; p.shader = RadialGradient(50f, 38f, 14f, 0x30FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP); c.drawCircle(50f, 38f, 14f, p); p.shader = null
 
         // Nose
         p.color = 0xFF151515.toInt(); r.set(44.5f, 58.5f, 55.5f, 65.5f); c.drawOval(r, p)
@@ -147,11 +159,24 @@ object PetArt {
         for (i in -3..3) c.drawLine(50f + i * 3.6f, 77f, 50f + i * 4.4f, 82f, p)
         p.style = Paint.Style.FILL
 
+        // Headphone ear cups over the ear fur, with two little green status lights (a homelab nod)
+        for (side in listOf(-1f, 1f)) {
+            val cx = 50f + side * 27f
+            p.alpha = 255
+            p.alpha = 255; p.shader = LinearGradient(cx, 44f, cx, 64f, 0xFF7C64E0.toInt(), 0xFF4B3BAE.toInt(), Shader.TileMode.CLAMP)
+            r.set(cx - 6.5f, 44f, cx + 6.5f, 64f); c.drawRoundRect(r, 5.5f, 5.5f, p)
+            p.shader = null
+            p.color = 0x6638BDF8; r.set(cx - 4f, 47f, cx + 4f, 61f); c.drawRoundRect(r, 3.5f, 3.5f, p)
+        }
+        p.color = 0xFF4ADE80.toInt(); c.drawCircle(23f, 50.5f, 1.1f, p); p.color = 0xFF86EFAC.toInt(); c.drawCircle(23f, 54.5f, 1.1f, p)
+
         // Collar + bell
         p.color = 0xFFE0507A.toInt(); r.set(33f, 78f, 67f, 85f); c.drawRoundRect(r, 3.5f, 3.5f, p)
-        p.shader = RadialGradient(48.5f, 86f, 6f, 0xFFFFE08A.toInt(), 0xFFC9971F.toInt(), Shader.TileMode.CLAMP)
-        c.drawCircle(50f, 88f, 4.6f, p); p.shader = null
-        p.color = 0xFF7A5A10.toInt(); c.drawCircle(50f, 89.6f, 1.1f, p)
+        // Gold tag with a play button (media)
+        p.alpha = 255; p.shader = RadialGradient(48.5f, 86f, 6.5f, 0xFFFFE08A.toInt(), 0xFFC9971F.toInt(), Shader.TileMode.CLAMP)
+        c.drawCircle(50f, 88.5f, 5f, p); p.shader = null
+        p.color = 0xFFFFFFFF.toInt()
+        path.reset(); path.moveTo(48.6f, 86.3f); path.lineTo(52.6f, 88.5f); path.lineTo(48.6f, 90.7f); path.close(); c.drawPath(path, p)
         c.restore()
         c.restore()
     }

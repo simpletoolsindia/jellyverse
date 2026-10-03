@@ -58,6 +58,8 @@ data class MediaStream(
 @Serializable
 data class MediaSource(
     @SerialName("Id") val id: String,
+    @SerialName("Path") val path: String? = null,
+    @SerialName("Name") val name: String? = null,
     @SerialName("Container") val container: String? = null,
     @SerialName("Size") val size: Long? = null,
     @SerialName("Bitrate") val bitrate: Long? = null,
@@ -128,6 +130,8 @@ data class BaseItem(
     @SerialName("Trickplay") val trickplay: Map<String, Map<String, TrickplayInfo>> = emptyMap(),
     @SerialName("ChildCount") val childCount: Int? = null,
     @SerialName("PremiereDate") val premiereDate: String? = null,
+    @SerialName("ProviderIds") val providerIds: Map<String, String?> = emptyMap(),
+    @SerialName("Path") val path: String? = null,
     /** Title in its original language/spelling (searched too). */
     @SerialName("OriginalTitle") val originalTitle: String? = null,
     /** When it was added to the Jellyfin library. */

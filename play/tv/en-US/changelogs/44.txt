@@ -1,0 +1,1 @@
+2.23.0: Remote hints while you browse, sleep timer, JellyVerse row on the TV home screen (Mi TV / Google TV), Live TV auto-retry, circular progress, Top 10 refreshes weekly, previews auto-play on details, fresh headphone pup logo.

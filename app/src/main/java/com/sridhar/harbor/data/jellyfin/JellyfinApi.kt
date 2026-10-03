@@ -168,6 +168,10 @@ interface JellyfinApi {
     @POST("UserPlayedItems/{id}")
     suspend fun markPlayed(@Path("id") id: String, @Query("userId") userId: String): Response<ResponseBody>
 
+    /** Deletes an item and its files on the server (needs a user allowed to delete). */
+    @DELETE("Items/{id}")
+    suspend fun deleteItem(@Path("id") id: String): Response<ResponseBody>
+
     @DELETE("UserPlayedItems/{id}")
     suspend fun markUnplayed(@Path("id") id: String, @Query("userId") userId: String): Response<ResponseBody>
 

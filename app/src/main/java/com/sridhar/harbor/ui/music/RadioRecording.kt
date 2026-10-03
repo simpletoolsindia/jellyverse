@@ -315,8 +315,10 @@ fun RecordingsSheet(onDismiss: () -> Unit) {
                             IconButton({ RecordService.stop(ctx) }) { Icon(Icons.Rounded.Stop, stringResource(R.string.rec_stop), tint = Harbor.Rose) }
                         }
                         val el = (rememberNow() - l.startedAt).coerceAtLeast(0)
-                        LinearProgressIndicator({ (el.toFloat() / l.durationMs).coerceIn(0f, 1f) }, Modifier.fillMaxWidth(), color = Harbor.Rose)
-                        Text("${clock(el)} / ${clock(l.durationMs)} · ${"%.1f".format(l.bytes / 1e6)} MB", color = Harbor.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            com.sridhar.harbor.ui.components.ProgressRing((el.toFloat() / l.durationMs).coerceIn(0f, 1f), size = 44.dp, color = Harbor.Rose, accent = Harbor.Amber)
+                            Text("  ${clock(el)} / ${clock(l.durationMs)} · ${"%.1f".format(l.bytes / 1e6)} MB", color = Harbor.TextDim, fontSize = 12.sp)
+                        }
                     }
                 }
             }

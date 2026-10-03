@@ -1,4 +1,6 @@
 package com.sridhar.harbor.update
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.animation.core.animateFloat
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.togetherWith
@@ -98,15 +100,15 @@ fun UpdatePrompt() {
                 transitionSpec = { (androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { it / 3 }) togetherWith androidx.compose.animation.fadeOut() }) { _ ->
                 when (val s = state) {
                     is UpdateState.Downloading -> Column {
-                        Text(stringResource(R.string.update_downloading, (s.progress * 100).toInt()), color = Harbor.TextDim, fontSize = 13.sp)
-                        Spacer(Modifier.size(8.dp))
                         val p by androidx.compose.animation.core.animateFloatAsState(s.progress, label = "p")
-                        TideBar(Modifier.fillMaxWidth(), progress = { p })
+                        UpdateRing(p, Modifier.align(Alignment.CenterHorizontally))
+                        Text(stringResource(R.string.update_downloading, (s.progress * 100).toInt()), color = Harbor.TextDim, fontSize = 13.sp,
+                            modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 6.dp))
                     }
                     is UpdateState.Installing -> Column {
                         Text(stringResource(R.string.update_installing), color = Harbor.TextDim, fontSize = 13.sp)
                         Spacer(Modifier.size(8.dp))
-                        TideBar(Modifier.fillMaxWidth())
+                        com.sridhar.harbor.ui.components.ProgressRing(null, Modifier.align(Alignment.CenterHorizontally), size = 56.dp, stroke = 5.dp)
                     }
                     is UpdateState.ReadyToInstall -> Column {
                         if (android.os.Build.VERSION.SDK_INT >= 26 && !ctx.packageManager.canRequestPackageInstalls())
@@ -155,6 +157,39 @@ internal fun releaseNotes(md: String): androidx.compose.ui.text.AnnotatedString 
             text.startsWith("- ") || text.startsWith("* ") -> append("•  " + text.drop(2))
             text.startsWith("|") -> append(text.trim('|').split('|').map { it.trim() }.filter { it.isNotEmpty() }.joinToString("  ·  "))
             else -> append(text)
+        }
+    }
+}
+
+/** Update download: a glowing ring fills around the excited dog, the percentage counts up inside, sparkles ride the tip. */
+@Composable
+private fun UpdateRing(progress: Float, modifier: Modifier = Modifier) {
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "upd")
+    val spin by t.animateFloat(0f, 360f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(2400, easing = androidx.compose.animation.core.LinearEasing)), label = "spin")
+    val violet = Harbor.Violet; val sky = Harbor.Sky
+    Box(modifier.size(150.dp), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val stroke = 10.dp.toPx(); val r = size.minDimension / 2f - stroke
+            val c = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+            val tl = androidx.compose.ui.geometry.Offset(c.x - r, c.y - r); val sz = androidx.compose.ui.geometry.Size(r * 2, r * 2)
+            drawArc(Harbor.line(.10f), 0f, 360f, false, tl, sz, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+            val sweep = 360f * progress.coerceIn(0f, 1f)
+            // soft glow under the arc
+            drawArc(sky.copy(alpha = .25f), -90f, sweep, false, tl, sz, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke * 2.2f, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            drawArc(androidx.compose.ui.graphics.Brush.sweepGradient(listOf(violet, sky, violet), c), -90f, sweep, false, tl, sz,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            // sparkles orbiting the tip
+            val tip = Math.toRadians((sweep - 90f).toDouble())
+            for (i in 0..2) {
+                val a = tip + Math.toRadians((spin + i * 120f).toDouble()) * 0.08
+                val rr = r + stroke * (0.9f + i * 0.35f) * kotlin.math.sin(Math.toRadians((spin * 2 + i * 90).toDouble())).toFloat()
+                drawCircle(Color(0xFFFFE08A).copy(alpha = 0.9f - i * 0.25f), (3.5f - i).dp.toPx(),
+                    androidx.compose.ui.geometry.Offset(c.x + (rr * kotlin.math.cos(a)).toFloat(), c.y + (rr * kotlin.math.sin(a)).toFloat()))
+            }
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            com.sridhar.harbor.ui.ai.JellyBuddy(70.dp, busy = true)
+            Text("${(progress * 100).toInt()}%", fontWeight = FontWeight.Black, fontSize = 18.sp, color = Harbor.Fg)
         }
     }
 }

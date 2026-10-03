@@ -108,14 +108,19 @@ fun TvApp() {
     // "Home" from the phone remote.
     val navContainer = com.sridhar.harbor.ui.components.LocalContainer.current
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        navContainer.navRequests.collect { if (it == "home") { stack.clear(); stack.add(TvDest.Home) } }
+        navContainer.navRequests.collect {
+            if (it == "home") { stack.clear(); stack.add(TvDest.Home) }
+            if (it.startsWith("tvitem:")) { stack.clear(); stack.add(TvDest.Home); stack.add(TvDest.Detail(it.removePrefix("tvitem:"))) }
+        }
     }
     BackHandler(enabled = stack.size > 1 || current != TvDest.Home) { if (stack.size > 1) stack.removeAt(stack.lastIndex) else { stack.clear(); stack.add(TvDest.Home) } }
     var railFocused by remember { mutableStateOf(false) }
     val railFocus = remember { mutableMapOf<TvDest, androidx.compose.ui.focus.FocusRequester>() }
     val railWidth by animateDpAsState(if (railFocused) 230.dp else 84.dp, spring(dampingRatio = 0.85f), label = "rail")
 
-    Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
+    // Any key press counts as activity (hides the remote tips; they come back after a few idle seconds).
+    var keyTick by remember { mutableStateOf(0) }
+    Box(Modifier.fillMaxSize().background(Harbor.Ink).onPreviewKeyEvent { if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) keyTick++; false }) {
         Box(Modifier.fillMaxSize().padding(start = 84.dp)) {
             val reduced = com.sridhar.harbor.ui.components.reducedMotion()
             AnimatedContent(current, transitionSpec = {
@@ -188,5 +193,6 @@ fun TvApp() {
                 }
             }
         }
+        TvHints(current, keyTick, Modifier.align(Alignment.BottomCenter).padding(bottom = 22.dp))
     }
 }

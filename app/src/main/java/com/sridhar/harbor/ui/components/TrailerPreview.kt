@@ -63,7 +63,12 @@ fun TrailerPreview(item: BaseItem?, modifier: Modifier = Modifier, delayMs: Long
     val yt = item.remoteTrailers.firstNotNullOfOrNull { it.youtubeId }
     Box(modifier.graphicsLayer { this.alpha = alpha }) {
         if (yt != null) YouTubePreview(yt, onPlaying = { playing = it })
-        else if (item.type == "Movie") FilmPreview(item, onPlaying = { playing = it })
+        else if (item.type == "Movie" || item.type == "Episode") FilmPreview(item, onPlaying = { playing = it })
+        else if (item.type == "Series") {
+            // No trailer for the show: preview its first episode instead.
+            val ep by androidx.compose.runtime.produceState<BaseItem?>(null, item.id) { value = runCatching { c.jellyfin.firstEpisode(item.id) }.getOrNull() }
+            ep?.let { FilmPreview(it, onPlaying = { p -> playing = p }) }
+        }
     }
 }
 

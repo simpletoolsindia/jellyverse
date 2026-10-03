@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Download progress notification: a progress ring with the animated arrow inside. The arrow animation runs in the
+     system UI (ViewFlipper) – no app work per frame. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical"
+    android:paddingTop="2dp" android:paddingBottom="4dp">
+    <FrameLayout android:layout_width="48dp" android:layout_height="48dp">
+        <ProgressBar android:id="@+id/dl_progress" style="@android:style/Widget.Material.ProgressBar.Horizontal"
+            android:layout_width="48dp" android:layout_height="48dp" android:max="1000" android:indeterminate="false"
+            android:progressDrawable="@drawable/ring_progress_blue" />
+        <ViewFlipper android:layout_width="20dp" android:layout_height="20dp" android:layout_gravity="center" android:autoStart="true" android:flipInterval="160">
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/dl_arrow_1" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/dl_arrow_2" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/dl_arrow_3" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/dl_arrow_4" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/dl_arrow_5" />
+        </ViewFlipper>
+    </FrameLayout>
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" android:orientation="vertical">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView android:id="@+id/dl_speed" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textColor="#1F80E0" android:textStyle="bold" android:textSize="15sp" />
+            <TextView android:id="@+id/dl_pct" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="end"
+                style="@style/TextAppearance.Compat.Notification.Title" android:textSize="15sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/dl_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp"
+            android:singleLine="true" android:ellipsize="end" style="@style/TextAppearance.Compat.Notification.Line2" />
+        <TextView android:id="@+id/dl_info" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp"
+            style="@style/TextAppearance.Compat.Notification.Info" />
+    </LinearLayout>
+</LinearLayout>

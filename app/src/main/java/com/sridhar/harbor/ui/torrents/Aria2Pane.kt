@@ -228,10 +228,9 @@ fun Aria2Pane(switcher: @Composable () -> Unit) {
                             contentAlignment = Alignment.Center) { Icon(if (d.status == "paused") Icons.Rounded.PlayArrow else Icons.Rounded.Pause, null, tint = d.color()) }
                         IconButton({ vm.remove(d) }) { Icon(Icons.Rounded.Delete, stringResource(R.string.remove), tint = Harbor.TextDim) }
                     }
-                    Spacer(Modifier.height(10.dp))
-                    GradientProgress(d.progress, height = 6.dp, brush = if (d.status == "active") Harbor.accentH else SolidColor(d.color()))
-                    Row(Modifier.padding(top = 6.dp)) {
-                        Text("${(d.progress * 100).toInt()}%  ${formatBytes(d.done)} / ${formatBytes(d.total)}", fontSize = 12.sp, color = Harbor.TextDim, modifier = Modifier.weight(1f))
+                    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        com.sridhar.harbor.ui.components.ProgressRing(d.progress, size = 40.dp, color = if (d.status == "active") Harbor.Violet else d.color(), accent = if (d.status == "active") Harbor.Sky else d.color())
+                        Text("  ${formatBytes(d.done)} / ${formatBytes(d.total)}", fontSize = 12.sp, color = Harbor.TextDim, modifier = Modifier.weight(1f))
                         if (d.dl > 0) Text("↓ ${formatSpeed(d.dl)}  ", fontSize = 12.sp, color = Harbor.Sky)
                         if (d.dl > 0) Text(formatEta(d.eta), fontSize = 12.sp, color = Harbor.TextDim)
                     }

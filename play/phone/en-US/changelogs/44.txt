@@ -1,0 +1,1 @@
+2.23.0: Find duplicate movies & shows, compare quality, delete extra copies. Circular progress everywhere. Download notification shows speed with animation. Top 10 refreshes weekly. Detail page auto-plays a preview. Live TV auto-retry. Sleep timer. Radio, Live TV & recording widgets. Fresh headphone pup logo.

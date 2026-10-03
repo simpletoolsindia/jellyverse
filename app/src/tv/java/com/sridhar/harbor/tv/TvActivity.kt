@@ -51,11 +51,16 @@ class TvActivity : ComponentActivity() {
         }
         val data = intent?.data ?: return
         if (data.scheme == "jellyversetv" && data.host == "play") data.lastPathSegment?.let { com.sridhar.harbor.ui.player.PlayerActivity.start(this, it) }
+        // From the TV home-screen JellyVerse row: open the title's page.
+        if (data.scheme == "jellyversetv" && data.host == "item") data.lastPathSegment?.let { container.navRequests.tryEmit("tvitem:$it") }
     }
 
     /** Refresh the home-screen Play Next row whenever the user leaves Harbor TV. */
     override fun onStop() {
         super.onStop()
-        container.scope.launch(com.sridhar.harbor.CrashGuard) { runCatching { WatchNext.sync(applicationContext, container) } }
+        container.scope.launch(com.sridhar.harbor.CrashGuard) {
+            runCatching { WatchNext.sync(applicationContext, container) }
+            runCatching { HomeChannel.sync(applicationContext, container) }
+        }
     }
 }

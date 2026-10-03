@@ -306,10 +306,11 @@ fun SetupScreen(onDone: () -> Unit, only: String? = null) {
             // Progress
             if (step > 0) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 val p by androidx.compose.animation.core.animateFloatAsState(step.toFloat() / last, androidx.compose.animation.core.spring(stiffness = 120f), label = "p")
-                androidx.compose.material3.LinearProgressIndicator({ p }, Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)),
-                    color = Harbor.Violet, trackColor = Harbor.line(.08f), drawStopIndicator = {})
+                com.sridhar.harbor.ui.components.ProgressRing(p, size = 40.dp, label = false) {
+                    Text("${step.coerceAtMost(last)}/$last", fontSize = androidx.compose.ui.unit.TextUnit(11f, androidx.compose.ui.unit.TextUnitType.Sp), fontWeight = FontWeight.Bold)
+                }
                 Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.setup_step_of, step.coerceAtMost(last), last), color = Harbor.TextDim, style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.setup_step_of, step.coerceAtMost(last), last), Modifier.weight(1f), color = Harbor.TextDim, style = MaterialTheme.typography.labelMedium)
             }
             androidx.compose.animation.AnimatedContent(step, Modifier.weight(1f), label = "step",
                 transitionSpec = {

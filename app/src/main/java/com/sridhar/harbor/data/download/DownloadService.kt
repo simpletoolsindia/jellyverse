@@ -88,8 +88,18 @@ class DownloadService : Service() {
         val eta = s.etaSec.takeIf { it >= 0 }?.let { if (it >= 3600) "${it / 3600} h ${it % 3600 / 60} min" else if (it >= 60) "${it / 60} min" else "$it s" }
         val text = listOfNotNull("$pct%", speed(s.bytesPerSec).takeIf { s.bytesPerSec > 0 }, eta?.let { L10n.s(R.string.dl_left, it) },
             if (s.parts > 1) L10n.s(R.string.dl_parts, s.parts) else null).joinToString(" · ")
+        // Custom view: animated falling arrow (system-animated), big speed, progress bar, time left.
+        fun view() = android.widget.RemoteViews(packageName, R.layout.notif_download).apply {
+            setTextViewText(R.id.dl_speed, if (s.bytesPerSec > 0) speed(s.bytesPerSec) else L10n.s(R.string.dl_starting))
+            setTextViewText(R.id.dl_pct, if (s.total > 0) "$pct%" else "")
+            setTextViewText(R.id.dl_title, s.title)
+            setProgressBar(R.id.dl_progress, 1000, (s.fraction * 1000).toInt(), false)
+            setTextViewText(R.id.dl_info, listOfNotNull(eta?.let { L10n.s(R.string.dl_left, it) }, if (s.parts > 1) L10n.s(R.string.dl_parts, s.parts) else null).joinToString(" · "))
+        }
         nm.notify(id, NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_download).setContentTitle(s.title).setContentText(text)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(view()).setCustomBigContentView(view())
+            .setColor(0xFF1F80E0.toInt())
             .setProgress(1000, (s.fraction * 1000).toInt(), s.total <= 0)
             .setOngoing(true).setOnlyAlertOnce(true).setSilent(true).setGroup("jv_dl")
             .addAction(0, L10n.s(R.string.cancel), cancel).build())

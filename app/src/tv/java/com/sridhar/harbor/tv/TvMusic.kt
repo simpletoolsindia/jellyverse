@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
@@ -241,6 +242,11 @@ private fun TvNowPlayingBody() {
                 TvIcon(if (s.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, big = true, modifier = Modifier.focusRequester(play)) { engine.toggle() }
                 TvIcon(Icons.Rounded.SkipNext) { engine.next() }
                 if (!live) TvIcon(if (s.repeat == RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, s.repeat != RepeatMode.Off) { engine.cycleRepeat() }
+                // Sleep timer: each press steps Off → 15 → 30 → 60 → 90 min → Off (lit while set).
+                TvIcon(Icons.Rounded.Bedtime, s.sleepAt != null) {
+                    val left = s.sleepAt?.let { ((it - System.currentTimeMillis()) / 60_000).toInt() }
+                    engine.sleepIn(when { left == null -> 15; left < 15 -> 30; left < 30 -> 60; left < 60 -> 90; else -> null })
+                }
             }
         }
         Spacer(Modifier.width(64.dp))

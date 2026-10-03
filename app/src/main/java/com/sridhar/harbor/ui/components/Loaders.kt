@@ -413,3 +413,55 @@ fun LiveBadge(modifier: Modifier = Modifier, small: Boolean = false) {
             fontWeight = androidx.compose.ui.text.font.FontWeight.Black, letterSpacing = 0.8.sp)
     }
 }
+
+/**
+ * Circular progress used for every download / scan / install. A gradient sweep with a glowing tip that eases to
+ * the new value; [progress] = null spins (indeterminate). [label] shows the percentage in the middle, or pass
+ * [content] for an icon instead.
+ */
+@Composable
+fun ProgressRing(progress: Float?, modifier: Modifier = Modifier, size: Dp = 44.dp, stroke: Dp = 4.dp,
+                 color: Color = Harbor.Violet, accent: Color = Harbor.Sky, label: Boolean = true,
+                 content: (@Composable () -> Unit)? = null) {
+    val target = progress?.coerceIn(0f, 1f) ?: 0f
+    val animated = androidx.compose.animation.core.animateFloatAsState(target, androidx.compose.animation.core.spring(stiffness = 60f), label = "ring")
+    val clock = rememberInfiniteTransition(label = "ringSpin")
+    val spin = clock.animateFloat(0f, 360f, infiniteRepeatable(tween(if (progress == null) 1100 else 2600, easing = LinearEasing)), label = "spin")
+    val breathe = clock.animateFloat(0f, 1f, infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breathe")
+    androidx.compose.foundation.layout.Box(modifier.size(size).semantics {
+        progressBarRangeInfo = progress?.let { ProgressBarRangeInfo(target, 0f..1f) } ?: ProgressBarRangeInfo.Indeterminate
+    }, contentAlignment = androidx.compose.ui.Alignment.Center) {
+        Canvas(Modifier.matchParentSize()) {
+            val sw = stroke.toPx()
+            val inset = sw / 2f + sw * 0.6f
+            val arcSize = androidx.compose.ui.geometry.Size(this.size.width - inset * 2, this.size.height - inset * 2)
+            val tl = Offset(inset, inset)
+            drawArc(Color.White.copy(alpha = .10f), 0f, 360f, false, tl, arcSize, style = Stroke(sw))
+            val start: Float; val sweep: Float
+            if (progress == null) {                       // indeterminate: a comet arc that breathes as it spins
+                start = spin.value - 90f; sweep = 70f + 160f * breathe.value
+            } else {
+                start = -90f; sweep = 360f * animated.value
+            }
+            if (sweep > 0.5f) withTransform({ rotate(start, center) }) {
+                drawArc(Brush.sweepGradient(0f to color.copy(alpha = if (progress == null) 0f else 1f), (sweep / 360f).coerceAtLeast(0.01f) to accent, center = center),
+                    0f, sweep, false, tl, arcSize, style = Stroke(sw, cap = StrokeCap.Round))
+                // Glowing tip – also slowly circles on a determinate ring so a stalled download still looks alive.
+                val a = Math.toRadians(sweep.toDouble())
+                val r = arcSize.width / 2f
+                val tip = Offset(center.x + r * kotlin.math.cos(a).toFloat(), center.y + r * kotlin.math.sin(a).toFloat())
+                drawCircle(accent.copy(alpha = .35f + .25f * breathe.value), sw * (1.3f + .5f * breathe.value), tip)
+                drawCircle(Color.White, sw * 0.45f, tip)
+            }
+            if (progress != null && progress < 1f) {      // faint orbiting spark on the track
+                val a = Math.toRadians((spin.value - 90f).toDouble()); val r = arcSize.width / 2f
+                drawCircle(accent.copy(alpha = .5f), sw * .35f, Offset(center.x + r * kotlin.math.cos(a).toFloat(), center.y + r * kotlin.math.sin(a).toFloat()))
+            }
+        }
+        when {
+            content != null -> content()
+            label && progress != null -> androidx.compose.material3.Text("${(target * 100).toInt()}%",
+                fontSize = (size.value * 0.24f).coerceIn(9f, 22f).sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = Harbor.Fg)
+        }
+    }
+}

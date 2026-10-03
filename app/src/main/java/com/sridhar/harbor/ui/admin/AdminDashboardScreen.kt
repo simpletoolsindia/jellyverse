@@ -507,8 +507,10 @@ internal fun LibraryRow(l: LibraryFolder, onScan: () -> Unit, onRemove: () -> Un
         val p = l.refreshProgress
         if (l.refreshStatus == "Active" && p != null) {
             Spacer(Modifier.height(8.dp))
-            com.sridhar.harbor.ui.components.TideBar(Modifier.fillMaxWidth(), progress = { (p / 100).toFloat() })
-            Text(stringResource(R.string.scanning_1_s, p.toInt()), style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                com.sridhar.harbor.ui.components.ProgressRing((p / 100).toFloat(), size = 36.dp, stroke = 3.5.dp)
+                Text("  " + stringResource(R.string.scanning_1_s, p.toInt()), style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)
+            }
         }
     }
 }
@@ -563,8 +565,7 @@ internal fun TaskRow(t: ScheduledTask, onToggle: () -> Unit) {
         if (t.running) {
             Spacer(Modifier.height(6.dp))
             val p = t.progress
-            if (p != null) com.sridhar.harbor.ui.components.TideBar(Modifier.fillMaxWidth(), progress = { (p / 100).toFloat() })
-            else com.sridhar.harbor.ui.components.TideBar(Modifier.fillMaxWidth())
+            com.sridhar.harbor.ui.components.ProgressRing(p?.let { (it / 100).toFloat() }, size = 36.dp, stroke = 3.5.dp)
         }
     }
 }

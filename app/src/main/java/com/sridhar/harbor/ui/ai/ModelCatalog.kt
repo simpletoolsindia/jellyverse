@@ -145,10 +145,12 @@ private fun ModelRow(m: LlmModel, active: Boolean, installed: Boolean, dl: com.s
         }
         if (dl != null) {
             Spacer(Modifier.height(10.dp))
-            com.sridhar.harbor.ui.components.GradientProgress(dl.fraction, height = 5.dp)
-            Text(listOfNotNull("%.0f / %.0f MB".format(dl.downloaded / 1e6, dl.total / 1e6),
+            Row(verticalAlignment = Alignment.CenterVertically) {
+            com.sridhar.harbor.ui.components.ProgressRing(dl.fraction, size = 40.dp)
+            Text("  " + listOfNotNull("%.0f / %.0f MB".format(dl.downloaded / 1e6, dl.total / 1e6),
                 dl.bytesPerSec.takeIf { it > 0 }?.let { "%.1f MB/s".format(it / 1e6) }, if (dl.parts > 1) "${dl.parts} parts" else null).joinToString("  ·  "),
-                color = Harbor.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                color = Harbor.TextDim, fontSize = 12.sp)
+            }
         }
         Spacer(Modifier.height(12.dp))
         Text(m.blurb, color = Harbor.Fg.copy(alpha = .85f), fontSize = 14.sp, lineHeight = 20.sp)

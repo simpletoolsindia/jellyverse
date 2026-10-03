@@ -265,10 +265,11 @@ private fun QueueList(list: List<Queued>, onRemove: (Queued) -> Unit) {
                         Pill((it.trackedDownloadState ?: it.status).replaceFirstChar { c -> c.uppercase() }, if (it.hasIssue) Harbor.Rose else Harbor.Mint)
                         it.quality?.quality?.name?.let { n -> Pill(n, Harbor.TextDim) }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    GradientProgress(it.progress, height = 5.dp)
-                    Text("${(it.progress * 100).toInt()}% · ${formatBytes(it.size.toLong())}" + (it.timeleft?.let { t -> stringResource(R.string.s_1_s_left, t) } ?: ""),
-                        color = Harbor.TextDim, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+                    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        com.sridhar.harbor.ui.components.ProgressRing(it.progress, size = 36.dp, stroke = 3.5.dp)
+                        Text("  " + formatBytes(it.size.toLong()) + (it.timeleft?.let { t -> stringResource(R.string.s_1_s_left, t) } ?: ""),
+                            color = Harbor.TextDim, fontSize = 11.sp)
+                    }
                     val msgs = it.statusMessages.flatMap { m -> m.messages } + listOfNotNull(it.errorMessage)
                     if (msgs.isNotEmpty()) Text(msgs.first(), color = Harbor.Amber, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
@@ -401,9 +402,9 @@ private fun ArrPoster(url: String?, title: String, subtitle: String, modifier: M
         Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).clip(RoundedCornerShape(14.dp))) {
             NetImage(url, Modifier.fillMaxSize(), fallback = title)
             Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(12.dp).clip(CircleShape).background(status).border(2.dp, Color.Black.copy(.5f), CircleShape))
-            progress?.let { p -> Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(4.dp).drawBehind {
-                drawRect(Color.Black.copy(.5f)); drawRect(status, size = size.copy(width = size.width * p))
-            }) }
+            progress?.let { p -> Box(Modifier.align(Alignment.BottomEnd).padding(6.dp).clip(CircleShape).background(Color.Black.copy(.6f))) {
+                com.sridhar.harbor.ui.components.ProgressRing(p, size = 34.dp, stroke = 3.dp, color = status, accent = status)
+            } }
         }
         Text(title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
         Text(subtitle, color = Harbor.TextDim, fontSize = 11.sp, maxLines = 1)

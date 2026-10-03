@@ -135,6 +135,7 @@ import kotlinx.serialization.Serializable
 @Serializable object LabRoute
 @Serializable object AssistantRoute
 @Serializable data class DoctorRoute(val itemId: String? = null)
+@Serializable object DuplicatesRoute
 @Serializable object LiveRoute
 @Serializable object HostsRoute
 @Serializable data class TerminalRoute(val hostId: String)
@@ -250,6 +251,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                 "live" -> nav.navigate(LiveRoute)
                 "music" -> nav.switchTab(musicHome())
                 "remote" -> nav.navigate(RemoteRoute)
+                "duplicates" -> nav.navigate(DuplicatesRoute)
                 "nowplaying" -> { nav.switchTab(musicHome()); showPlayer = true }
                 "recordings" -> { nav.switchTab(musicHome()); container.showRecordings.value = true }
                 else -> when {
@@ -337,6 +339,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                 ProfileScreen(
                     onService = { svc -> nav.navigate(ServiceSetupRoute(svc)) },
                     onDoctor = { nav.navigate(DoctorRoute()) },
+                    onDuplicates = { nav.navigate(DuplicatesRoute) },
                     onAssistant = { nav.navigate(AssistantRoute) },
                     onTerminal = { nav.navigate(HostsRoute) },
                     onSetup = { nav.navigate(SetupRoute) },
@@ -380,7 +383,8 @@ private fun HarborNavContent(initial: ServerConfig) {
                 })
             }}
             composable<LiveRoute> { com.sridhar.harbor.ui.live.LiveTvScreen(onBack = { nav.popBackStack() }) }
-            composable<DoctorRoute> { Readable { com.sridhar.harbor.ui.ai.LibraryDoctorScreen(itemId = it.toRoute<DoctorRoute>().itemId, onBack = { nav.popBackStack() }) }}
+            composable<DoctorRoute> { Readable { com.sridhar.harbor.ui.ai.LibraryDoctorScreen(itemId = it.toRoute<DoctorRoute>().itemId, onBack = { nav.popBackStack() }, onDuplicates = { nav.navigate(DuplicatesRoute) }) }}
+            composable<DuplicatesRoute> { Readable { com.sridhar.harbor.ui.doctor.DuplicatesScreen(onBack = { nav.popBackStack() }) }}
             composable<LabRoute> { Readable {
                 com.sridhar.harbor.ui.lab.LabScreen(
                     onSetup = { nav.navigate(SetupRoute) },

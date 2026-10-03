@@ -36,11 +36,13 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- "Play Next" row on the Android TV home screen opens titles here -->
+            <!-- "Play Next" and the JellyVerse row on the TV home screen open titles here -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="jellyversetv" android:host="play" />
+                <data android:scheme="jellyversetv" android:host="item" />
+                <data android:scheme="jellyversetv" android:host="home" />
             </intent-filter>
         </activity>
     </application>

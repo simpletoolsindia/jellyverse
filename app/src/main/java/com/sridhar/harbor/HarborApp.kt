@@ -32,6 +32,16 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
             com.sridhar.harbor.update.UpdateWorker.schedule(this@HarborApp)
             com.sridhar.harbor.radio.RecordService.channels(this@HarborApp)
             com.sridhar.harbor.radio.RadioScheduler.rearmAll(this@HarborApp)
+            // Home-screen widgets follow playback and recordings (only collected when a widget is placed).
+            val app = this@HarborApp
+            launch(kotlinx.coroutines.Dispatchers.Main) {
+                kotlinx.coroutines.flow.combine(com.sridhar.harbor.radio.RadioLibrary.live, com.sridhar.harbor.radio.RadioLibrary.schedules) { l, s -> (l?.station to (l?.bytes ?: 0) / 3_000_000) to s.size }
+                    .collect { if (com.sridhar.harbor.widget.Widgets.anyRecord(app) || com.sridhar.harbor.widget.Widgets.anyRadio(app)) { com.sridhar.harbor.widget.Widgets.updateRecord(app); com.sridhar.harbor.widget.Widgets.updateRadio(app) } }
+            }
+            launch(kotlinx.coroutines.Dispatchers.Main) {
+                if (com.sridhar.harbor.widget.Widgets.anyRadio(app)) container.musicEngine.state
+                    .collect { s -> com.sridhar.harbor.widget.Widgets.updateRadio(app) }
+            }
             if (!packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)) {
                 com.sridhar.harbor.alerts.Alerts.schedule(this@HarborApp)
                 com.sridhar.harbor.alerts.Suggestions.schedule(this@HarborApp)

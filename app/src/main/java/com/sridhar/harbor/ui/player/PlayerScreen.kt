@@ -1,4 +1,5 @@
 package com.sridhar.harbor.ui.player
+import androidx.compose.material.icons.rounded.Bedtime
 
 import androidx.compose.material.icons.rounded.Tv
 
@@ -168,7 +169,7 @@ import java.text.DateFormat
 import java.util.Date
 import kotlin.math.roundToInt
 
-private enum class Panel(@androidx.annotation.StringRes val titleRes: Int) { Audio(R.string.audio_2), Subtitles(R.string.subtitles_2), Settings(R.string.playback), Quality(R.string.quality), Chapters(R.string.chapters), Episodes(R.string.episodes), Channels(R.string.channels);
+private enum class Panel(@androidx.annotation.StringRes val titleRes: Int) { Audio(R.string.audio_2), Subtitles(R.string.subtitles_2), Settings(R.string.playback), Quality(R.string.quality), Chapters(R.string.chapters), Episodes(R.string.episodes), Channels(R.string.channels), Sleep(R.string.sleep_timer);
     val title: String get() = com.sridhar.harbor.L10n.s(titleRes)
 }
 private enum class SideGesture { Brightness, Volume }
@@ -420,7 +421,7 @@ fun PlayerScreen(vm: PlayerViewModel, inPip: Boolean, onBack: () -> Unit, onPip:
             }
         }
         if (!ui.firstFrame && ui.error == null && !inPip) LoadingOverlay(ui)
-        else if (ui.buffering && scrubMs == null) SlimLoadingBar(Modifier.align(Alignment.TopCenter))
+        else if (ui.buffering && scrubMs == null) com.sridhar.harbor.ui.components.ProgressRing(null, Modifier.align(Alignment.Center), size = 56.dp, stroke = 4.dp)
         if (ui.live) {
             var showZap by remember { mutableStateOf(false) }
             LaunchedEffect(ui.zapStamp) { showZap = true; delay(3500); showZap = false }
@@ -462,6 +463,9 @@ fun PlayerScreen(vm: PlayerViewModel, inPip: Boolean, onBack: () -> Unit, onPip:
                     if (!ui.live && !ui.offline) FavoriteIcon(ui.favorite) { vm.toggleFavorite(); interaction++ }
                     TopIcon(Icons.Rounded.ClosedCaption, stringResource(R.string.subtitles_2)) { panel = Panel.Subtitles; interaction++ }
                     TopIcon(Icons.Rounded.Audiotrack, stringResource(R.string.audio_2)) { panel = Panel.Audio; interaction++ }
+                    // Sleep timer, one press away (lit while it's set).
+                    TopIcon(Icons.Rounded.Bedtime, stringResource(R.string.sleep_timer),
+                        tint = if (ui.sleepAt != null || ui.sleepEndOfEpisode) Harbor.VioletSoft else Color.White) { panel = Panel.Sleep; interaction++ }
                     TopIcon(Icons.Rounded.Settings, stringResource(R.string.settings)) { panel = Panel.Settings; interaction++ }
                     if (!isTv) TopIcon(Icons.Rounded.PictureInPictureAlt, stringResource(R.string.picture_in_picture), onClick = onPip)
                     if (!isTv) TopIcon(Icons.Rounded.Lock, stringResource(R.string.lock_2)) { locked = true; controls = false; panel = null }
@@ -571,6 +575,28 @@ fun PlayerScreen(vm: PlayerViewModel, inPip: Boolean, onBack: () -> Unit, onPip:
                 Spacer(Modifier.height(4.dp))
                 Text(if (online) err else stringResource(R.string.net_waiting), color = Harbor.TextDim, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 Spacer(Modifier.height(12.dp))
+                if (ui.live) {
+                    // Auto-retry countdown with a filling ring; "Retry now" takes the first focus (one press on TV).
+                    vm.liveRetryIn?.let { secs ->
+                        val frac by androidx.compose.animation.core.animateFloatAsState(1f - secs / 10f, androidx.compose.animation.core.tween(900), label = "retry")
+                        Box(Modifier.size(54.dp).padding(bottom = 6.dp), contentAlignment = Alignment.Center) {
+                            androidx.compose.material3.CircularProgressIndicator({ frac }, Modifier.fillMaxSize(), color = Harbor.Sky, trackColor = Color.White.copy(.15f), strokeWidth = 4.dp)
+                            Text("$secs", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                        Text(stringResource(R.string.live_retrying_in, secs), color = Harbor.TextDim, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    }
+                    val retryFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+                    LaunchedEffect(err) { runCatching { kotlinx.coroutines.delay(150); retryFocus.requestFocus() } }
+                    val spin = androidx.compose.animation.core.rememberInfiniteTransition(label = "spin").animateFloat(0f, 360f,
+                        androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1400, easing = androidx.compose.animation.core.LinearEasing)), label = "r")
+                    Row(Modifier.clip(RoundedCornerShape(50)).background(Color.White).focusRequester(retryFocus).focusable().clickable { vm.retryLive() }
+                        .padding(horizontal = 22.dp, vertical = 10.dp).padding(bottom = 0.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Refresh, null, tint = Color.Black, modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = if (vm.liveRetryIn != null) spin.value else 0f })
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.live_retry_now), color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (ui.live) TextChip(Icons.Rounded.Refresh, if (vm.liveRefreshing) stringResource(R.string.iptv_refreshing) else stringResource(R.string.iptv_refresh_channels)) { if (!vm.liveRefreshing) vm.refreshLiveSource() }
                     else if (!ui.offline) TextChip(null, stringResource(R.string.try_transcoding)) { vm.setQuality(Quality.Q8) }
@@ -917,6 +943,20 @@ private fun SidePanel(panel: Panel?, ui: PlayerUi, vm: PlayerViewModel, onClose:
             Panel.Episodes -> EpisodeList(ui, vm, onClose)
             else -> Column(Modifier.verticalScroll(rememberScrollState())) {
                 when (panel) {
+                    Panel.Sleep -> {
+                        // Live countdown while a timer runs.
+                        val now by androidx.compose.runtime.produceState(System.currentTimeMillis()) { while (true) { value = System.currentTimeMillis(); kotlinx.coroutines.delay(1000) } }
+                        ui.sleepAt?.let { at ->
+                            val left = ((at - now) / 1000).coerceAtLeast(0)
+                            Text(stringResource(R.string.sleep_pausing_in, "%d:%02d".format(left / 60, left % 60)), color = Harbor.VioletSoft,
+                                style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                        }
+                        if (ui.sleepEndOfEpisode) Text(stringResource(R.string.sleep_at_end), color = Harbor.VioletSoft, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                        Choice(stringResource(R.string.off), ui.sleepAt == null && !ui.sleepEndOfEpisode) { vm.setSleep(null) }
+                        listOf(15, 30, 45, 60, 90).forEach { m -> Choice(stringResource(R.string.sleep_minutes, m), false) { vm.setSleep(m) } }
+                        Choice(stringResource(R.string.sleep_end_of_this), ui.sleepEndOfEpisode) { vm.setSleep(null, endOfEpisode = true) }
+                        Text(stringResource(R.string.sleep_hint), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 10.dp))
+                    }
                     Panel.Quality -> {
                         Text(stringResource(R.string.quality_auto_hint), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp))
                         Quality.entries.forEach { q -> Choice(q.label, ui.quality == q) { vm.chooseQuality(q) } }
@@ -1043,7 +1083,7 @@ private fun LoadingOverlay(ui: PlayerUi) {
                 overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             ui.subtitle?.let { Text(it, color = Harbor.TextDim, fontSize = 14.sp) }
             Spacer(Modifier.height(22.dp))
-            IndeterminateBar(Modifier.width(280.dp))
+            com.sridhar.harbor.ui.components.ProgressRing(null, size = 64.dp, stroke = 5.dp)
             Spacer(Modifier.height(12.dp))
             Text(
                 when { ui.live -> stringResource(R.string.tuning); ui.offline -> stringResource(R.string.opening); else -> stringResource(R.string.loading) } + "…  ${elapsed}s",
