@@ -108,7 +108,7 @@ object Suggestions {
             Intent(ctx, SuggestActionReceiver::class.java).putExtra("id", item.id), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
         val b = NotificationCompat.Builder(ctx, CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome).setColor(0xFF1F80E0.toInt())
+            .setSmallIcon(R.drawable.ic_stat_jv).setColor(0xFF1F80E0.toInt())
             .setLargeIcon(com.sridhar.harbor.radio.Avatar.bitmap(ctx))
             .setContentTitle(ctx.getString(titles.random()))
             .setContentText(name)

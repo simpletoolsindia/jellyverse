@@ -22,6 +22,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
@@ -32,7 +35,7 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 /*
- * JellyVerse loaders – the logo comes alive instead of a stock spinner.
+ * JellyVerse loaders – the logo (the Shih Tzu) comes alive instead of a stock spinner.
  * The bell pumps (a quick squeeze, a slow release, surging forward on each beat), the tentacles ripple
  * in a travelling wave, and bubbles peel off behind. Everything is drawn from one clock per loader.
  */
@@ -41,6 +44,25 @@ import kotlin.math.sin
 internal fun bellPath() = Path().apply {
     moveTo(45f, 29f); cubicTo(63f, 29f, 80f, 43f, 83f, 54f); cubicTo(80f, 65f, 63f, 79f, 45f, 79f)
     quadraticTo(49f, 70.7f, 45f, 62.3f); quadraticTo(49f, 54f, 45f, 45.7f); quadraticTo(49f, 37.3f, 45f, 29f); close()
+}
+
+/**
+ * Draws the Shih Tzu mascot (no tile) with its 100-unit art box at [topLeft], [box] px wide – the app's logo,
+ * used by the loaders and the launch intro. [tint] draws it as a flat coloured silhouette (glitch ghosts).
+ */
+internal fun DrawScope.dog(topLeft: Offset, box: Float, open: Float = 1f, sway: Float = 0f, bob: Float = 0f, tilt: Float = 0f,
+                           tongue: Float = 0f, alpha: Float = 1f, tint: Color? = null) = drawIntoCanvas { c ->
+    val n = c.nativeCanvas
+    val layer = alpha < 1f || tint != null
+    if (layer) n.saveLayer(topLeft.x - box * .1f, topLeft.y - box * .1f, topLeft.x + box * 1.1f, topLeft.y + box * 1.1f,
+        android.graphics.Paint().apply {
+            this.alpha = (alpha.coerceIn(0f, 1f) * 255).toInt()
+            if (tint != null) colorFilter = android.graphics.PorterDuffColorFilter(tint.toArgb(), android.graphics.PorterDuff.Mode.SRC_IN)
+        })
+    n.save(); n.translate(topLeft.x, topLeft.y)
+    com.sridhar.harbor.ui.ai.PetArt.draw(n, box, open, sway, bob, tilt, tongue, tile = false)
+    n.restore()
+    if (layer) n.restore()
 }
 
 /** Jellyfish pulse: 0 = relaxed, 1 = fully squeezed. Snappy contraction, slow graceful release. */
@@ -123,7 +145,9 @@ fun JellyLoader(modifier: Modifier = Modifier, color: Color = Color.White, accen
             Offset(c.x - ring, c.y - ring), androidx.compose.ui.geometry.Size(ring * 2, ring * 2), style = Stroke(s * 0.035f, cap = StrokeCap.Round))
         // The jellyfish, centred in the blob.
         val box = s * 0.62f * 108f / 68f
-        jelly(Offset(c.x - box * 54f / 108f - 4f * box / 108f, c.y - box * 54f / 108f), box, t.value, color, Color.White, bell, bubbles = s > 40.dp.toPx())
+        // The dog, bobbing in the middle of the blob, pigtails wiggling.
+        val dogBox = s * 0.68f
+        dog(Offset(c.x - dogBox / 2f, c.y - dogBox * 0.53f), dogBox, sway = sin(t.value * 2f * PI.toFloat()), bob = sin(t.value * 2f * PI.toFloat()) * 1.6f)
     }
 }
 
@@ -168,8 +192,8 @@ fun TideBar(modifier: Modifier = Modifier, progress: (() -> Float)? = null, ride
             wave(0f, head, Brush.horizontalGradient(listOf(color, accent), 0f, head.coerceAtLeast(1f)), fade = false)
         }
         if (rider && head in -h.toPx()..w + h.toPx()) {
-            val box = size.height * 108f / 50f   // bell is 50 units tall → fills the bar height
-            jelly(Offset(head - 60f * box / 108f, cy - 54f * box / 108f), box, beat.value, Color.White, accent, bell, bubbles = false)
+            val box = size.height * 1.25f        // the dog's face fills the bar height, riding the tip
+            dog(Offset(head - box / 2f, cy - box * 0.55f), box, sway = sin(beat.value * 2f * PI.toFloat()), bob = sin(beat.value * 2f * PI.toFloat()) * 2f)
         }
     }
 }
@@ -205,7 +229,8 @@ fun AdriftJelly(modifier: Modifier = Modifier, color: Color = Color.White, accen
         val box = s * 0.62f
         val o = Offset(size.width / 2f - 58f * box / 108f, s * 0.62f - 54f * box / 108f + bob * u)
         withTransform({ rotate(tilt, Offset(size.width / 2f, s * 0.62f + bob * u)) }) {
-            jelly(o, box, (d * 2f) % 1f * 0.35f, color.copy(alpha = 0.85f), accent, bell, bubbles = false)
+            // Sleepy dog (eyes closed), drifting.
+            dog(Offset(size.width / 2f - box * 0.5f, o.y), box, open = 0.1f, sway = sin(d * tw) * 0.4f, alpha = 0.92f)
         }
     }
 }
@@ -230,13 +255,13 @@ fun GlitchJelly(modifier: Modifier = Modifier, color: Color = Color.White) {
         withTransform({ translate(origin.x, origin.y); scale(box / 108f, box / 108f, Offset.Zero) }) {
             val split = if (burst) 2.2f + rnd(9) * 2.5f else 0.8f
             // RGB ghosts
-            withTransform({ translate(-split, sag) }) { drawPath(bell, Harbor.Rose.copy(alpha = 0.55f)) }
-            withTransform({ translate(split, sag) }) { drawPath(bell, Harbor.Sky.copy(alpha = 0.55f)) }
-            if (!burst) withTransform({ translate(0f, sag) }) { drawPath(bell, color) }
+            withTransform({ translate(-split, sag) }) { dog(Offset(4f, 4f), 100f, tint = Harbor.Rose, alpha = 0.55f) }
+            withTransform({ translate(split, sag) }) { dog(Offset(4f, 4f), 100f, tint = Harbor.Sky, alpha = 0.55f) }
+            if (!burst) withTransform({ translate(0f, sag) }) { dog(Offset(4f, 4f), 100f, open = 0.1f) }
             else for (b in 0 until 6) {                                // horizontal slices shoved sideways
                 val top = 26f + b * 9f
                 val dx = (rnd(b) - 0.5f) * 9f
-                withTransform({ clipRect(0f, top, 108f, top + 9f); translate(dx, 0f) }) { drawPath(bell, color) }
+                withTransform({ clipRect(0f, top, 108f, top + 9f); translate(dx, 0f) }) { dog(Offset(4f, 4f), 100f) }
             }
             // Dead pixels flicking off the edge during a tear
             if (burst) for (k in 0..4) drawRect(if (k % 2 == 0) Harbor.Sky else color,

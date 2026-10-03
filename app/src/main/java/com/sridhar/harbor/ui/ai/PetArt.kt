@@ -73,7 +73,7 @@ object PetArt {
         for (side in listOf(-1f, 1f)) {
             val bx = 50f + side * 12f; val by = 31f
             for (k in 0..5) {
-                val ang = Math.toRadians((-100.0 + side * (8.0 + k * 11.0)) + sway * 7.0 * side).toFloat()   // up and outward
+                val ang = Math.toRadians((-90.0 + side * (8.0 + k * 11.0)) + sway * 7.0 * side).toFloat()   // up and outward
                 val len = 15f + (k % 3) * 3.5f
                 val tx = bx + kotlin.math.cos(ang) * len; val ty = by + kotlin.math.sin(ang) * len
                 val nx = -kotlin.math.sin(ang) * 2.2f; val ny = kotlin.math.cos(ang) * 2.2f

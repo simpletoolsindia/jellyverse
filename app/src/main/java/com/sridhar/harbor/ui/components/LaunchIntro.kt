@@ -35,6 +35,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sridhar.harbor.ui.theme.Harbor
 import kotlinx.coroutines.flow.first
@@ -45,7 +46,7 @@ private val EaseOutExpo = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 /**
  * Brand intro played once per cold start (~1.3 s, tap / any key skips):
- * the blue tile springs in, the jellyfish pumps twice, darts out leaving a light trail,
+ * the navy tile springs in, the Shih Tzu wiggles its pigtails and does a happy hop,
  * and "JellyVerse" is revealed by a sweeping shine before the app fades in underneath.
  */
 @Composable
@@ -72,7 +73,6 @@ private fun Intro(reveal: Animatable<Float, *>, onFinished: () -> Unit) {
     val words = remember { Animatable(0f) }     // wordmark reveal
     val fade = remember { Animatable(1f) }      // whole overlay alpha
     val scope = rememberCoroutineScope()
-    val bell = remember { bellPath() }
     val measurer = rememberTextMeasurer()
     val focus = remember { FocusRequester() }
 
@@ -104,8 +104,8 @@ private fun Intro(reveal: Animatable<Float, *>, onFinished: () -> Unit) {
         drawRect(Harbor.Ink)
         val s = min(size.width, size.height)
         val cx = size.width / 2f; val cy = size.height * 0.44f
-        // Soft brand glow that breathes with the tile.
-        drawCircle(Brush.radialGradient(listOf(Harbor.Violet.copy(alpha = 0.35f * tile.value), Color.Transparent), Offset(cx, cy), s * 0.6f), s * 0.6f, Offset(cx, cy))
+        // Soft warm glow that breathes with the tile.
+        drawCircle(Brush.radialGradient(listOf(Color(0xFFFFC27A).copy(alpha = 0.28f * tile.value), Color.Transparent), Offset(cx, cy), s * 0.6f), s * 0.6f, Offset(cx, cy))
 
         // The jellyfish is already where the system splash left it; the blue tile blooms in behind it.
         val full = s * 0.30f
@@ -113,21 +113,21 @@ private fun Intro(reveal: Animatable<Float, *>, onFinished: () -> Unit) {
         val ftl = Offset(cx - full / 2f, cy - full / 2f)
         if (t > 1f) {
             val tl = Offset(cx - t / 2f, cy - t / 2f)
-            drawRoundRect(Brush.linearGradient(listOf(Color(0xFF2B8FF2), Color(0xFF1766C8), Color(0xFF0A3F9E)), tl, Offset(tl.x + t, tl.y + t)),
+            drawRoundRect(Brush.linearGradient(listOf(Color(0xFF27324F), Color(0xFF101828)), tl, Offset(tl.x + t, tl.y + t)),
                 tl, Size(t, t), CornerRadius(t * 0.26f))
         }
+        // The dog (where the system splash left it) wiggles its pigtails, then does a happy hop, tongue out.
         val d = dart.value
-        val box = full * 1.16f
-        if (d == 0f) jelly(Offset(ftl.x - full * 0.08f, ftl.y - full * 0.08f), box, beat.value % 1f, Color.White, Harbor.Violet, bell, bubbles = false)
-        else clipRect(ftl.x, ftl.y, ftl.x + full, ftl.y + full) {
-            // Darts out of the tile, stretching a light trail behind it.
-            val dx = d * full * 1.3f
-            drawRect(Brush.horizontalGradient(listOf(Color.Transparent, Color.White.copy(alpha = .55f)), ftl.x + dx - full * 0.9f, ftl.x + dx),
-                Offset(ftl.x, cy - full * 0.07f), Size(dx, full * 0.14f))
-            withTransform({ translate(dx, 0f) }) {
-                jelly(Offset(ftl.x - full * 0.08f, ftl.y - full * 0.08f), box, beat.value % 1f, Color.White, Harbor.Violet, bell, bubbles = false)
-            }
-        }
+        // Hand-off from the system splash: Android draws the launcher foreground in a 240dp box centred on screen
+        // (the dog is 66% of its 108-unit canvas) – start exactly there, then glide into the tile as it blooms.
+        val splashBox = 240.dp.toPx() * 0.66f * 100f / 108f
+        val k = tile.value.coerceIn(0f, 1f)
+        val box = splashBox + (full * 0.86f - splashBox) * k
+        val dogCy = size.height / 2f + (cy - size.height / 2f) * k
+        val tw = 2f * kotlin.math.PI.toFloat()
+        val hop = kotlin.math.sin(d * kotlin.math.PI.toFloat()) * full * 0.22f
+        dog(Offset(cx - box / 2f, dogCy - box * 0.51f - hop), box, sway = kotlin.math.sin(beat.value * tw), tilt = kotlin.math.sin(d * tw) * 8f,
+            tongue = if (d > 0f) 1f else 0f)
 
         // Wordmark: rises in, then a shine sweeps across it.
         val w = words.value

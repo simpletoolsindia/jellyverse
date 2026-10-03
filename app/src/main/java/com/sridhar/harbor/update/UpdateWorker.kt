@@ -60,7 +60,7 @@ class UpdateWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                 ?: Intent(Intent.ACTION_VIEW, Uri.parse("jellyverse://open/watch"))
             val pi = PendingIntent.getActivity(context, 7, open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             val n = NotificationCompat.Builder(context, CHANNEL)
-                .setSmallIcon(R.drawable.ic_launcher_monochrome).setColor(0xFF1F80E0.toInt())
+                .setSmallIcon(R.drawable.ic_stat_jv).setColor(0xFF1F80E0.toInt())
                 .setContentTitle(L10n.s(R.string.update_notif_title, info.version))
                 .setContentText(L10n.s(R.string.update_notif_body))
                 .setAutoCancel(true).setContentIntent(pi).build()

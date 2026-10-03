@@ -1,0 +1,1 @@
+JellyVerse 2.18.0: a new logo – the Shih Tzu is now the app icon (also themed icons), splash screen, launch animation, loading animations, TV banner and notification icon.

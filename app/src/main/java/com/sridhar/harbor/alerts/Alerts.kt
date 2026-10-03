@@ -64,7 +64,7 @@ object Alerts {
     fun notify(context: Context, channel: String, id: Int, title: String, text: String, deepLink: String,
                actions: List<Pair<String, String>> = emptyList(), picture: android.graphics.Bitmap? = null) {
         val b = NotificationCompat.Builder(context, channel)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome).setColor(0xFF1F80E0.toInt())
+            .setSmallIcon(R.drawable.ic_stat_jv).setColor(0xFF1F80E0.toInt())
             .setLargeIcon(picture ?: com.sridhar.harbor.radio.Avatar.bitmap(context))
             .setContentTitle(title).setContentText(text)
             .setStyle(if (picture != null) NotificationCompat.BigPictureStyle().bigPicture(picture).bigLargeIcon(null as android.graphics.Bitmap?).setSummaryText(text)
