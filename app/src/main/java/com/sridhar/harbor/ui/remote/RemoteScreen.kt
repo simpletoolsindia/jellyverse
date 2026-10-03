@@ -317,19 +317,27 @@ private fun KeyboardBar(client: RemoteClient, field: String?, onClose: () -> Uni
     }
 }
 
+/**
+ * Opens Google's code scanner (no camera permission needed) for a JellyVerse TV's QR code and connects to it.
+ * [onConnected] runs when the code was a TV code; anything else shows "That isn't a JellyVerse TV code".
+ */
+fun scanTvQr(ctx: android.content.Context, client: com.sridhar.harbor.remote.RemoteClient, onConnected: () -> Unit = {}) {
+    val opts = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
+        .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE).build()
+    com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(ctx, opts).startScan()
+        .addOnSuccessListener { code ->
+            if (client.connectFromQr(code.rawValue.orEmpty())) onConnected()
+            else android.widget.Toast.makeText(ctx, com.sridhar.harbor.L10n.s(R.string.qr_bad), android.widget.Toast.LENGTH_SHORT).show()
+        }
+}
+
 /** Opens Google's code scanner (no camera permission needed) and connects to the scanned TV. */
 @Composable
 fun ScanQrButton(modifier: Modifier = Modifier) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val client = LocalContainer.current.remote
-    val bad = stringResource(R.string.qr_bad)
     Row(modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(Harbor.Violet, Harbor.Coral)))
-        .clickable {
-            val opts = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
-                .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE).build()
-            com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(ctx, opts).startScan()
-                .addOnSuccessListener { code -> if (!client.connectFromQr(code.rawValue.orEmpty())) android.widget.Toast.makeText(ctx, bad, android.widget.Toast.LENGTH_SHORT).show() }
-        }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+        .clickable { scanTvQr(ctx, client) }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Rounded.QrCodeScanner, null, tint = Harbor.Fg, modifier = Modifier.size(30.dp))
         Spacer(Modifier.width(14.dp))
         Column {

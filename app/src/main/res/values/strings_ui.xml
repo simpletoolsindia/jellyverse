@@ -1346,4 +1346,15 @@
     <string name="qr_how3">Tap “Scan TV QR code” and point it here</string>
     <string name="qr_tv_music">Music (Navidrome) is set up on your TV too</string>
     <string name="update_on_play">Update on Google Play</string>
+    <string name="dup_server_denied">The server couldn\'t delete the file – Jellyfin needs write access to that movie\'s folder on the server.</string>
+    <string name="scan_queued">Queued – starts after the current scan</string>
+    <string name="scan_starting">Starting scan…</string>
+    <string name="scan_queued_msg">%1$s queued – Jellyfin scans one library at a time</string>
+    <string name="dl_cancel">Cancel download</string>
+    <string name="dl_cancel_title">Cancel download?</string>
+    <string name="dl_cancel_body">It stops and the part downloaded so far is deleted.</string>
+    <string name="dl_keep">Keep downloading</string>
+    <string name="dl_n_items">%1$d downloads</string>
+    <string name="dl_panel_title">DOWNLOADING</string>
+    <string name="dl_open_all">Open downloads</string>
 </resources>

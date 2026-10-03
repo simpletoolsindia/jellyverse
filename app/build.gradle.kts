@@ -20,8 +20,8 @@ android {
         applicationId = "com.sridhar.jellyverse"
         minSdk = 26
         targetSdk = 36
-        versionCode = 46
-        versionName = "2.24.1"
+        versionCode = 47
+        versionName = "2.24.2"
         // Play Store builds (-Pstore) ship without preloaded IPTV directories – "bring your own playlist" per Play policy.
         buildConfigField("boolean", "PRELOAD_IPTV", if (project.hasProperty("store")) "false" else "true")
         // Every build (Play and GitHub) is updated through the Google Play Store – the app never installs APKs itself.

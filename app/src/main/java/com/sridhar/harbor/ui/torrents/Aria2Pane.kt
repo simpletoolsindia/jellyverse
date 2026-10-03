@@ -1,5 +1,8 @@
 package com.sridhar.harbor.ui.torrents
 
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import com.sridhar.harbor.L10n
@@ -282,11 +285,14 @@ private fun Aria2AddSheet(vm: Aria2ViewModel, onDismiss: () -> Unit) {
         }
     }
     ModalBottomSheet(onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Harbor.Surface) {
-        Column(Modifier.padding(horizontal = 20.dp).navigationBarsPadding().padding(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Scrolls (and rises above the keyboard), so a huge magnet link can never push the button off-screen.
+        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()).imePadding().padding(horizontal = 20.dp).navigationBarsPadding().padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.add_to_aria2), style = MaterialTheme.typography.headlineSmall)
             Text(stringResource(R.string.http_s_ftp_magnet_links_one), color = Harbor.TextDim, fontSize = 12.sp)
-            OutlinedTextField(urls, { urls = it }, Modifier.fillMaxWidth(), minLines = 3, shape = RoundedCornerShape(14.dp), label = { Text(stringResource(R.string.links)) },
+            OutlinedTextField(urls, { urls = it }, Modifier.fillMaxWidth(), minLines = 3, maxLines = 5, shape = RoundedCornerShape(14.dp), label = { Text(stringResource(R.string.links)) },
                 trailingIcon = { IconButton({ clipboard.getText()?.text?.let { urls = if (urls.isBlank()) it else urls + "\n" + it } }) { Icon(Icons.Rounded.ContentPaste, stringResource(R.string.paste)) } })
+            com.sridhar.harbor.ui.torrents.MagnetSummary(urls)
             Row(Modifier.fillMaxWidth().glass(RoundedCornerShape(14.dp)).clickable { picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream")) }.padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.FileOpen, null, tint = Harbor.VioletSoft); Spacer(Modifier.width(10.dp)); Text(stringResource(R.string.or_pick_a_torrent_file))

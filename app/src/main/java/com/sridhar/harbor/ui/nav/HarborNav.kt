@@ -252,6 +252,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                 "music" -> nav.switchTab(musicHome())
                 "remote" -> nav.navigate(RemoteRoute)
                 "duplicates" -> nav.navigate(DuplicatesRoute)
+                "downloads" -> nav.navigate(OfflineRoute)
                 "nowplaying" -> { nav.switchTab(musicHome()); showPlayer = true }
                 "recordings" -> { nav.switchTab(musicHome()); container.showRecordings.value = true }
                 else -> when {

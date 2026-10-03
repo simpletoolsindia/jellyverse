@@ -125,6 +125,7 @@ fun TvHome(onOpen: (String) -> Unit) {
     val vm = viewModel { WatchHomeViewModel(container) }
     val extra = viewModel { TvRowsViewModel(container) }
     val liveFavs by container.iptv.favorites.collectAsState()
+    val netOnline by com.sridhar.harbor.net.NetworkMonitor.online.collectAsState()
     val livePlays by container.iptv.plays.collectAsState()
     val liveRows by androidx.compose.runtime.produceState<com.sridhar.harbor.data.iptv.IptvRepository.HomeRows?>(null, liveFavs, livePlays) {
         value = runCatching { container.iptv.homeRows() }.getOrNull()
@@ -266,7 +267,8 @@ fun TvHome(onOpen: (String) -> Unit) {
                             onFocus = { focusTarget = it2 }) { PlayerActivity.start(ctx, it2.id) }
                     }
                 }
-                liveRows?.takeIf { look.shows(com.sridhar.harbor.ui.theme.HomeSection.LiveTv) }?.let { rows ->
+                // Live TV needs the internet: no channel rows while offline.
+                liveRows?.takeIf { look.shows(com.sridhar.harbor.ui.theme.HomeSection.LiveTv) && netOnline }?.let { rows ->
                     val tune = { t: com.sridhar.harbor.data.iptv.IptvRepository.Tuned -> PlayerActivity.startLive(ctx, t.playlist.id, t.channel.id) }
                     listOf(Triple("live-frequent", R.string.home_live_frequent, rows.frequent), Triple("live-favorites", R.string.home_live_favorites, rows.favorites),
                         Triple("live-foryou", R.string.home_live_foryou, rows.forYou)).forEach { (k, title, list) ->

@@ -1346,4 +1346,15 @@
     <string name="qr_how3">“TV QR குறியீட்டை ஸ்கேன் செய்” தட்டி இங்கே காட்டவும்</string>
     <string name="qr_tv_music">இசை (Navidrome) உங்கள் TV யிலும் அமைக்கப்பட்டது</string>
     <string name="update_on_play">Google Play இல் புதுப்பி</string>
+    <string name="dup_server_denied">சர்வர் கோப்பை நீக்க முடியவில்லை – அந்த படக் கோப்புறையில் Jellyfin க்கு எழுதும் அனுமதி தேவை.</string>
+    <string name="scan_queued">வரிசையில் – தற்போதைய ஸ்கேன் முடிந்ததும் தொடங்கும்</string>
+    <string name="scan_starting">ஸ்கேன் தொடங்குகிறது…</string>
+    <string name="scan_queued_msg">%1$s வரிசையில் – Jellyfin ஒரு நேரத்தில் ஒரு நூலகத்தை ஸ்கேன் செய்கிறது</string>
+    <string name="dl_cancel">பதிவிறக்கத்தை ரத்து செய்</string>
+    <string name="dl_cancel_title">பதிவிறக்கத்தை ரத்து செய்யவா?</string>
+    <string name="dl_cancel_body">இது நிறுத்தப்பட்டு இதுவரை பதிவிறக்கியவை நீக்கப்படும்.</string>
+    <string name="dl_keep">தொடர்ந்து பதிவிறக்கு</string>
+    <string name="dl_n_items">%1$d பதிவிறக்கங்கள்</string>
+    <string name="dl_panel_title">பதிவிறக்குகிறது</string>
+    <string name="dl_open_all">பதிவிறக்கங்களைத் திற</string>
 </resources>

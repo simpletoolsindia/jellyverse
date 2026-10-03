@@ -165,11 +165,11 @@ fun DuplicatesScreen(onBack: () -> Unit) {
         AnimatedVisibility(vm.selected.isNotEmpty() && vm.groups != null, Modifier.align(Alignment.BottomCenter)) {
             Row(Modifier.fillMaxWidth().background(Harbor.Surface).navigationBarsPadding().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.dup_selected, vm.selected.size), fontWeight = FontWeight.Bold)
-                    Text(stringResource(R.string.dup_frees, gb(vm.selectedBytes)), color = Harbor.TextDim, fontSize = 12.sp)
+                    Text(stringResource(R.string.dup_selected, vm.selected.size), fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(stringResource(R.string.dup_frees, gb(vm.selectedBytes)), color = Harbor.TextDim, fontSize = 12.sp, maxLines = 1)
                 }
                 if (vm.deleting) CircularProgressIndicator(Modifier.size(28.dp), color = Harbor.Rose, strokeWidth = 3.dp)
-                else GradientButton(stringResource(R.string.dup_delete), { confirm = true }, icon = Icons.Rounded.Delete)
+                else GradientButton(stringResource(R.string.dup_delete), { confirm = true }, Modifier.width(150.dp), icon = Icons.Rounded.Delete)
             }
         }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(bottom = 96.dp))

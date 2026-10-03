@@ -1,5 +1,6 @@
 package com.sridhar.harbor.ui.watch
 
+import androidx.compose.material.icons.rounded.QrCodeScanner
 import com.sridhar.harbor.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -180,6 +181,7 @@ fun WatchHomeScreen(
     val play: (BaseItem) -> Unit = { PlayerActivity.start(ctx, it.id) }
     // Live TV rows (frequently watched / favourites / for you) – rebuilt when either changes.
     val liveFavs by container.iptv.favorites.collectAsState()
+    val netOnline by com.sridhar.harbor.net.NetworkMonitor.online.collectAsState()
     val livePlays by container.iptv.plays.collectAsState()
     val liveRows by androidx.compose.runtime.produceState<com.sridhar.harbor.data.iptv.IptvRepository.HomeRows?>(null, liveFavs, livePlays) {
         value = runCatching { container.iptv.homeRows() }.getOrNull()
@@ -294,7 +296,8 @@ fun WatchHomeScreen(
                 }
             }
             if (look.shows(com.sridhar.harbor.ui.theme.HomeSection.Top10)) item(key = "top10") { Top10Row(vm.top10, onItem) }
-            liveRows?.takeIf { look.shows(com.sridhar.harbor.ui.theme.HomeSection.LiveTv) }?.let { rows ->
+            // Live TV needs the internet: no channel rows while offline.
+            liveRows?.takeIf { look.shows(com.sridhar.harbor.ui.theme.HomeSection.LiveTv) && netOnline && !unreachable }?.let { rows ->
                 val livePlay = { t: com.sridhar.harbor.data.iptv.IptvRepository.Tuned -> com.sridhar.harbor.ui.player.PlayerActivity.startLive(ctx, t.playlist.id, t.channel.id) }
                 if (rows.frequent.isNotEmpty()) item(key = "live-frequent") {
                     Rail(stringResource(R.string.home_live_frequent), rows.frequent, key = { it.channel.id }) { t ->
@@ -350,6 +353,13 @@ fun WatchHomeScreen(
             Text(stringResource(R.string.jellyverse), style = MaterialTheme.typography.headlineSmall.copy(brush = Harbor.accentH), fontWeight = FontWeight.Black)
             Spacer(Modifier.weight(1f))
             IconButton(onRemote, Modifier.glass(RoundedCornerShape(50))) { Icon(Icons.Rounded.SettingsRemote, stringResource(R.string.remote_title), tint = Harbor.Fg) }
+            Spacer(Modifier.width(8.dp))
+            // Scan the TV's QR straight away – pairs the TV and opens the remote (where TV setup progress shows).
+            val qrCtx = androidx.compose.ui.platform.LocalContext.current
+            val qrClient = com.sridhar.harbor.ui.components.LocalContainer.current.remote
+            IconButton({ com.sridhar.harbor.ui.remote.scanTvQr(qrCtx, qrClient, onConnected = onRemote) }, Modifier.glass(RoundedCornerShape(50))) {
+                Icon(Icons.Rounded.QrCodeScanner, stringResource(R.string.qr_scan), tint = Harbor.Fg)
+            }
             Spacer(Modifier.width(8.dp))
             IconButton(onSearch, Modifier.glass(RoundedCornerShape(50))) { Icon(Icons.Rounded.Search, stringResource(R.string.search), tint = Harbor.Fg) }
         }

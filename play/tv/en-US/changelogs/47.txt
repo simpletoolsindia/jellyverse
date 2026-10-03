@@ -1,0 +1,1 @@
+2.24.2: Downloads show as a small animated download button you can tap to see progress or cancel; cancelling from the notification now really cancels. Radio next/previous switch stations everywhere. Scan TV QR codes straight from Home. Duplicate delete and aria2 links fixed. Library scans show when they're queued.

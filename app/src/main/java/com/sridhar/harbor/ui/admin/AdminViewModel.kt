@@ -76,7 +76,7 @@ class AdminViewModel(private val repo: JellyfinAdminRepository, val selfUserId: 
             AdminTab.Overview -> { load(info, quiet) { repo.systemInfo() }; load(counts, quiet) { repo.counts() }; load(sessions, quiet) { repo.sessions() }; load(users, true) { repo.users() } }
             AdminTab.Playing -> load(sessions, quiet) { repo.sessions() }
             AdminTab.Users -> load(users, quiet) { repo.users() }
-            AdminTab.Libraries -> load(libraries, quiet) { repo.libraries() }
+            AdminTab.Libraries -> load(libraries, quiet) { repo.libraries().also(::settleQueued) }
             AdminTab.Tasks -> load(tasks, quiet) { repo.tasks() }
             AdminTab.Activity -> load(activity, quiet) { repo.activity().items }
             AdminTab.Devices -> load(devices, quiet) { repo.devices() }
@@ -119,8 +119,30 @@ class AdminViewModel(private val repo: JellyfinAdminRepository, val selfUserId: 
     }
 
     // ---- libraries ----
-    fun scanAll() = act(L10n.s(R.string.scanning_all_libraries)) { repo.scanAll() }
-    fun scan(l: LibraryFolder) = act(L10n.s(R.string.scanning_1_s_2, l.name)) { repo.scan(l) }
+    /**
+     * Libraries asked to scan that Jellyfin hasn't started yet. It scans one library at a time and reports no
+     * progress for the waiting ones, so without this a second scan looked like it did nothing. itemId → asked at.
+     */
+    val queued = androidx.compose.runtime.mutableStateMapOf<String, Long>()
+
+    /** Drops a library from [queued] once its scan is running (it shows real progress then), or once nothing is
+     *  scanning any more (the queue has drained – quick scans can finish between two polls). */
+    private fun settleQueued(libs: List<LibraryFolder>) {
+        val now = System.currentTimeMillis()
+        val anyActive = libs.any { it.refreshStatus == "Active" }
+        libs.filter { it.refreshStatus == "Active" }.forEach { queued.remove(it.itemId) }
+        queued.entries.removeAll { (_, at) -> (!anyActive && now - at > 6_000) || now - at > 30 * 60_000L }
+    }
+
+    fun scanAll() = act(L10n.s(R.string.scanning_all_libraries)) {
+        repo.scanAll(); libraries.data.orEmpty().forEach { queued[it.itemId] = System.currentTimeMillis() }
+    }
+    fun scan(l: LibraryFolder) {
+        val busy = libraries.data.orEmpty().any { it.refreshStatus == "Active" && it.itemId != l.itemId }
+        act(if (busy) L10n.s(R.string.scan_queued_msg, l.name) else L10n.s(R.string.scanning_1_s_2, l.name)) {
+            repo.scan(l); queued[l.itemId] = System.currentTimeMillis()
+        }
+    }
     fun addLibrary(name: String, type: LibraryType, path: String) = act(L10n.s(R.string.library_1_s_added, name)) { repo.addLibrary(name, type, path) }
     fun removeLibrary(l: LibraryFolder) = act(L10n.s(R.string.s_1_s_removed_files_are_untouched, l.name)) { repo.removeLibrary(l.name) }
 

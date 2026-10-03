@@ -195,7 +195,7 @@ fun AdminDashboardScreen(onBack: () -> Unit, onUser: (id: String, name: String) 
                             }
                         }
                         items(list, key = { it.name }) { l ->
-                            LibraryRow(l, onScan = { vm.scan(l) }, onRemove = { confirm = L10n.s(R.string.remove_library_1_s_media_files, l.name) to { vm.removeLibrary(l) } })
+                            LibraryRow(l, queued = l.itemId in vm.queued, onScan = { vm.scan(l) }, onRemove = { confirm = L10n.s(R.string.remove_library_1_s_media_files, l.name) to { vm.removeLibrary(l) } })
                         }
                     }
                     if (add) AddLibraryDialog(onDismiss = { add = false }) { n, t, p -> vm.addLibrary(n, t, p); add = false }
@@ -491,7 +491,7 @@ internal fun AddUserDialog(validate: (String, String) -> String?, onDismiss: () 
 // ------------------------------------------------------------------ libraries
 
 @Composable
-internal fun LibraryRow(l: LibraryFolder, onScan: () -> Unit, onRemove: () -> Unit) {
+internal fun LibraryRow(l: LibraryFolder, queued: Boolean = false, onScan: () -> Unit, onRemove: () -> Unit) {
     Column(Modifier.fillMaxWidth().glass().padding(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.FolderOpen, null, tint = Harbor.Violet)
@@ -510,6 +510,15 @@ internal fun LibraryRow(l: LibraryFolder, onScan: () -> Unit, onRemove: () -> Un
             Row(verticalAlignment = Alignment.CenterVertically) {
                 com.sridhar.harbor.ui.components.ProgressRing((p / 100).toFloat(), size = 36.dp, stroke = 3.5.dp)
                 Text("  " + stringResource(R.string.scanning_1_s, p.toInt()), style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)
+            }
+        }
+        else if (queued || l.refreshStatus == "Active") {
+            // Asked to scan but Jellyfin is still on another library (or hasn't reported progress yet).
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                com.sridhar.harbor.ui.components.ProgressRing(null, size = 36.dp, stroke = 3.5.dp)
+                Text("  " + stringResource(if (l.refreshStatus == "Active") R.string.scan_starting else R.string.scan_queued),
+                    style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)
             }
         }
     }

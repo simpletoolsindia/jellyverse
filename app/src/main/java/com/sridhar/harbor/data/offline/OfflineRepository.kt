@@ -41,6 +41,8 @@ data class OfflineProgress(val status: Int, val downloaded: Long, val total: Lon
     val failed get() = status == DownloadManager.STATUS_FAILED
     /** Interrupted (app closed / network lost): resumes from where it stopped. */
     val paused get() = status == DownloadManager.STATUS_PAUSED
+    /** Actually transferring (or waiting its turn) right now. */
+    val active get() = status == DownloadManager.STATUS_RUNNING || status == DownloadManager.STATUS_PENDING
 }
 
 /** Downloads original media files from Jellyfin for offline playback via the system DownloadManager. */
@@ -139,6 +141,15 @@ class OfflineRepository(
                 File(e.filePath), mapOf("Authorization" to jellyfin.authHeader(cfg)))
         }
     }
+
+    /** Cancel from the notification (by downloader key): stops it and removes the half-downloaded file. */
+    suspend fun cancelByKey(downloadKey: String): Boolean {
+        val entry = entries.first().firstOrNull { key(it.itemId) == downloadKey } ?: return false
+        remove(entry); return true
+    }
+
+    /** Cancel every download that is running or waiting (the "Downloading…" banner's Cancel). */
+    suspend fun cancelActive() = entries.first().filter { progress(it).active }.forEach { remove(it) }
 
     suspend fun remove(entry: OfflineEntry) = withContext(Dispatchers.IO) {
         if (entry.downloadId < 0) downloader.cancel(key(entry.itemId), File(entry.filePath))

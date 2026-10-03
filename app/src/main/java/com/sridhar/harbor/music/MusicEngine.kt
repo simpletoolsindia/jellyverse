@@ -128,6 +128,8 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
 
     /** A radio station won't play: ask for its current link (the directory may have fixed it). Set by AppContainer. */
     var radioRelocate: (suspend (String) -> com.sridhar.harbor.data.music.RadioStation?)? = null
+    /** The saved radio stations (set by AppContainer): ⏮ / ⏭ on a live station move through this list. */
+    var radioStations: (() -> List<com.sridhar.harbor.data.music.RadioStation>)? = null
     /** Stations already re-pulled after an error this session – one retry each, never a loop. */
     private val radioRetried = mutableSetOf<String>()
     private var controller: MediaController? = null
@@ -196,6 +198,11 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
      */
     fun play(songs: List<Song>, startIndex: Int = 0, shuffle: Boolean = false, source: String? = null) {
         if (songs.isEmpty()) return
+        // One radio station (station grid, widget, notification link, assistant): play it inside the whole station
+        // list, so ⏮ / ⏭ – in the app, notification, headset or car – flip between stations.
+        val one = songs.singleOrNull()?.takeIf { it.isLive && it.id.startsWith("radio:") }
+        val all = one?.let { s -> radioStations?.invoke()?.map { it.toSong() }?.takeIf { l -> l.size > 1 && l.any { it.id == s.id } } }
+        if (all != null && one != null) return play(all, all.indexOfFirst { it.id == one.id }, false, source)
         val start = (if (shuffle && startIndex == 0) songs.indices.random() else startIndex).coerceIn(songs.indices)
         playJob?.cancel()
         radioRetried.clear()   // a fresh tap may re-pull a station's link again
@@ -204,6 +211,11 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
         playJob = scope.launch {
             ensureService()
             player.shuffleModeEnabled = shuffle
+            // A station list loops (⏭ on the last station → the first), in the app and on the notification / headset /
+            // car alike; songs keep the user's repeat setting.
+            val radioQueue = songs.all { it.isLive && it.id.startsWith("radio:") }
+            player.repeatMode = if (radioQueue) Player.REPEAT_MODE_ALL else when (_state.value.repeat) {
+                RepeatMode.Off -> Player.REPEAT_MODE_OFF; RepeatMode.All -> Player.REPEAT_MODE_ALL; RepeatMode.One -> Player.REPEAT_MODE_ONE }
             val first = kotlinx.coroutines.withContext(Dispatchers.Default) { toItem(songs[start]) }
             player.setMediaItem(first)
             player.prepare(); player.play()
@@ -251,9 +263,44 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
     // ---------------- transport ----------------
 
     fun toggle() { if (player.isPlaying) player.pause() else { ensureService(); if (player.playbackState == Player.STATE_IDLE) player.prepare(); player.play() } }
-    fun next() { if (player.hasNextMediaItem()) player.seekToNextMediaItem() }
-    /** Like every music app: restart the song if we're past 3 s, otherwise go back. */
-    fun previous() { if (player.currentPosition > 3_000 || !player.hasPreviousMediaItem()) player.seekTo(0) else player.seekToPreviousMediaItem() }
+    private val onRadio get() = _state.value.current?.let { it.isLive && it.id.startsWith("radio:") } == true
+
+    fun next() {
+        if (player.hasNextMediaItem()) player.seekToNextMediaItem()
+        else if (onRadio && player.mediaItemCount > 1) player.seekTo(0, C.TIME_UNSET)   // stations wrap around
+        else return
+        player.play()
+    }
+    /** Like every music app: restart the song if we're past 3 s, otherwise go back. A live station has no "start":
+     *  ⏮ always tunes the previous station (wrapping to the last). */
+    fun previous() {
+        if (onRadio) {
+            if (player.hasPreviousMediaItem()) player.seekToPreviousMediaItem()
+            else if (player.mediaItemCount > 1) player.seekTo(player.mediaItemCount - 1, C.TIME_UNSET)
+            player.play(); return
+        }
+        if (player.currentPosition > 3_000 || !player.hasPreviousMediaItem()) player.seekTo(0) else player.seekToPreviousMediaItem()
+    }
+
+    /**
+     * The player the media session (notification, lock screen, headset, Android Auto) drives: ⏮ / ⏭ go through
+     * [previous] / [next], so radio stations switch there too instead of "restarting" a live stream.
+     */
+    val sessionPlayer: Player by lazy {
+        object : androidx.media3.common.ForwardingPlayer(player) {
+            override fun seekToNext() = next()
+            override fun seekToNextMediaItem() = next()
+            override fun seekToPrevious() = previous()
+            override fun seekToPreviousMediaItem() = previous()
+            // Stations wrap around, so on live radio there is always a next / previous one (the session asks first).
+            override fun hasNextMediaItem() = (onRadio && player.mediaItemCount > 1) || super.hasNextMediaItem()
+            override fun hasPreviousMediaItem() = (onRadio && player.mediaItemCount > 1) || super.hasPreviousMediaItem()
+            override fun getAvailableCommands(): Player.Commands = super.getAvailableCommands().buildUpon()
+                .addAll(Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM).build()
+            override fun isCommandAvailable(command: Int) = command in listOf(Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_PREVIOUS,
+                Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM) || super.isCommandAvailable(command)
+        }
+    }
     fun seekTo(ms: Long) = player.seekTo(ms)
     fun setShuffle(on: Boolean) { player.shuffleModeEnabled = on }
     fun cycleRepeat() {

@@ -1,5 +1,7 @@
 package com.sridhar.harbor.ui.torrents
 
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import com.sridhar.harbor.L10n
@@ -625,7 +627,9 @@ private fun AddTorrentSheet(vm: TorrentsViewModel, incoming: IncomingTorrent?, o
     }
 
     ModalBottomSheet(onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Harbor.Surface) {
-        Column(Modifier.padding(horizontal = 20.dp).navigationBarsPadding().padding(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Scrolls (and rises above the keyboard), so a huge magnet link can never push the button off-screen.
+        Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()).imePadding().padding(horizontal = 20.dp).navigationBarsPadding().padding(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.add_torrent), style = MaterialTheme.typography.headlineSmall)
             OutlinedTextField(
                 urls, { urls = it }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), minLines = 2, maxLines = 5,
@@ -636,6 +640,7 @@ private fun AddTorrentSheet(vm: TorrentsViewModel, incoming: IncomingTorrent?, o
                     }
                 },
             )
+            MagnetSummary(urls)
             Row(Modifier.fillMaxWidth().glass(RoundedCornerShape(14.dp)).clickable { picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream")) }
                 .padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.FileOpen, null, tint = Harbor.VioletSoft); Spacer(Modifier.width(10.dp))
@@ -659,6 +664,27 @@ private fun AddTorrentSheet(vm: TorrentsViewModel, incoming: IncomingTorrent?, o
                 },
                 modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Add, enabled = !busy && (urls.isNotBlank() || file != null),
             )
+        }
+    }
+}
+
+
+/** "Baththa (2026) … · 2.8 GB" for each pasted magnet link – long links are unreadable in the box. */
+@Composable
+internal fun MagnetSummary(text: String) {
+    val items = remember(text) {
+        text.lines().map { it.trim() }.filter { it.startsWith("magnet:", true) }.map { m ->
+            val q = m.substringAfter('?').split('&').mapNotNull { kv -> kv.split('=', limit = 2).takeIf { it.size == 2 } }
+            val name = q.firstOrNull { it[0] == "dn" }?.get(1)?.let { runCatching { java.net.URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) }
+            val size = q.firstOrNull { it[0] == "xl" }?.get(1)?.toLongOrNull()
+            (name ?: "Magnet link") + (size?.let { " · " + formatBytes(it) } ?: "")
+        }
+    }
+    items.take(5).forEach { line ->
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Harbor.SurfaceHigh).padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.CheckCircle, null, tint = Harbor.Mint, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(8.dp))
+            Text(line, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }

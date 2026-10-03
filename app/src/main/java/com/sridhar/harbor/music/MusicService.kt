@@ -47,7 +47,7 @@ class MusicService : MediaLibraryService() {
             Intent(Intent.ACTION_VIEW, android.net.Uri.parse("jellyverse://open/nowplaying")).setPackage(packageName),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        session = MediaLibrarySession.Builder(this, container.musicEngine.player, LibraryCallback())
+        session = MediaLibrarySession.Builder(this, container.musicEngine.sessionPlayer, LibraryCallback())
             .setSessionActivity(open).build()
         // Like + shuffle buttons in the notification / lock screen, kept in sync with the app.
         scope.launch {

@@ -301,6 +301,8 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
         if (!r.isSuccessful) throw IllegalStateException(when (r.code()) {
             401, 403 -> com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.dup_no_permission)
             404 -> com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.dup_gone)
+            // Jellyfin answers 500 when the OS refuses (its user can't write to the movie's folder).
+            500 -> com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.dup_server_denied)
             else -> "HTTP ${r.code()}"
         })
     }

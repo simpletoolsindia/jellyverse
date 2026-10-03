@@ -195,6 +195,17 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit, o
     val vm = viewModel(key = "item-$id") { ItemDetailViewModel(container, id) }
     val jf = container.jellyfin
     val offline by vm.offline.collectAsState(emptyList())
+    // Tapping a download in progress offers to cancel it.
+    var cancelDl by remember { mutableStateOf<String?>(null) }
+    val cancelScope = androidx.compose.runtime.rememberCoroutineScope()
+    cancelDl?.let { cid ->
+        androidx.compose.material3.AlertDialog(onDismissRequest = { cancelDl = null }, containerColor = Harbor.Surface,
+            title = { Text(stringResource(R.string.dl_cancel_title)) }, text = { Text(stringResource(R.string.dl_cancel_body)) },
+            confirmButton = { androidx.compose.material3.TextButton({ cancelDl = null
+                cancelScope.launch(com.sridhar.harbor.CrashGuard) { container.offline.entriesNow().firstOrNull { it.itemId == cid }?.let { container.offline.remove(it) } } }) {
+                Text(stringResource(R.string.dl_cancel), color = Harbor.Rose, fontWeight = FontWeight.Bold) } },
+            dismissButton = { androidx.compose.material3.TextButton({ cancelDl = null }) { Text(stringResource(R.string.dl_keep)) } })
+    }
     val parental by container.parental.state.collectAsState()
     val ctxLock = androidx.compose.ui.platform.LocalContext.current
     var lockTarget by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
@@ -332,7 +343,7 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit, o
                             }
                             item.id in downloadedIds -> ActionIcon(Icons.Rounded.DownloadDone, stringResource(R.string.downloaded), Harbor.Mint) { toast(L10n.s(R.string.already_saved_offline)) }
                             item.id in downloadingIds -> ActionIcon(Icons.Rounded.Downloading, container.offline.entriesNow().firstOrNull { it.itemId == item.id }
-                                ?.let { "${(container.offline.progress(it).fraction * 100).toInt()}%" } ?: stringResource(R.string.downloading_short), Harbor.Sky) { toast(L10n.s(R.string.dl_in_progress)) }
+                                ?.let { "${(container.offline.progress(it).fraction * 100).toInt()}%" } ?: stringResource(R.string.downloading_short), Harbor.Sky) { cancelDl = item.id }
                             else -> ActionIcon(Icons.Rounded.Download, stringResource(R.string.download)) { vm.download(listOf(item), toast) }
                         }
                     }

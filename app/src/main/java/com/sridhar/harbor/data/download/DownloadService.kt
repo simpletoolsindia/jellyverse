@@ -58,7 +58,12 @@ class DownloadService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_CANCEL) intent.getStringExtra("key")?.let { HarborApp.instance?.container?.downloader?.cancel(it, discard = false) }
+        if (intent?.action == ACTION_CANCEL) intent.getStringExtra("key")?.let { key ->
+            val c = HarborApp.instance?.container ?: return@let
+            // A film / episode: really cancel – drop it from Downloads and delete the partial file (it used to stay
+            // as a "paused" download that the app kept showing at 0 %). Anything else: just stop it.
+            scope.launch { if (!runCatching { c.offline.cancelByKey(key) }.getOrDefault(false)) c.downloader.cancel(key, discard = false) }
+        }
         return START_NOT_STICKY
     }
 
@@ -100,7 +105,6 @@ class DownloadService : Service() {
             .setSmallIcon(android.R.drawable.stat_sys_download).setContentTitle(s.title).setContentText(text)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(view()).setCustomBigContentView(view())
             .setColor(0xFF1F80E0.toInt())
-            .setProgress(1000, (s.fraction * 1000).toInt(), s.total <= 0)
             .setOngoing(true).setOnlyAlertOnce(true).setSilent(true).setGroup("jv_dl")
             .addAction(0, L10n.s(R.string.cancel), cancel).build())
     }
