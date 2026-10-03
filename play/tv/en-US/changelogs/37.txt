@@ -1,0 +1,1 @@
+JellyVerse 2.20.2: tap any service in Settings (Jellyfin, Navidrome, Jellyseerr, qBittorrent, aria2, Sonarr/Radarr, SSH) to set it up or fix it directly. Jellyseerr sign-in now has its own password field. Setup page shows all options at once.

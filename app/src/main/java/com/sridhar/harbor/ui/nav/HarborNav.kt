@@ -116,6 +116,8 @@ import com.sridhar.harbor.ui.watch.WatchHomeScreen
 import kotlinx.serialization.Serializable
 
 @Serializable object SetupRoute
+/** Edit one service from Settings (Svc name: Movies, Music, Requests, Downloads, Library, Homelab). */
+@Serializable data class ServiceSetupRoute(val service: String)
 @Serializable object WatchRoute
 @Serializable object DiscoverRoute
 @Serializable object RequestsRoute
@@ -312,6 +314,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                     nav.navigate(first) { popUpTo(0) { inclusive = true } }
                 })
             }}
+            composable<ServiceSetupRoute> { Readable { SetupScreen(onDone = { nav.popBackStack() }, only = it.toRoute<ServiceSetupRoute>().service) } }
             composable<WatchRoute> {
                 WatchHomeScreen(
                     onLive = { nav.navigate(LiveRoute) },
@@ -332,6 +335,7 @@ private fun HarborNavContent(initial: ServerConfig) {
             composable<TorrentsRoute> { Readable { TorrentsScreen(onSetup = { nav.navigate(SetupRoute) }) }}
             composable<ProfileRoute> { Readable {
                 ProfileScreen(
+                    onService = { svc -> nav.navigate(ServiceSetupRoute(svc)) },
                     onDoctor = { nav.navigate(DoctorRoute()) },
                     onAssistant = { nav.navigate(AssistantRoute) },
                     onTerminal = { nav.navigate(HostsRoute) },

@@ -66,7 +66,7 @@ import com.sridhar.harbor.ui.theme.Harbor
 import kotlinx.coroutines.launch
 
 @Composable
-fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () -> Unit, onSetup: () -> Unit, onUsers: () -> Unit, onOffline: () -> Unit, onAdmin: () -> Unit = {}, onRemote: () -> Unit = {}) {
+fun ProfileScreen(onService: (String) -> Unit = {}, onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () -> Unit, onSetup: () -> Unit, onUsers: () -> Unit, onOffline: () -> Unit, onAdmin: () -> Unit = {}, onRemote: () -> Unit = {}) {
     val container = LocalContainer.current
     val cfg = rememberConfig()
     val scope = rememberCoroutineScope()
@@ -103,13 +103,16 @@ fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () 
         Spacer(Modifier.height(24.dp))
         Text(stringResource(R.string.services), style = MaterialTheme.typography.labelSmall, color = Harbor.TextDim)
         Spacer(Modifier.height(8.dp))
-        ServiceRow(stringResource(R.string.jellyfin), cfg.jellyfinUrl, cfg.jellyfinReady, if (cfg.jellyfinReady) stringResource(R.string.signed_in) else null, Harbor.Violet)
-        ServiceRow(stringResource(R.string.qbittorrent), cfg.qbitUrl, cfg.qbitReady && qbitVersion != null, qbitVersion, Harbor.Sky)
-        ServiceRow(stringResource(R.string.jellyseerr), cfg.seerrUrl, cfg.seerrReady && seerrUser != null, seerrUser?.let { stringResource(R.string.as_1_s, it) }, Harbor.Coral)
-        ServiceRow(stringResource(R.string.sonarr), cfg.sonarrUrl, cfg.sonarrReady, if (cfg.sonarrReady) stringResource(R.string.api_key) else null, Harbor.Sky)
-        ServiceRow(stringResource(R.string.radarr), cfg.radarrUrl, cfg.radarrReady, if (cfg.radarrReady) stringResource(R.string.api_key) else null, Harbor.Amber)
+        // Tap a service to set it up or change it (address, sign-in) – no need to go through the whole setup again.
+        ServiceRow(stringResource(R.string.jellyfin), cfg.jellyfinUrl, cfg.jellyfinReady, if (cfg.jellyfinReady) stringResource(R.string.signed_in) else null, Harbor.Violet) { onService("Movies") }
+        ServiceRow("Navidrome", cfg.navidromeUrl, cfg.navidromeReady, if (cfg.navidromeReady) stringResource(R.string.signed_in) else null, Harbor.Coral) { onService("Music") }
+        ServiceRow(stringResource(R.string.jellyseerr), cfg.seerrUrl, cfg.seerrReady && seerrUser != null, seerrUser?.let { stringResource(R.string.as_1_s, it) }, Harbor.Coral) { onService("Requests") }
+        ServiceRow(stringResource(R.string.qbittorrent), cfg.qbitUrl, cfg.qbitReady && qbitVersion != null, qbitVersion, Harbor.Sky) { onService("Downloads") }
+        ServiceRow("aria2", cfg.aria2Url, cfg.aria2Ready, if (cfg.aria2Ready) stringResource(R.string.configured) else null, Harbor.Sky) { onService("Downloads") }
+        ServiceRow(stringResource(R.string.sonarr), cfg.sonarrUrl, cfg.sonarrReady, if (cfg.sonarrReady) stringResource(R.string.api_key) else null, Harbor.Sky) { onService("Library") }
+        ServiceRow(stringResource(R.string.radarr), cfg.radarrUrl, cfg.radarrReady, if (cfg.radarrReady) stringResource(R.string.api_key) else null, Harbor.Amber) { onService("Library") }
         val ssh = container.ssh.primary
-        ServiceRow("SSH", ssh?.let { "${it.user}@${it.host}:${it.port}" }.orEmpty(), ssh != null, ssh?.name, Harbor.Mint)
+        ServiceRow("SSH", ssh?.let { "${it.user}@${it.host}:${it.port}" }.orEmpty(), ssh != null, ssh?.name, Harbor.Mint) { onService("Homelab") }
 
         Spacer(Modifier.height(16.dp))
         com.sridhar.harbor.ui.ai.ModelCard()
@@ -221,8 +224,8 @@ private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onChang
 }
 
 @Composable
-private fun ServiceRow(name: String, url: String, ok: Boolean, detail: String?, tint: Color) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp)).background(Harbor.Surface).padding(14.dp),
+private fun ServiceRow(name: String, url: String, ok: Boolean, detail: String?, tint: Color, onClick: () -> Unit = {}) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp)).background(Harbor.Surface).clickable(onClick = onClick).padding(14.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(10.dp).clip(CircleShape).background(if (ok) Harbor.Mint else if (url.isBlank()) Harbor.TextDim.copy(alpha = .4f) else Harbor.Rose))
         Spacer(Modifier.width(12.dp))
@@ -230,7 +233,8 @@ private fun ServiceRow(name: String, url: String, ok: Boolean, detail: String?, 
             Text(name, fontWeight = FontWeight.SemiBold)
             Text(url.ifBlank { stringResource(R.string.not_configured) }, color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
         }
-        detail?.let { Text(it, color = tint, style = MaterialTheme.typography.bodySmall) }
+        Text(detail ?: if (url.isBlank()) stringResource(R.string.setup_set_up) else stringResource(R.string.setup_fix), color = if (detail != null) tint else Harbor.VioletSoft, style = MaterialTheme.typography.bodySmall)
+        Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Harbor.TextDim)
     }
 }
 

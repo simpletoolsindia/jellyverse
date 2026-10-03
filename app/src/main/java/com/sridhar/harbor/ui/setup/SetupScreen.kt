@@ -1,4 +1,5 @@
 package com.sridhar.harbor.ui.setup
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 
 import androidx.compose.material.icons.rounded.Radio as RadioIconDef
 
@@ -230,7 +231,7 @@ class SetupViewModel(private val c: AppContainer) : ViewModel() {
 }
 
 /** What the user wants JellyVerse for – each choice adds one setup step. */
-private enum class Svc(val icon: ImageVector, val title: Int, val sub: Int, val tint: () -> Color) {
+internal enum class Svc(val icon: ImageVector, val title: Int, val sub: Int, val tint: () -> Color) {
     Movies(Icons.Rounded.PlayCircle, R.string.setup_svc_movies, R.string.setup_svc_movies_sub, { Harbor.Violet }),
     Music(Icons.Rounded.MusicNote, R.string.setup_svc_music, R.string.setup_svc_music_sub, { Harbor.Coral }),
     Requests(Icons.Rounded.Inbox, R.string.setup_svc_requests, R.string.setup_svc_requests_sub, { Harbor.Amber }),
@@ -254,9 +255,12 @@ private fun SetupViewModel.stateOf(s: Svc): ConnState = when (s) {
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun SetupScreen(onDone: () -> Unit) {
+fun SetupScreen(onDone: () -> Unit, only: String? = null) {
     val container = LocalContainer.current
     val vm = viewModel { SetupViewModel(container) }
+    // Opened from a service row in Settings: just that one step, then back.
+    val single = only?.let { n -> Svc.entries.firstOrNull { it.name == n } }
+    if (single != null) { SingleServiceSetup(single, vm, onDone); return }
     // Chosen services (already-connected ones start ticked; Movies is the usual first pick).
     var chosen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(listOf(Svc.Movies.name)) }
     // Re-running setup from Settings: services that are already connected get ticked too (never un-ticks a choice).
@@ -304,7 +308,7 @@ fun SetupScreen(onDone: () -> Unit) {
                 when (step) {
                     0 -> {
                         GradientButton(stringResource(if (services.isEmpty()) R.string.setup_continue_radio else R.string.setup_lets_go), onClick = { go(1) }, modifier = Modifier.fillMaxWidth())
-                        androidx.compose.material3.TextButton({ container.radioOnly = true; onDone() }, Modifier.fillMaxWidth()) {
+                        if (!vm.anyConnected) androidx.compose.material3.TextButton({ container.radioOnly = true; onDone() }, Modifier.fillMaxWidth()) {
                             Icon(Icons.Rounded.RadioIconDef, null, tint = Harbor.TextDim); Spacer(Modifier.width(8.dp))
                             Text(stringResource(R.string.setup_radio_only), color = Harbor.TextDim)
                         }
@@ -314,7 +318,9 @@ fun SetupScreen(onDone: () -> Unit) {
                         val svc = services[step - 1]
                         val ok = vm.stateOf(svc) is ConnState.Ok
                         // Connected → move on by itself after a beat.
-                        androidx.compose.runtime.LaunchedEffect(ok, step) { if (ok) { kotlinx.coroutines.delay(1100); if (vm.stateOf(svc) is ConnState.Ok && step == services.indexOf(svc) + 1) go(step + 1) } }
+                        // Moves on by itself only when you just connected here – an already-connected service stays open to edit.
+                        val okOnEntry = remember(step) { ok }
+                        androidx.compose.runtime.LaunchedEffect(ok, step) { if (ok && !okOnEntry && only == null) { kotlinx.coroutines.delay(1100); if (vm.stateOf(svc) is ConnState.Ok && step == services.indexOf(svc) + 1) go(step + 1) } }
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             androidx.compose.material3.TextButton({ go(step - 1) }) { Text(stringResource(R.string.setup_back), color = Harbor.TextDim) }
                             Spacer(Modifier.weight(1f))
@@ -328,17 +334,35 @@ fun SetupScreen(onDone: () -> Unit) {
     }
 }
 
+/** Settings → tap a service: edit just that service (address, sign-in) and come back. */
+@Composable
+private fun SingleServiceSetup(s: Svc, vm: SetupViewModel, onDone: () -> Unit) {
+    androidx.activity.compose.BackHandler(onBack = onDone)
+    Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().imePadding().navigationBarsPadding()) {
+            Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onDone) { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.setup_back)) }
+            }
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ServiceStep(s, vm)
+            }
+            GradientButton(stringResource(R.string.setup_done_btn), onClick = onDone, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp))
+        }
+    }
+}
+
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.WelcomeStep(chosen: List<String>, onToggle: (String) -> Unit) {
-    Spacer(Modifier.height(20.dp))
-    Box(Modifier.fillMaxWidth(), Alignment.Center) { com.sridhar.harbor.ui.ai.JellyBuddy(120.dp) }
-    Text(stringResource(R.string.setup_hi), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Black,
+    // Compact header so the service cards are visible without scrolling, even with large text / display size.
+    Spacer(Modifier.height(8.dp))
+    Box(Modifier.fillMaxWidth(), Alignment.Center) { com.sridhar.harbor.ui.ai.JellyBuddy(76.dp) }
+    Text(stringResource(R.string.setup_hi), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black,
         modifier = Modifier.align(Alignment.CenterHorizontally), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-    Text(stringResource(R.string.setup_hi_sub), color = Harbor.TextDim, style = MaterialTheme.typography.bodyLarge,
+    Text(stringResource(R.string.setup_hi_sub), color = Harbor.TextDim, style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.align(Alignment.CenterHorizontally), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     Box(Modifier.fillMaxWidth(), Alignment.Center) { com.sridhar.harbor.ui.components.LanguagePicker(Modifier, showTitle = false) }
-    Text(stringResource(R.string.setup_what_use), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+    Text(stringResource(R.string.setup_what_use), style = MaterialTheme.typography.titleMedium)
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
         val w = (maxWidth - 10.dp) / 2 - 1.dp
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -417,7 +441,12 @@ private fun ServiceStep(s: Svc, vm: SetupViewModel) {
                 SegmentedButton(vm.jsUseJellyfin, { vm.jsUseJellyfin = true }, SegmentedButtonDefaults.itemShape(0, 2)) { Text(stringResource(R.string.jellyfin_login)) }
                 SegmentedButton(!vm.jsUseJellyfin, { vm.jsUseJellyfin = false }, SegmentedButtonDefaults.itemShape(1, 2)) { Text(stringResource(R.string.api_key)) }
             }
-            if (vm.jsUseJellyfin) Text(stringResource(R.string.uses_the_jellyfin_username_password_entered), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+            if (vm.jsUseJellyfin) {
+                // Your Jellyfin account (the app doesn't keep the password, so ask for it here).
+                Field(stringResource(R.string.username), vm.jfUser, { vm.jfUser = it })
+                Field(stringResource(R.string.password), vm.jfPass, { vm.jfPass = it }, password = true)
+                Text(stringResource(R.string.setup_seerr_jf_hint), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+            }
             else Field(stringResource(R.string.api_key_settings_general), vm.jsKey, { vm.jsKey = it }, password = true)
             ConnectButton(vm.jsState, stringResource(R.string.connect)) { vm.connectSeerr() }
         }

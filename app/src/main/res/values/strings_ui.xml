@@ -1239,4 +1239,8 @@
     <string name="playing_on_tv">Playing on %1$s</string>
     <string name="tv_not_reachable">Couldn\'t reach your JellyVerse TV – open the app on the TV and try again</string>
     <string name="remote_clear_all">Clear all</string>
+    <string name="setup_seerr_jf_hint">Sign in with the same account you use for Jellyfin.</string>
+    <string name="setup_done_btn">Done</string>
+    <string name="setup_set_up">Set up</string>
+    <string name="setup_fix">Fix</string>
 </resources>
