@@ -1,4 +1,6 @@
 package com.sridhar.harbor.ui.music
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.draw.drawWithContent
 
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.animation.AnimatedContent
@@ -144,8 +146,31 @@ fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val progress by produceState(0f, song.id) { engine.positionFlow().collect { val d = engine.state.value.durationMs; value = if (d > 0) (it.toFloat() / d).coerceIn(0f, 1f) else 0f } }
     val drag = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
+    // Playing animations (all paused when the music is, and off on reduced-motion devices).
+    val animate = s.playing && !com.sridhar.harbor.ui.components.reducedMotion()
+    val clock = androidx.compose.animation.core.rememberInfiniteTransition(label = "mini")
+    val beat by clock.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)), label = "beat")
+    val flow by clock.animateFloat(0f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(2400, easing = androidx.compose.animation.core.LinearEasing)), label = "flow")
+    val notes = androidx.compose.ui.text.rememberTextMeasurer()
 
     Box(modifier.widthIn(max = 640.dp).fillMaxWidth().padding(horizontal = 8.dp).height(60.dp).clip(RoundedCornerShape(10.dp)).background(tint)
+        .drawWithContent {
+            drawContent()
+            if (animate) {
+                // slow light sheen sweeping across
+                val x = size.width * (flow * 1.6f - 0.3f)
+                drawRect(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color.Transparent, Color.White.copy(alpha = .10f), Color.Transparent),
+                    start = androidx.compose.ui.geometry.Offset(x - 120f, 0f), end = androidx.compose.ui.geometry.Offset(x + 120f, size.height)))
+                // music notes floating up from the artwork
+                for (i in 0..2) {
+                    val t = (flow + i / 3f) % 1f
+                    val nx = 8.dp.toPx() + 30.dp.toPx() + kotlin.math.sin((t + i) * 6.28f) * 6.dp.toPx() + i * 7.dp.toPx()
+                    val ny = size.height - 10.dp.toPx() - t * (size.height + 6.dp.toPx())
+                    drawText(notes.measure(if (i % 2 == 0) "♪" else "♫", androidx.compose.ui.text.TextStyle(fontSize = (11 + i * 2).sp, color = Color.White)),
+                        topLeft = androidx.compose.ui.geometry.Offset(nx, ny), alpha = (1f - t) * 0.8f)
+                }
+            }
+        }
         .clickable(onClick = onOpen).testTag("mini_player")
         .pointerInput(song.id) {
             detectHorizontalDragGestures(
@@ -154,7 +179,16 @@ fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
             )
         }) {
         Row(Modifier.fillMaxSize().offset { IntOffset(drag.value.roundToInt(), 0) }.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            CoverArt(art, song.coverTitle, Modifier.size(44.dp), RoundedCornerShape(6.dp))
+            Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                // halo + gentle pulse on the beat
+                val pulse = if (animate) kotlin.math.sin(beat * 3.1416f) else 0f
+                if (animate) Box(Modifier.size(44.dp).graphicsLayer { scaleX = 1.08f + 0.08f * pulse; scaleY = 1.08f + 0.08f * pulse; alpha = 0.35f * pulse }
+                    .background(Color.White, RoundedCornerShape(9.dp)))
+                CoverArt(art, song.coverTitle, Modifier.size(44.dp).graphicsLayer { val k = 1f + 0.035f * pulse; scaleX = k; scaleY = k }, RoundedCornerShape(6.dp))
+                if (s.playing) Box(Modifier.align(Alignment.BottomEnd).padding(2.dp).background(Color.Black.copy(alpha = .45f), RoundedCornerShape(4.dp)).padding(2.dp)) {
+                    EqualizerBars(true, Modifier.size(10.dp), Color.White)
+                }
+            }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(song.displayTitle, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, modifier = Modifier.basicMarquee())
@@ -169,8 +203,23 @@ fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
                 else Icon(if (s.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, stringResource(if (s.playing) R.string.pause else R.string.play), tint = Color.White)
             }
         }
-        Box(Modifier.align(Alignment.BottomStart).padding(horizontal = 8.dp).fillMaxWidth().height(2.dp).background(Color.White.copy(.2f)))
-        Box(Modifier.align(Alignment.BottomStart).padding(horizontal = 8.dp).fillMaxWidth(progress.coerceIn(0f, 1f)).height(2.dp).background(Color.White))
+        // Progress: a flowing wave while playing (across the whole bar for live radio), a flat line when paused.
+        androidx.compose.foundation.Canvas(Modifier.align(Alignment.BottomStart).padding(horizontal = 8.dp).fillMaxWidth().height(6.dp)) {
+            val y = size.height - 1.5f
+            drawLine(Color.White.copy(.2f), androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(size.width, y), 2.dp.toPx())
+            val end = if (song.isLive) size.width else size.width * progress.coerceIn(0f, 1f)
+            if (end < 1f) return@Canvas
+            if (!animate) { drawLine(Color.White, androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(end, y), 2.dp.toPx()); return@Canvas }
+            val path = androidx.compose.ui.graphics.Path()
+            val steps = (end / 4f).toInt().coerceIn(2, 400)
+            for (i in 0..steps) {
+                val x = end * i / steps
+                val wy = y - 1.5.dp.toPx() - kotlin.math.sin(x / 9.dp.toPx() - flow * 6.28f * 2) * 1.5.dp.toPx()
+                if (i == 0) path.moveTo(x, wy) else path.lineTo(x, wy)
+            }
+            drawPath(path, Color.White, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            drawCircle(Color.White, 2.5.dp.toPx(), androidx.compose.ui.geometry.Offset(end, y - 1.5.dp.toPx() - kotlin.math.sin(end / 9.dp.toPx() - flow * 6.28f * 2) * 1.5.dp.toPx()))
+        }
     }
 }
 
