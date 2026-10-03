@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "updated": "2026-10-03",
+  "note": "JellyVerse radio directory – the app downloads this list; edit here to fix a station for every user.",
+  "stations": [
+    {
+      "id": "tn-suryan",
+      "name": "Suryan FM 93.5 Chennai",
+      "url": "http://radios.crabdance.com:8002/1",
+      "group": "Tamil Nadu"
+    },
+    {
+      "id": "tn-radiocity",
+      "name": "Radio City 91.1 Chennai",
+      "url": "http://radios.crabdance.com:8002/5",
+      "group": "Tamil Nadu"
+    },
+    {
+      "id": "tn-bigfm",
+      "name": "Big FM Tamil",
+      "url": "https://stream.zeno.fm/r2gn1pgm4qruv",
+      "group": "Tamil Nadu"
+    },
+    {
+      "id": "tn-hellofm",
+      "name": "Hello FM 106.4 Chennai",
+      "url": "http://radios.crabdance.com:8002/3",
+      "group": "Tamil Nadu"
+    },
+    {
+      "id": "tn-airgold",
+      "name": "AIR FM Gold Chennai",
+      "url": "https://air.pc.cdn.bitgravity.com/air/live/pbaudio021/chunklist.m3u8",
+      "group": "Tamil Nadu"
+    },
+    {
+      "id": "tn-vividh",
+      "name": "Vividh Bharati Chennai",
+      "url": "https://air.pc.cdn.bitgravity.com/air/live/pbaudio024/chunklist.m3u8",
+      "group": "Tamil Nadu"
+    },
+    {
+      "id": "tn-chennailive",
+      "name": "Chennai Live",
+      "url": "http://c2.radioboss.fm:8332/stream",
+      "group": "Tamil Nadu"
+    },
+    {
+      "id": "tamil-0",
+      "name": "AIR Kodaikanal FM",
+      "url": "https://air.pc.cdn.bitgravity.com/air/live/pbaudio051/chunklist.m3u8",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-1",
+      "name": "AIR Madurai FM",
+      "url": "https://air.pc.cdn.bitgravity.com/air/live/pbaudio126/chunklist.m3u8",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-2",
+      "name": "AIR Puducherry FM",
+      "url": "https://air.pc.cdn.bitgravity.com/air/live/pbaudio098/chunklist.m3u8",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-3",
+      "name": "AIR Nagercoil FM",
+      "url": "https://air.pc.cdn.bitgravity.com/air/live/pbaudio129/chunklist.m3u8",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-4",
+      "name": "AIR Tirunelveli FM",
+      "url": "https://air.pc.cdn.bitgravity.com/air/live/pbaudio062/chunklist.m3u8",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-5",
+      "name": "AIR Tuticorin",
+      "url": "https://air.pc.cdn.bitgravity.com/air/live/pbaudio025/masterlist.m3u8",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-6",
+      "name": "Tamil Panpalai Gold",
+      "url": "https://tamilpanpalai.radioca.st/ind",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-7",
+      "name": "M S Viswanathan FM",
+      "url": "http://stream.zeno.fm/x7wc1xgllvsvv",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-8",
+      "name": "Harris Jayaraj FM",
+      "url": "http://stream.zeno.fm/ob6tjg8gulptv",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-9",
+      "name": "Sooriyan FM",
+      "url": "https://radio.lotustechnologieslk.net:8006/",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-10",
+      "name": "Shakthi FM",
+      "url": "https://mbc.thestreamtech.com:8086/stream",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-11",
+      "name": "Tube Tamil FM",
+      "url": "http://s2.voscast.com:12084/;stream1619441439791/1",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-12",
+      "name": "Boom Tamil",
+      "url": "https://streaming.boomtamil.com/Toronto",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-13",
+      "name": "Vasantham FM",
+      "url": "https://cp12.serverse.com/proxy/vasanthamfm?mp=/stream",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-14",
+      "name": "Jei FM Klang",
+      "url": "https://usa3.fastcast4u.com/proxy/jeifm?mp=/1",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-15",
+      "name": "Star FM Sri Lanka",
+      "url": "https://stream.starfm.lk:12025/stream",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-16",
+      "name": "Vanavil FM Maestro",
+      "url": "https://s7.yesstreaming.net:8092/stream",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-17",
+      "name": "Vanavil FM ARR",
+      "url": "https://s7.yesstreaming.net:8038/stream",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-18",
+      "name": "Mohan Radio",
+      "url": "https://psrlive4.listenon.in/mohan?station=mohanradio",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-19",
+      "name": "American Tamil Radio",
+      "url": "https://cp11.serverse.com/proxy/hgsmgluv?mp=/stream",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-20",
+      "name": "Tamil Murasam FM",
+      "url": "https://tamilmurasam.radioca.st/live",
+      "group": "Tamil"
+    },
+    {
+      "id": "tamil-21",
+      "name": "Lankasri FM",
+      "url": "http://media2.lankasri.fm/;stream.mp3",
+      "group": "Tamil"
+    }
+  ]
+}
