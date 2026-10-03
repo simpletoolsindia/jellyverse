@@ -1,0 +1,1 @@
+JellyVerse 2.21.3: red LIVE badges for radio (playing station and mini player) and Live TV channels. Library Doctor shows the AI model you actually use (Gemma, Qwen, Phi…) instead of always "Qwen".

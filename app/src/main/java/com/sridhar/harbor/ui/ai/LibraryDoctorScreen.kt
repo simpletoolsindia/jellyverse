@@ -373,7 +373,11 @@ private fun IssueCard(
                     fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 4.dp)) {
                     issue.kinds.take(2).forEach { k -> Pill(k.label, if (k == IssueKind.Misfiled) Harbor.Coral else Harbor.Amber) }
-                    if (issue.aiTitle != null) Pill(stringResource(R.string.qwen), Harbor.VioletSoft)
+                    // Which on-device model suggested it (the one you picked – Gemma, Qwen, Phi…).
+                    if (issue.aiTitle != null) {
+                        val m by LocalContainer.current.llm.model.collectAsState()
+                        Pill(m.displayName.substringBefore(" · ").ifBlank { "AI" }, Harbor.VioletSoft)
+                    }
                 }
             }
             best?.let { ScoreRing(it.score) }

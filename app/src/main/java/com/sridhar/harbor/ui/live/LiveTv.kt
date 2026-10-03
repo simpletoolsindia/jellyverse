@@ -226,6 +226,7 @@ private fun ChannelRow(ch: Channel, number: Int, fav: Boolean, nn: com.sridhar.h
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(Harbor.line(.06f))) {
             NetImage(ch.logo, Modifier.fillMaxSize().padding(5.dp), contentScale = ContentScale.Fit, fallback = ch.name.take(3))
+            com.sridhar.harbor.ui.components.LiveBadge(Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp), small = true)
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {

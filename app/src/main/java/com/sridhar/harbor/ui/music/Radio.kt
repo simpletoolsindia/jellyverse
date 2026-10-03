@@ -80,6 +80,7 @@ fun RadioShelf(grid: Boolean = false) {
                     .combinedClickable(onLongClick = { acting = st }) { c.musicEngine.play(listOf(st.toSong()), source = st.name) }) {
                     Box(Modifier.size(tileW).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(a, b)))
                         .then(if (live) Modifier.border(2.dp, Color.White, RoundedCornerShape(14.dp)) else Modifier), Alignment.Center) {
+                        if (live) com.sridhar.harbor.ui.components.LiveBadge(Modifier.align(Alignment.TopStart).padding(6.dp), small = true)
                         if (live && playing.playing) EqualizerBars(true, Modifier.size(34.dp), Color.White)
                         else Icon(Icons.Rounded.Radio, null, tint = Color.White, modifier = Modifier.size(40.dp))
                     }

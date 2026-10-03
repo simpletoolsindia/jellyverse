@@ -75,14 +75,14 @@
     <string name="voice">குரல்</string>
     <string name="library_doctor">நூலக டாக்டர்</string>
     <string name="fix_messy_names_so_jellyfin_finds">Jellyfin சரியான போஸ்டர்களைக் கண்டுபிடிக்க குழப்பமான பெயர்களைச் சரிசெய்</string>
-    <string name="use_on_device_qwen">சாதனத்திலுள்ள Qwen-ஐப் பயன்படுத்து</string>
+    <string name="use_on_device_qwen">சாதனத்திலுள்ள AI-ஐப் பயன்படுத்து</string>
     <string name="find_a_title_identified_first">தலைப்பைத் தேடு (அடையாளம் காணப்பட்டவை முதலில்)</string>
     <string name="organize">ஒழுங்கமை</string>
     <string name="choose_the_right_match">சரியான பொருத்தத்தைத் தேர்ந்தெடு</string>
     <string name="correct_title">சரியான தலைப்பு</string>
     <string name="year">ஆண்டு</string>
     <string name="this_is_a_tv_series">இது ஒரு டிவி தொடர்</string>
-    <string name="jellyverse_remembers_this_and_shows_it">JellyVerse இதை நினைவில் வைத்து, அடுத்த முறை Qwen-க்கு எடுத்துக்காட்டாகக் காட்டும்.</string>
+    <string name="jellyverse_remembers_this_and_shows_it">JellyVerse இதை நினைவில் வைத்து அடுத்த முறை AI-க்கு எடுத்துக்காட்டாகக் காட்டும்.</string>
     <string name="search_again">மீண்டும் தேடு</string>
     <string name="nothing_changes_until_you_tap_apply">\'பயன்படுத்து\' தட்டும் வரை எதுவும் மாறாது.</string>
     <string name="applied_posters_on_the_way">"  பயன்படுத்தப்பட்டது – போஸ்டர்கள் வருகின்றன"</string>
@@ -515,7 +515,7 @@
     <string name="disk_full_overheating_containers_down">டிஸ்க் நிரம்பியது, அதிக வெப்பம், கண்டெய்னர்கள் நின்றுவிட்டன</string>
     <string name="fingerprint_pin_after_1_minute_away">1 நிமிடம் விலகிய பிறகு கைரேகை / PIN</string>
     <string name="fix_names_missing_posters_with_ai">AI மூலம் பெயர்கள் &amp; விடுபட்ட போஸ்டர்களைச் சரிசெய்</string>
-    <string name="on_device_qwen_assistant">சாதனத்திலேயே இயங்கும் Qwen உதவியாளர்</string>
+    <string name="on_device_qwen_assistant">சாதனத்திலுள்ள AI உதவியாளர்</string>
     <string name="s_1_s_saved_on_this_phone">இந்த போனில் %1$s சேமிக்கப்பட்டுள்ளது</string>
     <string name="jellyfin_users_live_sessions_libraries_tasks">Jellyfin பயனர்கள், நேரலை அமர்வுகள், நூலகங்கள், பணிகள் &amp; லாக்குகள்</string>
     <string name="jellyseerr_accounts_permissions">Jellyseerr கணக்குகள் &amp; அனுமதிகள்</string>
@@ -645,7 +645,7 @@
     <string name="qwen_0_5b_on_device_1">%1$s · சாதனத்தில் · %2$s கருவிகள்</string>
     <string name="loading_model">மாடலை ஏற்றுகிறது…</string>
     <string name="applied_1_s_matches_jellyfin_is">%1$s பொருத்தங்கள் பயன்படுத்தப்பட்டன – Jellyfin போஸ்டர்களைப் பதிவிறக்குகிறது</string>
-    <string name="saved_as_a_qwen_example_for">எதிர்கால ஸ்கேன்களுக்கு Qwen எடுத்துக்காட்டாகச் சேமிக்கப்பட்டது</string>
+    <string name="saved_as_a_qwen_example_for">எதிர்கால ஸ்கேன்களுக்கு AI எடுத்துக்காட்டாகச் சேமிக்கப்பட்டது</string>
     <string name="everything_is_already_organised">அனைத்தும் ஏற்கனவே ஒழுங்காக உள்ளன</string>
     <string name="reading_library">நூலகத்தைப் படிக்கிறது…</string>
     <string name="identifying_titles">தலைப்புகளை அடையாளம் காண்கிறது…</string>

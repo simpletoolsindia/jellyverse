@@ -158,7 +158,10 @@ fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(song.displayTitle, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, modifier = Modifier.basicMarquee())
-                Text(song.displayArtist, color = Color.White.copy(.7f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (song.isLive) { com.sridhar.harbor.ui.components.LiveBadge(small = true); Spacer(Modifier.width(6.dp)) }
+                    Text(song.displayArtist, color = Color.White.copy(.7f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
             if (song.streamUrl == null) LikeButton(song.id in s.likedIds, size = 22.dp) { engine.toggleLike(song) }
             IconButton({ engine.toggle() }, Modifier.testTag("mini_toggle")) {

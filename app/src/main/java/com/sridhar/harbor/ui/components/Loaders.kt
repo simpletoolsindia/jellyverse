@@ -1,4 +1,8 @@
 package com.sridhar.harbor.ui.components
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -391,5 +395,21 @@ fun DinoMeter(fraction: Float, modifier: Modifier = Modifier, height: Dp = 30.dp
                           fontWeight = androidx.compose.ui.text.font.FontWeight.Black)), topLeft = o(34f, -6f)) }
         }
         if (mood > 0) drawCircle(Color(0xFFFF9AA8).copy(alpha = .6f), 1.8f * u, o(26f, 10f))
+    }
+}
+
+/** Red "● LIVE" pill with a softly pulsing dot – live radio and Live TV. */
+@Composable
+fun LiveBadge(modifier: Modifier = Modifier, small: Boolean = false) {
+    val a = if (reducedMotion()) 1f else rememberInfiniteTransition(label = "live").animateFloat(1f, .35f,
+        infiniteRepeatable(tween(800), RepeatMode.Reverse), label = "a").value
+    androidx.compose.foundation.layout.Row(modifier
+        .then(Modifier.background(Color(0xFFE5303D), androidx.compose.foundation.shape.RoundedCornerShape(50)))
+        .padding(horizontal = if (small) 6.dp else 8.dp, vertical = if (small) 2.dp else 3.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        androidx.compose.foundation.layout.Box(Modifier.size(if (small) 5.dp else 6.dp).background(Color.White.copy(alpha = a), androidx.compose.foundation.shape.CircleShape))
+        androidx.compose.foundation.layout.Spacer(Modifier.width(if (small) 3.dp else 4.dp))
+        androidx.compose.material3.Text("LIVE", color = Color.White, fontSize = if (small) 9.sp else 11.sp,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Black, letterSpacing = 0.8.sp)
     }
 }
