@@ -24,6 +24,7 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
         com.sridhar.harbor.net.NetworkMonitor.init(this)
         com.sridhar.harbor.radio.RadioLibrary.init(this)
         container = AppContainer(this)
+        watchForeground()
         container.cast.init()
         // Off the main thread: channels + WorkManager aren't needed for the first frame.
         container.scope.launch {
@@ -31,7 +32,10 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
             com.sridhar.harbor.update.UpdateWorker.schedule(this@HarborApp)
             com.sridhar.harbor.radio.RecordService.channels(this@HarborApp)
             com.sridhar.harbor.radio.RadioScheduler.rearmAll(this@HarborApp)
-            if (!packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)) com.sridhar.harbor.alerts.Alerts.schedule(this@HarborApp)
+            if (!packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)) {
+                com.sridhar.harbor.alerts.Alerts.schedule(this@HarborApp)
+                com.sridhar.harbor.alerts.Suggestions.schedule(this@HarborApp)
+            }
         }
     }
 
@@ -50,4 +54,26 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
             .memoryCache { coil3.memory.MemoryCache.Builder().maxSizePercent(context, if (container.lowRam) 0.15 else 0.25).build() }
             .diskCache { coil3.disk.DiskCache.Builder().directory(context.cacheDir.resolve("images")).maxSizeBytes(if (container.lowRam) 128L shl 20 else 384L shl 20).build() }
             .build()
+
+    /** Counts visible screens; when none are left the user has gone (home, recents, closed) – free the AI model. */
+    private fun watchForeground() = registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+        private var started = 0
+        private fun llm() = if (container.llmCreated) container.llm else null
+        override fun onActivityStarted(a: android.app.Activity) { if (started++ == 0) llm()?.onAppForeground() }
+        override fun onActivityStopped(a: android.app.Activity) { if (--started == 0 && !a.isChangingConfigurations) llm()?.onAppBackground() }
+        override fun onActivityCreated(a: android.app.Activity, b: android.os.Bundle?) {}
+        override fun onActivityResumed(a: android.app.Activity) {}
+        override fun onActivityPaused(a: android.app.Activity) {}
+        override fun onActivitySaveInstanceState(a: android.app.Activity, b: android.os.Bundle) {}
+        override fun onActivityDestroyed(a: android.app.Activity) {}
+    })
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        // Low memory (in the app or cached in the background): the model is the biggest thing we hold.
+        @Suppress("DEPRECATION")
+        val pressure = level == android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW || level == android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL ||
+            level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND
+        if (pressure && ::container.isInitialized && container.llmCreated) container.llm.onLowMemory()
+    }
 }

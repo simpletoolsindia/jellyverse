@@ -1169,4 +1169,17 @@
     <string name="new_lib_fix">Fix name &amp; poster</string>
     <string name="dl_done_title">Download finished</string>
     <string name="dl_done_scan">Indexing it in Jellyfin – you\'ll get a note when it\'s in your library.</string>
+    <string name="suggest_channel">Movie suggestions</string>
+    <string name="suggest_channel_desc">Now and then, an evening pick from your library</string>
+    <string name="suggest_setting_hint">Jelly picks something unwatched from your library, in the evening</string>
+    <string name="suggest_off">Off</string>
+    <string name="suggest_sometimes">Sometimes</string>
+    <string name="suggest_daily">Daily</string>
+    <string name="suggest_t1">Jelly\'s pick for tonight 🍿</string>
+    <string name="suggest_t2">Movie night? Try this 🎬</string>
+    <string name="suggest_t3">You haven\'t watched this yet 👀</string>
+    <string name="suggest_t4">Something good is waiting ✨</string>
+    <string name="suggest_because">Because you like %1$s</string>
+    <string name="suggest_watch">Watch now</string>
+    <string name="suggest_not_interested">Not interested</string>
 </resources>

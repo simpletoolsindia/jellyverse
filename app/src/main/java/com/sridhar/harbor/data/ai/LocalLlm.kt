@@ -136,6 +136,57 @@ class LocalLlm(private val context: Context, private val downloader: com.sridhar
     private var engine: Engine? = null
     private val lock = Mutex()
 
+    // ---- keeping the device cool: the model only stays in memory while it's useful ----
+    /** Replies in progress (a loaded model must not be closed under them). */
+    private val active = java.util.concurrent.atomic.AtomicInteger(0)
+    /** Open conversations, so leaving the app can stop a reply mid-way. */
+    private val running = java.util.concurrent.ConcurrentHashMap.newKeySet<com.google.ai.edge.litertlm.Conversation>()
+    @Volatile private var inBackground = false
+    private var unloadJob: kotlinx.coroutines.Job? = null
+
+    private companion object {
+        const val IDLE_UNLOAD_MS = 3 * 60_000L      // unused for 3 min in the app → free it
+        const val BACKGROUND_GRACE_MS = 10_000L     // left the app: quick app switches don't pay a reload
+    }
+
+    /** All app screens stopped (home button, recents, closed): stop any reply and free the model shortly after. */
+    fun onAppBackground() { inBackground = true; scheduleUnload(BACKGROUND_GRACE_MS) }
+
+    fun onAppForeground() {
+        inBackground = false
+        unloadJob?.cancel()
+        if (engine != null && active.get() == 0) scheduleUnload(IDLE_UNLOAD_MS)
+    }
+
+    /** The system is short of memory: let go of the model now (it reloads on the next question). */
+    fun onLowMemory() { scheduleUnload(0) }
+
+    private fun scheduleUnload(afterMs: Long) {
+        unloadJob?.cancel()
+        unloadJob = scope.launch { kotlinx.coroutines.delay(afterMs); unload() }
+    }
+
+    /**
+     * Frees the model's memory and CPU. In the background a reply still running is stopped first (its partial text
+     * is kept as the answer); in the app, an active reply is never interrupted – we just try again later.
+     */
+    private suspend fun unload() {
+        if (active.get() > 0) {
+            if (!inBackground) return
+            running.forEach { runCatching { it.cancelProcess() } }
+            kotlinx.coroutines.withTimeoutOrNull(8_000) { while (active.get() > 0) kotlinx.coroutines.delay(100) }
+            if (active.get() > 0) { scheduleUnload(5_000); return }
+        }
+        lock.withLock {
+            if (active.get() > 0) return
+            val e = engine ?: return
+            engine = null
+            withContext(Dispatchers.Default) { runCatching { e.close() } }
+            if (_state.value == ModelState.Loaded) _state.value = ModelState.Ready
+            if (com.sridhar.harbor.BuildConfig.DEBUG) android.util.Log.i("LocalLlm", "model unloaded (background=$inBackground)")
+        }
+    }
+
     init {
         // 2.9 and earlier used a MediaPipe .task file that LiteRT-LM can't load – free the space.
         File(dir, "Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv1280.task").delete()
@@ -242,6 +293,15 @@ class LocalLlm(private val context: Context, private val downloader: com.sridhar
      * arrive quickly.
      */
     suspend fun complete(prompt: String, temperature: Float = 0.2f, onPartial: (String) -> Unit = {}): String {
+        // Nothing runs the model while the app is in the background – that's what heats the phone.
+        if (inBackground) throw IllegalStateException("AI paused while JellyVerse is in the background")
+        active.incrementAndGet()
+        unloadJob?.cancel()
+        try { return generate(prompt, temperature, onPartial) }
+        finally { if (active.decrementAndGet() == 0) scheduleUnload(if (inBackground) 0 else IDLE_UNLOAD_MS) }
+    }
+
+    private suspend fun generate(prompt: String, temperature: Float, onPartial: (String) -> Unit): String {
         val llm = ensureLoaded()
         val turns = parseChatMl(prompt).ifEmpty { listOf(Turn("user", prompt)) }
         val system = turns.firstOrNull { it.role == "system" }?.text
@@ -259,6 +319,7 @@ class LocalLlm(private val context: Context, private val downloader: com.sridhar
                 samplerConfig = SamplerConfig(20, 0.9, temperature.toDouble(), 7),
                 thinkingConfig = ThinkingConfig(false),
             ))
+            running += conv
             val sb = StringBuilder()
             var stoppedEarly = false   // we cancelled on purpose: the text so far is the answer
             try {
@@ -278,6 +339,7 @@ class LocalLlm(private val context: Context, private val downloader: com.sridhar
             } catch (e: Exception) {
                 if (sb.isEmpty()) throw e   // partial output after a stop is still a usable answer
             } finally {
+                running -= conv
                 runCatching { conv.close() }
             }
             clean(sb.toString(), m)

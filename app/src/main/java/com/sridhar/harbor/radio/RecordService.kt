@@ -145,7 +145,6 @@ class RecordService : Service() {
             notifyDone(station, elapsed, error ?: L10n.s(R.string.rec_nothing))
         }
         RadioLibrary.live.value = null
-        scheduleId?.let { RadioScheduler.afterRun(this, it) }
         wake?.let { if (it.isHeld) it.release() }
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()

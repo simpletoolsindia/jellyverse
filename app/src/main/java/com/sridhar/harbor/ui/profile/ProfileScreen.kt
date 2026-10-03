@@ -132,6 +132,7 @@ fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () 
         Column(Modifier.glass()) {
             ToggleRow(stringResource(R.string.download_finished), stringResource(R.string.qbittorrent_aria2), aDl) { aDl = it; alertPrefs.downloads = it; com.sridhar.harbor.alerts.Alerts.schedule(ctx) }
             ToggleRow(stringResource(R.string.request_available), stringResource(R.string.when_jellyseerr_requests_land_in_your), aRq) { aRq = it; alertPrefs.requests = it; com.sridhar.harbor.alerts.Alerts.schedule(ctx) }
+            SuggestRow()
             ToggleRow(stringResource(R.string.new_lib_channel), stringResource(R.string.new_lib_channel_desc), aNew) { aNew = it; alertPrefs.newInLibrary = it; com.sridhar.harbor.alerts.Alerts.schedule(ctx) }
             ToggleRow(stringResource(R.string.homelab_alerts), stringResource(R.string.disk_full_overheating_containers_down), aLab) { aLab = it; alertPrefs.homelab = it; com.sridhar.harbor.alerts.Alerts.schedule(ctx) }
             ToggleRow(stringResource(R.string.app_lock), stringResource(R.string.fingerprint_pin_after_1_minute_away), lock) { lock = it; lockPrefs.enabled = it }
@@ -182,6 +183,23 @@ fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () 
         }) { Text(stringResource(R.string.sign_out_2), color = Harbor.Rose) } },
         dismissButton = { TextButton({ confirmSignOut = false }) { Text(stringResource(R.string.cancel)) } },
     )
+}
+
+/** How often Jelly suggests something to watch in the evening: Off / Sometimes / Daily. */
+@Composable
+private fun SuggestRow() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var freq by remember { mutableStateOf(com.sridhar.harbor.alerts.Suggestions.frequency(ctx)) }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Text(stringResource(R.string.suggest_channel), fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.suggest_setting_hint), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall)
+        Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf(com.sridhar.harbor.alerts.Suggestions.OFF to R.string.suggest_off, com.sridhar.harbor.alerts.Suggestions.SOMETIMES to R.string.suggest_sometimes,
+                com.sridhar.harbor.alerts.Suggestions.DAILY to R.string.suggest_daily).forEach { (k, label) ->
+                androidx.compose.material3.FilterChip(freq == k, { freq = k; com.sridhar.harbor.alerts.Suggestions.setFrequency(ctx, k) }, label = { Text(stringResource(label)) })
+            }
+        }
+    }
 }
 
 @Composable

@@ -96,6 +96,7 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
         <receiver android:name="com.sridhar.harbor.radio.RadioAlarmReceiver" android:exported="false" />
+        <receiver android:name="com.sridhar.harbor.alerts.SuggestActionReceiver" android:exported="false" />
         <receiver android:name="com.sridhar.harbor.radio.RadioBootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

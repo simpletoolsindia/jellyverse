@@ -1,0 +1,1 @@
+JellyVerse 2.14.0: evening movie suggestions – now and then Jelly picks something unwatched from your library (Off / Sometimes / Daily in Settings). The on-device AI now unloads when you leave the app or stop using it, so the phone stays cool. Safer radio schedules.

@@ -286,6 +286,13 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
             fields = "Overview,DateCreated,ProductionYear", imageTypeLimit = 1).items
     }
 
+    /** A random handful of unwatched films and shows (for the evening suggestion). */
+    suspend fun randomUnwatched(limit: Int = 30): List<BaseItem> {
+        val (a, c) = api()
+        return a.items(c.jellyfinUserId, types = "Movie,Series", sortBy = "Random", filters = "IsUnplayed", limit = limit,
+            fields = "Overview,Genres,OfficialRating", imageTypeLimit = 1).items
+    }
+
     suspend fun refreshLibrary() { api().first.refreshLibrary() }
     suspend fun virtualFolders() = api().first.virtualFolders()
 

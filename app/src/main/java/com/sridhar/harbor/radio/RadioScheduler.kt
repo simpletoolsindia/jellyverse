@@ -56,13 +56,17 @@ class RadioAlarmReceiver : BroadcastReceiver() {
         RadioLibrary.init(ctx)
         val s = RadioLibrary.schedule(intent.getStringExtra("id") ?: return) ?: return
         RecordService.channels(ctx)
+        // Done with this slot right away (daily → tomorrow, one-off → removed), so a recording that gets killed
+        // can't leave a stale schedule behind.
+        RadioScheduler.afterRun(ctx, s.id)
+        // Far too late (phone was off, clock changed): don't start a recording or ping at the wrong time.
+        if (System.currentTimeMillis() - s.startAt > (if (s.kind == "record") 15 else 30) * 60_000L) return
         if (s.kind == "record") {
             // Exact alarms may start a foreground service from the background; if the system refuses, ask the user.
             val ok = runCatching { RecordService.start(ctx, s.stationName, s.url, s.durationMin, s.id) }.isSuccess
             if (!ok) notify(ctx, s, L10n.s(R.string.rec_tap_to_start, s.stationName), "record/${s.stationId}/${s.durationMin}")
         } else {
             notify(ctx, s, L10n.s(R.string.remind_title, s.stationName), "radio/${s.stationId}")
-            RadioScheduler.afterRun(ctx, s.id)
         }
     }
 

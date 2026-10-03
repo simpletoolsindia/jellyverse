@@ -100,7 +100,10 @@ class AppContainer(context: Context) {
     val radarr = ArrRepository(ArrKind.Radarr, settings, http)
     val aria2 = com.sridhar.harbor.data.aria2.Aria2Repository(settings, http)
     val iptv by lazy { com.sridhar.harbor.data.iptv.IptvRepository(context, http) }
-    val llm by lazy { com.sridhar.harbor.data.ai.LocalLlm(context, downloader) }
+    private val llmLazy = lazy { com.sridhar.harbor.data.ai.LocalLlm(context, downloader) }
+    val llm by llmLazy
+    /** False until something uses the AI – lifecycle hooks then don't create it just to unload it. */
+    val llmCreated get() = llmLazy.isInitialized()
     val cast = com.sridhar.harbor.cast.CastController(context)
     // Lazy: the encrypted store hits the Android Keystore (slow) and TV never needs SSH.
     val ssh by lazy { com.sridhar.harbor.data.ssh.SshRepository(context) }

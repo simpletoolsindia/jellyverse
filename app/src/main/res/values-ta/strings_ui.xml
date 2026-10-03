@@ -1169,4 +1169,17 @@
     <string name="new_lib_fix">பெயர் &amp; போஸ்டர் சரிசெய்</string>
     <string name="dl_done_title">பதிவிறக்கம் முடிந்தது</string>
     <string name="dl_done_scan">Jellyfin இல் சேர்க்கப்படுகிறது – நூலகத்தில் வந்ததும் தெரிவிப்போம்.</string>
+    <string name="suggest_channel">திரைப்பட பரிந்துரைகள்</string>
+    <string name="suggest_channel_desc">அவ்வப்போது, மாலையில் உங்கள் நூலகத்திலிருந்து ஒரு பரிந்துரை</string>
+    <string name="suggest_setting_hint">மாலையில், நீங்கள் பார்க்காத ஒன்றை Jelly பரிந்துரைக்கும்</string>
+    <string name="suggest_off">அணை</string>
+    <string name="suggest_sometimes">அவ்வப்போது</string>
+    <string name="suggest_daily">தினமும்</string>
+    <string name="suggest_t1">இன்றிரவு Jelly-யின் தேர்வு 🍿</string>
+    <string name="suggest_t2">திரைப்பட இரவா? இதைப் பாருங்கள் 🎬</string>
+    <string name="suggest_t3">இதை இன்னும் பார்க்கவில்லை 👀</string>
+    <string name="suggest_t4">நல்ல ஒன்று காத்திருக்கிறது ✨</string>
+    <string name="suggest_because">நீங்கள் %1$s விரும்புவதால்</string>
+    <string name="suggest_watch">இப்போது பார்</string>
+    <string name="suggest_not_interested">விருப்பமில்லை</string>
 </resources>
