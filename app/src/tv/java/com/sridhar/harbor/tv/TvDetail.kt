@@ -92,8 +92,11 @@ fun TvDetail(id: String, onOpen: (String) -> Unit) {
                     if (logo != null) NetImage(logo, Modifier.width(420.dp).height(140.dp), contentScale = ContentScale.Fit, fallback = item.name)
                     else Text(item.name, color = Color.White, fontSize = 52.sp, fontWeight = FontWeight.Black, lineHeight = 56.sp)
                     Spacer(Modifier.height(14.dp))
-                    MetaLine(listOf(item.year?.toString(), item.communityRating?.let { "★ %.1f".format(it) }, formatRuntime(item.runtimeMinutes), item.officialRating,
-                        item.genres.take(3).joinToString(" · ").ifBlank { null }))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RatingBadge(item.officialRating); if (!item.officialRating.isNullOrBlank()) Spacer(Modifier.width(12.dp))
+                        MetaLine(listOf(item.year?.toString(), item.communityRating?.let { "★ %.1f".format(it) }, formatRuntime(item.runtimeMinutes),
+                            item.genres.take(3).joinToString(" · ").ifBlank { null }))
+                    }
                     Spacer(Modifier.height(14.dp))
                     Text((focusedEp ?: item).overview.orEmpty(), color = Harbor.Fg.copy(.82f), fontSize = 17.sp, maxLines = 3, modifier = Modifier.width(560.dp), overflow = TextOverflow.Ellipsis, lineHeight = 24.sp)
                     Spacer(Modifier.height(24.dp))

@@ -1,4 +1,6 @@
 package com.sridhar.harbor.tv
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
 
 import androidx.compose.runtime.LaunchedEffect
 import com.sridhar.harbor.R
@@ -70,7 +72,8 @@ fun Modifier.tvFocusable(
     val scale = animateFloatAsState(if (focused) focusedScale else 1f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow), label = "tvScale")
     val ring = animateFloatAsState(if (focused) 1f else 0f, tween(180), label = "tvRing")
     return this
-        .graphicsLayer { scaleX = scale.value; scaleY = scale.value; shadowElevation = 24f * ring.value; this.shape = shape; clip = false }
+        .graphicsLayer { scaleX = scale.value; scaleY = scale.value; translationY = -6.dp.toPx() * ring.value; shadowElevation = 36f * ring.value
+            ambientShadowColor = Harbor.Sky; spotShadowColor = Harbor.Sky; this.shape = shape; clip = false }
         .onFocusChanged { if (it.isFocused != focused) { focused = it.isFocused; if (it.isFocused) onFocus() } }
         .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onClick)
         .drawBehind {
@@ -83,8 +86,15 @@ fun Modifier.tvFocusable(
 
 @Composable
 fun PosterTile(title: String, image: String?, width: Dp = 150.dp, progress: Float = 0f, badge: String? = null, onFocus: () -> Unit, onClick: () -> Unit) {
-    Box(Modifier.width(width).aspectRatio(2f / 3f).tvFocusable(onFocus = onFocus, onClick = onClick).clip(RoundedCornerShape(14.dp)).background(Harbor.Surface)) {
+    var focused by remember { mutableStateOf(false) }
+    Box(Modifier.width(width).aspectRatio(2f / 3f).onFocusChanged { focused = it.isFocused }.tvFocusable(onFocus = onFocus, onClick = onClick).clip(RoundedCornerShape(14.dp)).background(Harbor.Surface)) {
         NetImage(image, Modifier.fillMaxSize(), fallback = title)
+        // Prime-style: the focused card shows its title over a soft gradient.
+        androidx.compose.animation.AnimatedVisibility(focused, Modifier.align(Alignment.BottomCenter), enter = fadeIn(tween(160)), exit = fadeOut(tween(100))) {
+            Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(.85f)))).padding(start = 10.dp, end = 10.dp, top = 28.dp, bottom = 10.dp)) {
+                Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
+            }
+        }
         if (progress > 0f) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(4.dp).background(Color.Black.copy(.5f))) {
             Box(Modifier.fillMaxWidth(progress).height(4.dp).background(Harbor.accentH))
         }
@@ -135,17 +145,23 @@ fun <T> TvRow(title: String, items: List<T>, key: (T) -> Any, content: @Composab
 
 @Composable
 fun TvButton(text: String, icon: ImageVector?, primary: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    // OTT-style pills: Play is solid white (Netflix / Prime), the rest frosted glass that turns white on focus.
     var focused by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(if (focused) 1.07f else 1f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium), label = "btn")
+    val solid = focused || primary
     Row(
         modifier.onFocusChanged { focused = it.isFocused }
-            .graphicsLayer { val s = if (focused) 1.06f else 1f; scaleX = s; scaleY = s }
-            .clip(RoundedCornerShape(12.dp))
-            .background(when { focused -> Brush.horizontalGradient(listOf(Color.White, Color.White)); primary -> Harbor.accentH; else -> Brush.horizontalGradient(listOf(Harbor.line(.14f), Harbor.line(.14f))) })
-            .clickable(onClick = onClick).padding(horizontal = 22.dp, vertical = 12.dp),
+            .graphicsLayer { scaleX = scale; scaleY = scale; shadowElevation = if (focused) 18f else 0f; shape = RoundedCornerShape(50); clip = false }
+            .clip(RoundedCornerShape(50))
+            .background(if (solid) Color.White else Color.White.copy(alpha = 0.16f))
+            .then(if (primary && !focused) Modifier.border(0.dp, Color.Transparent, RoundedCornerShape(50)) else Modifier)
+            .clickable(onClick = onClick).padding(horizontal = 26.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) { Icon(icon, null, tint = if (focused) Color.Black else if (primary) Color.White else Harbor.Fg, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(8.dp)) }
-        Text(text, color = if (focused) Color.Black else if (primary) Color.White else Harbor.Fg, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, softWrap = false)
+        val fg = if (solid) Color.Black else Color.White
+        if (icon != null) { Icon(icon, null, tint = fg, modifier = Modifier.size(24.dp)); Spacer(Modifier.width(9.dp)) }
+        Text(text, color = fg, fontWeight = if (primary) FontWeight.Black else FontWeight.Bold, fontSize = 17.sp, maxLines = 1, softWrap = false)
+        if (primary && focused) { Spacer(Modifier.width(2.dp)) }
     }
 }
 
@@ -162,8 +178,9 @@ fun AmbientBackdrop(url: String?, drift: Boolean = false, preview: com.sridhar.h
         }
         // Hotstar-style: rest on a title and its trailer fades in behind the same scrims.
         com.sridhar.harbor.ui.components.TrailerPreview(preview, Modifier.fillMaxSize(), onPlaying = onTrailer)
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Harbor.Ink, 0.45f to Harbor.Ink.copy(.75f), 1f to Color.Transparent)))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Transparent, 0.55f to Harbor.Ink.copy(.55f), 1f to Harbor.Ink)))
+        // Cinematic scrims (Netflix / Prime): solid on the left where the text sits, open on the right, deep at the foot.
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Harbor.Ink, 0.32f to Harbor.Ink.copy(.88f), 0.62f to Harbor.Ink.copy(.25f), 1f to Color.Transparent)))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Harbor.Ink.copy(.35f), 0.25f to Color.Transparent, 0.6f to Harbor.Ink.copy(.6f), 1f to Harbor.Ink)))
     }
 }
 
@@ -174,5 +191,26 @@ fun MetaLine(parts: List<String?>) {
             if (i > 0) Box(Modifier.size(4.dp).clip(RoundedCornerShape(50)).background(Harbor.Fg.copy(.5f)))
             Text(p, color = Harbor.Fg.copy(.85f), fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false)
         }
+    }
+}
+
+/** Netflix-style boxed age rating ("U/A 13+", "R"…). */
+@Composable
+fun RatingBadge(rating: String?) {
+    if (rating.isNullOrBlank()) return
+    Box(Modifier.border(1.5.dp, Harbor.Fg.copy(.6f), RoundedCornerShape(4.dp)).padding(horizontal = 7.dp, vertical = 1.dp)) {
+        Text(rating, color = Harbor.Fg.copy(.9f), fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+    }
+}
+
+/** Red "TOP 10" badge with the rank (Netflix). */
+@Composable
+fun Top10Badge(rank: Int) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.clip(RoundedCornerShape(4.dp)).background(Color(0xFFE50914)).padding(horizontal = 5.dp, vertical = 2.dp)) {
+            Text("TOP\n10", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black, lineHeight = 9.sp)
+        }
+        Spacer(Modifier.width(8.dp))
+        Text("#$rank", color = Harbor.Fg, fontSize = 16.sp, fontWeight = FontWeight.Black)
     }
 }

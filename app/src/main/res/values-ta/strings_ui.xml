@@ -1249,4 +1249,19 @@
     <string name="lab_mood_stressed">அழுத்தம்!</string>
     <string name="setup_save_connect">சேமித்து இணை</string>
     <string name="setup_connecting">இணைக்கிறது…</string>
+    <string name="tvs_account">கணக்கு</string>
+    <string name="tvs_playback">இயக்கம்</string>
+    <string name="tvs_appearance">தோற்றம்</string>
+    <string name="tvs_phone_remote">போன் ரிமோட்</string>
+    <string name="tvs_updates">புதுப்பிப்புகள்</string>
+    <string name="tvs_about">பற்றி</string>
+    <string name="tvs_sign_out_hint">இந்த TV-ஐ Jellyfin-இலிருந்து வெளியேற்று</string>
+    <string name="tvs_previews_hint">தலைப்பில் கவனம் இருக்கும்போது டிரெய்லர்</string>
+    <string name="tvs_passthrough_hint">Dolby / DTS-ஐ AV ரிசீவர் / சவுண்ட்பாருக்கு அனுப்பு</string>
+    <string name="tvs_reco_hint">நீங்கள் பார்ப்பதை வைத்து பரிந்துரைகள்</string>
+    <string name="tvs_parental_hint">PIN, 18+ மறைப்பு, பூட்டப்பட்ட தலைப்புகள்</string>
+    <string name="tvs_phone_hint">போனை ரிமோட் மற்றும் விசைப்பலகையாகப் பயன்படுத்து</string>
+    <string name="tvs_update_auto_hint">தினமும் புதிய பதிப்புகளைச் சரிபார்க்கும்</string>
+    <string name="tvs_remote_tip_title">ரிமோட் குறிப்பு</string>
+    <string name="tvs_remote_tip">எந்தத் திரையிலும் ◀ அழுத்தி மெனுவைத் திற</string>
 </resources>

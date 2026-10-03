@@ -1249,4 +1249,19 @@
     <string name="lab_mood_stressed">stressed!</string>
     <string name="setup_save_connect">Save &amp; connect</string>
     <string name="setup_connecting">Connecting…</string>
+    <string name="tvs_account">Account</string>
+    <string name="tvs_playback">Playback</string>
+    <string name="tvs_appearance">Appearance</string>
+    <string name="tvs_phone_remote">Phone remote</string>
+    <string name="tvs_updates">Updates</string>
+    <string name="tvs_about">About</string>
+    <string name="tvs_sign_out_hint">Sign this TV out of Jellyfin</string>
+    <string name="tvs_previews_hint">Trailers that play when a title is focused</string>
+    <string name="tvs_passthrough_hint">Send Dolby / DTS to your AV receiver or soundbar</string>
+    <string name="tvs_reco_hint">Picks based on what you watch, on this device</string>
+    <string name="tvs_parental_hint">PIN, 18+ hiding and locked titles</string>
+    <string name="tvs_phone_hint">Use your phone as remote and keyboard</string>
+    <string name="tvs_update_auto_hint">Checks GitHub for new versions daily</string>
+    <string name="tvs_remote_tip_title">Remote tip</string>
+    <string name="tvs_remote_tip">Press ◀ from any screen to open the menu</string>
 </resources>

@@ -186,8 +186,13 @@ fun TvHome(onOpen: (String) -> Unit) {
                             else Text(item.seriesName ?: item.name, color = Harbor.Fg, fontSize = 36.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 40.sp)
                         }
                         Spacer(Modifier.height(12.dp))
-                        MetaLine(listOf(item.year?.toString(), item.communityRating?.let { "★ %.1f".format(it) }, formatRuntime(item.runtimeMinutes),
-                            item.genres.firstOrNull(), item.episodeLabel))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val rank = vm.top10.indexOfFirst { it.id == (item.seriesId ?: item.id) }
+                            if (rank >= 0) { Top10Badge(rank + 1); Spacer(Modifier.width(14.dp)) }
+                            RatingBadge(item.officialRating); if (!item.officialRating.isNullOrBlank()) Spacer(Modifier.width(12.dp))
+                            MetaLine(listOf(item.year?.toString(), item.communityRating?.let { "★ %.1f".format(it) }, formatRuntime(item.runtimeMinutes),
+                                item.genres.firstOrNull(), item.episodeLabel))
+                        }
                         Spacer(Modifier.height(12.dp))
                         Text(item.overview.orEmpty(), color = Harbor.Fg.copy(.8f), fontSize = 15.sp, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 22.sp)
                     }

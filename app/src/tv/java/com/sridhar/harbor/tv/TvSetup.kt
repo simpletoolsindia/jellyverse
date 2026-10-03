@@ -1,4 +1,22 @@
 package com.sridhar.harbor.tv
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Autorenew
+import androidx.compose.material.icons.rounded.QrCode2
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.Icon
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.graphics.graphicsLayer
 
 import androidx.compose.foundation.layout.widthIn
 import com.sridhar.harbor.R
@@ -125,62 +143,191 @@ private fun TvField(label: String, value: String, type: KeyboardType = KeyboardT
         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Harbor.Fg, unfocusedContainerColor = Harbor.Surface, focusedContainerColor = Harbor.SurfaceHigh))
 }
 
+private enum class SettingsCat(val label: Int, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Account(R.string.tvs_account, Icons.Rounded.AccountCircle),
+    Playback(R.string.tvs_playback, Icons.Rounded.PlayCircle),
+    Look(R.string.tvs_appearance, Icons.Rounded.Palette),
+    Parental(R.string.parental_title, Icons.Rounded.Lock),
+    Phone(R.string.tvs_phone_remote, Icons.Rounded.PhoneAndroid),
+    Updates(R.string.tvs_updates, Icons.Rounded.SystemUpdate),
+    About(R.string.tvs_about, Icons.Rounded.Info),
+}
+
+/**
+ * TV settings, two-pane like Google TV / Prime Video: categories on the left (moving over one shows its options),
+ * big option rows on the right with the current value and a one-line explanation. Everything is D-pad first.
+ */
 @Composable
 fun TvSettings() {
+    var cat by rememberSaveable { mutableStateOf(SettingsCat.Account) }
+    // ▶ from a category jumps into its options, ◀ from the options goes back to that category.
+    val pane = remember { androidx.compose.ui.focus.FocusRequester() }
+    val fm = androidx.compose.ui.platform.LocalFocusManager.current
+    val catFocus = remember { SettingsCat.entries.associateWith { androidx.compose.ui.focus.FocusRequester() } }
+    fun isKey(e: androidx.compose.ui.input.key.KeyEvent, k: androidx.compose.ui.input.key.Key) =
+        e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == k
+    Row(Modifier.fillMaxSize().padding(start = 108.dp, top = 40.dp, end = 48.dp, bottom = 24.dp)) {
+        // ---- left: categories
+        Column(Modifier.width(300.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.settings), color = Harbor.Fg, fontSize = 36.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(14.dp))
+            SettingsCat.entries.forEach { c ->
+                var focused by remember { mutableStateOf(false) }
+                val selected = c == cat
+                Row(Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp))
+                    .background(when { focused -> Color.White; selected -> Harbor.line(.10f); else -> Color.Transparent })
+                    .focusRequester(catFocus.getValue(c))
+                    .onPreviewKeyEvent { if (isKey(it, androidx.compose.ui.input.key.Key.DirectionRight)) {
+                        runCatching { pane.requestFocus() }.onFailure { fm.moveFocus(androidx.compose.ui.focus.FocusDirection.Right) }; true } else false }
+                    .onFocusChanged { focused = it.isFocused; if (it.isFocused) cat = c }
+                    .clickable { cat = c }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(c.icon, null, tint = if (focused) Color.Black else if (selected) Harbor.Sky else Harbor.TextDim, modifier = Modifier.size(26.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Text(stringResource(c.label), color = if (focused) Color.Black else Harbor.Fg, fontSize = 18.sp,
+                        fontWeight = if (selected || focused) FontWeight.Bold else FontWeight.Medium)
+                    if (selected && !focused) { Spacer(Modifier.weight(1f)); Box(Modifier.size(width = 4.dp, height = 22.dp).clip(RoundedCornerShape(2.dp)).background(Harbor.Sky)) }
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                com.sridhar.harbor.ui.ai.JellyBuddy(40.dp)
+                Spacer(Modifier.width(10.dp))
+                Text(stringResource(R.string.jellyverse_tv_1_s, com.sridhar.harbor.BuildConfig.VERSION_NAME), color = Harbor.TextDim, fontSize = 13.sp)
+            }
+        }
+        Spacer(Modifier.width(32.dp))
+        // ---- right: options of the category
+        androidx.compose.animation.AnimatedContent(cat, Modifier.weight(1f).fillMaxHeight(), label = "tvs",
+            transitionSpec = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)) togetherWith androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)) }) { c ->
+            Column(Modifier.fillMaxSize()
+                .focusGroup()
+                // ◀ when nothing further left in the pane: back to the category list.
+                .onKeyEvent { if (isKey(it, androidx.compose.ui.input.key.Key.DirectionLeft)) { runCatching { catFocus.getValue(c).requestFocus() }; true } else false }
+                .verticalScroll(rememberScrollState()).padding(top = 64.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(c.label), color = Harbor.TextDim, fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                SettingsPane(c, pane)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsPane(c: SettingsCat, first: androidx.compose.ui.focus.FocusRequester) {
     val container = LocalContainer.current
     val cfg = rememberConfig()
     val scope = rememberCoroutineScope()
-    // Scrolls with D-pad focus so every option below the fold stays reachable.
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 120.dp, top = 48.dp, end = 64.dp, bottom = 64.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(stringResource(R.string.settings), color = Harbor.Fg, fontSize = 40.sp, fontWeight = FontWeight.Black)
-        Column(Modifier.clip(RoundedCornerShape(20.dp)).background(Harbor.Surface).padding(24.dp)) {
-            Text(stringResource(R.string.jellyfin), color = Harbor.TextDim, fontSize = 14.sp)
-            Text(cfg.jellyfinUrl, color = Harbor.Fg, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            Text(stringResource(R.string.signed_in_as_1_s, cfg.jellyfinUser), color = Harbor.Mint, fontSize = 15.sp)
-        }
-        Text(stringResource(R.string.player_options_subtitles_audio_quality_speed),
-            color = Harbor.TextDim, fontSize = 15.sp, modifier = Modifier.width(760.dp))
-        TvButton(stringResource(R.string.sign_out_2), Icons.AutoMirrored.Rounded.Logout) {
-            scope.launch(com.sridhar.harbor.CrashGuard) { container.settings.update { ServerConfig(deviceId = it.deviceId) } }
-        }
-        var parental by remember { mutableStateOf(false) }
-        TvButton(stringResource(R.string.parental_title) + " · " + com.sridhar.harbor.ui.parental.parentalSummary(), Icons.Rounded.Lock) { parental = true }
-        if (parental) com.sridhar.harbor.ui.parental.ParentalSettingsDialog { parental = false }
-        com.sridhar.harbor.ui.components.AppearancePicker(Modifier.padding(vertical = 8.dp).widthIn(max = 720.dp), tv = true)
-        val recoOn by container.reco.consent.collectAsState()
-        TvButton(stringResource(R.string.reco_toggle) + " · " + stringResource(if (recoOn == true) R.string.on_label else R.string.off_label), Icons.Rounded.Movie) {
-            container.reco.setConsent(recoOn != true)
-        }
-        // Playback: previews compete with the film for the decoder on budget boxes; passthrough's clock stutters on many.
-        val previewMode by container.previewMode.collectAsState()
-        TvButton(stringResource(R.string.previews_title) + " · " + when (previewMode) {
-            "on" -> stringResource(R.string.on_label); "off" -> stringResource(R.string.off_label)
-            else -> stringResource(if (container.previewsOn("auto")) R.string.previews_auto_on else R.string.previews_auto_off)
-        }, Icons.Rounded.Movie) { container.setPreviewMode(when (previewMode) { "auto" -> "on"; "on" -> "off"; else -> "auto" }) }
-        val ctxP = androidx.compose.ui.platform.LocalContext.current
-        val playerPrefs = androidx.compose.runtime.remember { com.sridhar.harbor.ui.player.PlayerPrefs(ctxP) }
-        var passthrough by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(playerPrefs.passthrough) }
-        TvButton(stringResource(R.string.passthrough_title) + " · " + stringResource(if (passthrough) R.string.passthrough_on else R.string.passthrough_off),
-            Icons.Rounded.SurroundSound) { passthrough = !passthrough; playerPrefs.passthrough = passthrough }
-        if (container.updater.enabled) {
-            val autoUpd by container.updater.autoCheckFlow.collectAsState()
-            val ctxU = androidx.compose.ui.platform.LocalContext.current
-            TvButton(stringResource(R.string.update_auto) + " · " + stringResource(if (autoUpd) R.string.on_label else R.string.off_label), Icons.Rounded.SystemUpdate) {
-                container.updater.autoCheck = !autoUpd; com.sridhar.harbor.update.UpdateWorker.schedule(ctxU)
+    val on = stringResource(R.string.on_label); val off = stringResource(R.string.off_label)
+    when (c) {
+        SettingsCat.Account -> {
+            SettingInfo(Icons.Rounded.Dns, stringResource(R.string.jellyfin), cfg.jellyfinUrl.ifBlank { stringResource(R.string.not_configured) },
+                if (cfg.jellyfinReady) stringResource(R.string.signed_in_as_1_s, cfg.jellyfinUser) else null, first)
+            SettingRow(Icons.AutoMirrored.Rounded.Logout, stringResource(R.string.sign_out_2), null, stringResource(R.string.tvs_sign_out_hint)) {
+                scope.launch(com.sridhar.harbor.CrashGuard) { container.settings.update { ServerConfig(deviceId = it.deviceId) } }
             }
         }
-        com.sridhar.harbor.update.updateStatus()?.let { status ->
-            TvButton(stringResource(R.string.update_check) + " · " + status, Icons.Rounded.SystemUpdate) {
-                scope.launch(com.sridhar.harbor.CrashGuard) { container.updater.check(userInitiated = true) }
+        SettingsCat.Playback -> {
+            val previewMode by container.previewMode.collectAsState()
+            SettingRow(Icons.Rounded.Movie, stringResource(R.string.previews_title), focus = first, value = when (previewMode) {
+                "on" -> on; "off" -> off
+                else -> stringResource(if (container.previewsOn("auto")) R.string.previews_auto_on else R.string.previews_auto_off)
+            }, hint = stringResource(R.string.tvs_previews_hint)) { container.setPreviewMode(when (previewMode) { "auto" -> "on"; "on" -> "off"; else -> "auto" }) }
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            val playerPrefs = remember { com.sridhar.harbor.ui.player.PlayerPrefs(ctx) }
+            var passthrough by remember { mutableStateOf(playerPrefs.passthrough) }
+            SettingRow(Icons.Rounded.SurroundSound, stringResource(R.string.passthrough_title), if (passthrough) on else off,
+                stringResource(R.string.tvs_passthrough_hint)) { passthrough = !passthrough; playerPrefs.passthrough = passthrough }
+            val recoOn by container.reco.consent.collectAsState()
+            SettingRow(Icons.Rounded.AutoAwesome, stringResource(R.string.reco_toggle), if (recoOn == true) on else off,
+                stringResource(R.string.tvs_reco_hint)) { container.reco.setConsent(recoOn != true) }
+            Text(stringResource(R.string.player_options_subtitles_audio_quality_speed), color = Harbor.TextDim, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp))
+        }
+        SettingsCat.Look -> {
+            com.sridhar.harbor.ui.components.AppearancePicker(Modifier.widthIn(max = 760.dp), tv = true)
+            com.sridhar.harbor.ui.components.LanguagePicker()
+        }
+        SettingsCat.Parental -> {
+            var open by remember { mutableStateOf(false) }
+            SettingRow(Icons.Rounded.Lock, stringResource(R.string.parental_title), com.sridhar.harbor.ui.parental.parentalSummary(),
+                stringResource(R.string.tvs_parental_hint), first) { open = true }
+            if (open) com.sridhar.harbor.ui.parental.ParentalSettingsDialog { open = false }
+        }
+        SettingsCat.Phone -> {
+            var pairing by remember { mutableStateOf(false) }
+            val phones by com.sridhar.harbor.remote.RemoteServer.connected.collectAsState()
+            SettingRow(Icons.Rounded.QrCode2, stringResource(R.string.remote_pair_phone),
+                if (phones > 0) stringResource(R.string.remote_phones_connected, phones) else null, stringResource(R.string.tvs_phone_hint), first) { pairing = true }
+            if (pairing) PairPhoneDialog { pairing = false }
+        }
+        SettingsCat.Updates -> {
+            if (container.updater.enabled) {
+                val autoUpd by container.updater.autoCheckFlow.collectAsState()
+                val ctxU = androidx.compose.ui.platform.LocalContext.current
+                SettingRow(Icons.Rounded.Autorenew, stringResource(R.string.update_auto), if (autoUpd) on else off, stringResource(R.string.tvs_update_auto_hint), first) {
+                    container.updater.autoCheck = !autoUpd; com.sridhar.harbor.update.UpdateWorker.schedule(ctxU)
+                }
+            }
+            com.sridhar.harbor.update.updateStatus()?.let { status ->
+                SettingRow(Icons.Rounded.SystemUpdate, stringResource(R.string.update_check), status, null) {
+                    scope.launch(com.sridhar.harbor.CrashGuard) { container.updater.check(userInitiated = true) }
+                }
             }
         }
-        var pairing by remember { mutableStateOf(false) }
-        val phones by com.sridhar.harbor.remote.RemoteServer.connected.collectAsState()
-        TvButton("📱  " + stringResource(R.string.remote_pair_phone) + if (phones > 0) " · " + stringResource(R.string.remote_phones_connected, phones) else "", null) { pairing = true }
-        if (pairing) PairPhoneDialog { pairing = false }
-        com.sridhar.harbor.ui.components.LanguagePicker()
-        Text(stringResource(R.string.jellyverse_tv_1_s, com.sridhar.harbor.BuildConfig.VERSION_NAME), color = Harbor.TextDim, fontSize = 13.sp)
-        com.sridhar.harbor.ui.components.MadeWithLove()
+        SettingsCat.About -> {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                com.sridhar.harbor.ui.ai.JellyBuddy(96.dp)
+                Spacer(Modifier.width(20.dp))
+                Column {
+                    Text("JellyVerse TV", color = Harbor.Fg, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                    Text(stringResource(R.string.jellyverse_tv_1_s, com.sridhar.harbor.BuildConfig.VERSION_NAME), color = Harbor.TextDim, fontSize = 15.sp)
+                }
+            }
+            SettingInfo(Icons.Rounded.Info, stringResource(R.string.tvs_remote_tip_title), stringResource(R.string.tvs_remote_tip), null, first)
+            com.sridhar.harbor.ui.components.MadeWithLove()
+        }
+    }
+}
+
+/** One big D-pad-friendly option: icon, title, current value pill, one-line explanation. Focused → white card. */
+@Composable
+private fun SettingRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, value: String?, hint: String?,
+                       focus: androidx.compose.ui.focus.FocusRequester? = null, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (focused) 1.02f else 1f, label = "s")
+    Row(Modifier.fillMaxWidth().widthIn(max = 820.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(18.dp))
+        .background(if (focused) Color.White else Harbor.Surface).then(if (focus != null) Modifier.focusRequester(focus) else Modifier)
+        .onFocusChanged { focused = it.isFocused }.clickable(onClick = onClick)
+        .padding(horizontal = 20.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = if (focused) Color.Black else Harbor.Sky, modifier = Modifier.size(28.dp))
+        Spacer(Modifier.width(18.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = if (focused) Color.Black else Harbor.Fg, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            hint?.let { Text(it, color = if (focused) Color.Black.copy(alpha = .6f) else Harbor.TextDim, fontSize = 14.sp) }
+        }
+        value?.let {
+            Spacer(Modifier.width(12.dp))
+            Box(Modifier.clip(RoundedCornerShape(50)).background(if (focused) Color.Black.copy(alpha = .08f) else Harbor.line(.08f)).padding(horizontal = 14.dp, vertical = 6.dp)) {
+                Text(it, color = if (focused) Color.Black else Harbor.Fg, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** Read-only info card (focusable so the remote can reach and read it). */
+@Composable
+private fun SettingInfo(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, value: String, sub: String?,
+                        focus: androidx.compose.ui.focus.FocusRequester? = null) {
+    var focused by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().widthIn(max = 820.dp).clip(RoundedCornerShape(18.dp)).background(Harbor.Surface)
+        .border(if (focused) 2.dp else 0.dp, if (focused) Harbor.Sky else Color.Transparent, RoundedCornerShape(18.dp))
+        .then(if (focus != null) Modifier.focusRequester(focus) else Modifier)
+        .onFocusChanged { focused = it.isFocused }.focusable().padding(horizontal = 20.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = Harbor.Sky, modifier = Modifier.size(28.dp))
+        Spacer(Modifier.width(18.dp))
+        Column {
+            Text(title, color = Harbor.TextDim, fontSize = 14.sp)
+            Text(value, color = Harbor.Fg, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            sub?.let { Text(it, color = Harbor.Mint, fontSize = 14.sp) }
+        }
     }
 }
 

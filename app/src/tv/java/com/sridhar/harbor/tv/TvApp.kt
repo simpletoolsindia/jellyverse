@@ -162,12 +162,14 @@ fun TvApp() {
                 .padding(vertical = 24.dp, horizontal = 14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            com.sridhar.harbor.ui.components.HarborLogo(44.dp)
+            com.sridhar.harbor.ui.ai.JellyBuddy(48.dp)
             Spacer(Modifier.height(18.dp))
             // Only services that are set up get a rail entry; 18+ appears once parental control is on.
             val cfgRail = com.sridhar.harbor.ui.components.rememberConfig()
             val parental by com.sridhar.harbor.ui.components.LocalContainer.current.parental.state.collectAsState()
             rail.filter { r -> when (r.dest) { TvDest.Adult -> parental.enabled && parental.showMenu; else -> true } }.forEach { r ->
+                // Browse (Search…Music) and You (Connect, 18+, Settings) groups, split by a thin line.
+                if (r.dest == TvDest.Connect) Box(Modifier.padding(vertical = 8.dp, horizontal = 10.dp).fillMaxWidth().height(1.dp).background(Harbor.line(.12f)))
                 var focused by remember { mutableStateOf(false) }
                 val selected = r.dest == current
                 Row(
@@ -177,7 +179,9 @@ fun TvApp() {
                         .onFocusChanged { focused = it.isFocused }.clickable { go(r.dest) }.padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(r.icon, r.label, tint = if (focused) Color.Black else if (selected) Harbor.Fg else Harbor.TextDim, modifier = Modifier.size(26.dp))
+                    Box(Modifier.size(26.dp)) {
+                        Icon(r.icon, r.label, tint = if (focused) Color.Black else if (selected) Harbor.Sky else Harbor.TextDim, modifier = Modifier.fillMaxSize())
+                    }
                     AnimatedVisibility(railFocused, enter = fadeIn() + expandHorizontally(), exit = fadeOut() + shrinkHorizontally()) {
                         Text(r.label, color = if (focused) Color.Black else Harbor.Fg, fontWeight = FontWeight.Bold, fontSize = 17.sp, modifier = Modifier.padding(start = 16.dp))
                     }
