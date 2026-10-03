@@ -203,10 +203,12 @@ fun WatchHomeScreen(
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 120.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current)) {
             item(key = "hero") {
                 if (vm.hero.isNotEmpty()) {
-                    // Billboard (full-bleed hero) on phones; tablets / landscape keep the cinematic wide hero.
-                    if (look.home == com.sridhar.harbor.ui.theme.HomeStyle.Billboard && com.sridhar.harbor.ui.components.widthClass() == com.sridhar.harbor.ui.components.WidthClass.Compact)
+                    // Billboard: one big hero (full-bleed on phones, cinematic wide hero on tablets / landscape).
+                    // Spotlight: swipeable poster cards with neighbours peeking – on every screen size.
+                    val billboard = look.home == com.sridhar.harbor.ui.theme.HomeStyle.Billboard
+                    if (billboard && com.sridhar.harbor.ui.components.widthClass() == com.sridhar.harbor.ui.components.WidthClass.Compact)
                         BillboardHero(vm.hero, onItem, play)
-                    else HeroPager(vm.hero, onItem, play)
+                    else HeroPager(vm.hero, onItem, play, billboard)
                 }
                 else Spacer(Modifier.statusBarsPadding().height(72.dp))
             }
@@ -352,7 +354,7 @@ private fun LibraryChip(v: BaseItem, onClick: () -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (BaseItem) -> Unit) {
+private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (BaseItem) -> Unit, billboard: Boolean = false) {
     val cfg = rememberConfig()
     val container = LocalContainer.current
     val jf = container.jellyfin
@@ -367,7 +369,8 @@ private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (
             if (!pager.isScrollInProgress) pager.animateScrollToPage((pager.currentPage + 1) % items.size)
         }
     }
-    if (com.sridhar.harbor.ui.components.widthClass() != com.sridhar.harbor.ui.components.WidthClass.Compact) {
+    val wide = com.sridhar.harbor.ui.components.widthClass() != com.sridhar.harbor.ui.components.WidthClass.Compact
+    if (wide && billboard) {
         WideHero(items, pager, favs, onItem, onPlay, onTrailer = { trailerOn = it }); return
     }
     Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 64.dp)) {
@@ -375,8 +378,11 @@ private fun HeroPager(items: List<BaseItem>, onItem: (String) -> Unit, onPlay: (
         // Poster-shaped card sized from the screen: tall phones get the full poster, short ones (360×640)
         // still see Watch Now and the shortcuts below it without scrolling.
         val conf = androidx.compose.ui.platform.LocalConfiguration.current
-        val heroH = minOf((conf.screenWidthDp - 72).dp * 1.45f, conf.screenHeightDp.dp * 0.56f).coerceIn(280.dp, 520.dp)
-        HorizontalPager(pager, Modifier.fillMaxWidth().height(heroH), contentPadding = PaddingValues(horizontal = 36.dp), pageSpacing = 12.dp) { page ->
+        val heroH = if (wide) (conf.screenHeightDp.dp * 0.62f).coerceIn(280.dp, 560.dp)
+            else minOf((conf.screenWidthDp - 72).dp * 1.45f, conf.screenHeightDp.dp * 0.56f).coerceIn(280.dp, 520.dp)
+        // Wide screens: poster-shaped cards centred, several neighbours visible on each side.
+        val side = if (wide) ((conf.screenWidthDp.dp - heroH / 1.45f) / 2).coerceAtLeast(36.dp) else 36.dp
+        HorizontalPager(pager, Modifier.fillMaxWidth().height(heroH), contentPadding = PaddingValues(horizontal = side), pageSpacing = if (wide) 20.dp else 12.dp) { page ->
             val item = items[page]
             val offset = ((pager.currentPage - page) + pager.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
             Box(

@@ -89,6 +89,11 @@ class AppContainer(context: Context) {
     val radio by lazy { com.sridhar.harbor.data.music.RadioStations(context, http) }
     /** A stream link shared into the app ("Share → JellyVerse"); Music home offers to save it as a station. */
     val sharedRadioLink = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    private val appPrefs = context.getSharedPreferences("harbor_app", android.content.Context.MODE_PRIVATE)
+    /** "Just use Radio": the app runs with no servers at all (chosen on the setup screen). */
+    var radioOnly: Boolean
+        get() = appPrefs.getBoolean("radio_only", false)
+        set(v) = appPrefs.edit().putBoolean("radio_only", v).apply()
     /** Opens the radio recordings sheet in Music (from the recording notifications). */
     val showRecordings = kotlinx.coroutines.flow.MutableStateFlow(false)
     val admin by lazy { com.sridhar.harbor.data.jellyfin.admin.JellyfinAdminRepository(jellyfin) }

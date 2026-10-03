@@ -1,0 +1,1 @@
+JellyVerse 2.17.0: Settings is always its own tab (no longer hidden behind Lab). Use JellyVerse as a radio app with no servers ("Just use Radio"). The assistant is an animated Shih Tzu. Home layout choice now applies on tablets and landscape too.

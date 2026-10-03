@@ -1197,4 +1197,9 @@
     <string name="rec_short">REC</string>
     <string name="rec_busy">Recording…</string>
     <string name="rec_menu">Radio recordings</string>
+    <string name="tab_radio">Radio</string>
+    <string name="radio_home_hint">Live FM &amp; internet stations · record · reminders</string>
+    <string name="rec_upcoming_count">%1$d scheduled · tap to manage</string>
+    <string name="setup_radio_only">Just use Radio</string>
+    <string name="setup_radio_only_hint">No server needed – add Jellyfin and others later in Settings</string>
 </resources>

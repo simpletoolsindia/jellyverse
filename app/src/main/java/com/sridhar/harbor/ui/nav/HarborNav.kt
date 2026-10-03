@@ -6,6 +6,8 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.outlined.Radio
+import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.outlined.Dns
@@ -139,6 +141,8 @@ import kotlinx.serialization.Serializable
 @Serializable object ProtectedRoute
 @Serializable object RemoteRoute
 @Serializable object MusicRoute
+/** Stand-alone radio (when Navidrome isn't set up, radio gets its own tab). */
+@Serializable object RadioRoute
 @Serializable data class MusicAlbumRoute(val id: String)
 @Serializable data class MusicPlaylistRoute(val id: String)
 @Serializable object MusicLikedRoute
@@ -156,6 +160,7 @@ private data class Tab(val route: Any, @androidx.annotation.StringRes val labelR
 private val allTabs = listOf(
     Tab(WatchRoute, com.sridhar.harbor.R.string.tab_watch, Icons.Rounded.PlayCircle, Icons.Outlined.PlayCircle),
     Tab(MusicRoute, com.sridhar.harbor.R.string.tab_music, Icons.Rounded.MusicNote, Icons.Outlined.MusicNote),
+    Tab(RadioRoute, com.sridhar.harbor.R.string.tab_radio, Icons.Rounded.Radio, Icons.Outlined.Radio),
     Tab(DiscoverRoute, com.sridhar.harbor.R.string.tab_discover, Icons.Rounded.Explore, Icons.Outlined.Explore),
     Tab(TorrentsRoute, com.sridhar.harbor.R.string.tab_torrents, Icons.Rounded.SwapVert, Icons.Outlined.SwapVert),
     Tab(RequestsRoute, com.sridhar.harbor.R.string.tab_requests, Icons.Rounded.Inbox, Icons.Outlined.Inbox),
@@ -165,20 +170,27 @@ private val allTabs = listOf(
 )
 
 /**
- * Every service is optional: a tab only exists once its service is set up. Settings stands in for Lab
- * when no SSH host is configured, so accounts are always one tap away.
+ * Every service is optional: a tab only exists once its service is set up. Settings is always a tab (kept in the
+ * bar, never behind More or Lab), so accounts, appearance, AI, alerts and audio options are one tap away.
  */
-private fun visibleTabs(cfg: com.sridhar.harbor.data.ServerConfig?, hasSsh: Boolean): List<Tab> = allTabs.filter { t ->
-    when (t.route) {
-        WatchRoute -> cfg?.jellyfinReady == true
-        MusicRoute -> cfg?.navidromeReady == true
-        DiscoverRoute, RequestsRoute -> cfg?.seerrReady == true
-        ManageRoute -> cfg?.arrReady == true
-        TorrentsRoute -> cfg?.qbitReady == true || cfg?.aria2Ready == true
-        LabRoute -> hasSsh
-        ProfileRoute -> !hasSsh
-        else -> true
+private fun visibleTabs(cfg: com.sridhar.harbor.data.ServerConfig?, hasSsh: Boolean): List<Tab> {
+    val shown = allTabs.filter { t ->
+        when (t.route) {
+            WatchRoute -> cfg?.jellyfinReady == true
+            MusicRoute -> cfg?.navidromeReady == true
+            RadioRoute -> cfg?.navidromeReady != true   // with Navidrome, radio lives inside Music
+            DiscoverRoute, RequestsRoute -> cfg?.seerrReady == true
+            ManageRoute -> cfg?.arrReady == true
+            TorrentsRoute -> cfg?.qbitReady == true || cfg?.aria2Ready == true
+            LabRoute -> hasSsh
+            else -> true   // Settings: always a tab of its own (not hidden behind Lab's profile icon)
+        }
     }
+    // The bar shows four tabs + More when there are more than five: keep Settings in the bar, as the 4th slot.
+    if (shown.size <= 5) return shown
+    val settings = shown.first { it.route == ProfileRoute }
+    val rest = shown - settings
+    return rest.take(3) + settings + rest.drop(3)
 }
 
 @Composable
@@ -194,12 +206,15 @@ private fun HarborNavContent(initial: ServerConfig) {
     val nav = rememberNavController()
     val start: Any = remember {
         when {
-            !initial.jellyfinReady && !initial.qbitReady && !initial.seerrReady && !initial.arrReady && container.ssh.hosts.value.isEmpty() -> SetupRoute
+            !initial.jellyfinReady && !initial.qbitReady && !initial.seerrReady && !initial.arrReady && !initial.navidromeReady &&
+                container.ssh.hosts.value.isEmpty() && !container.radioOnly -> SetupRoute
             else -> visibleTabs(initial, container.ssh.hosts.value.isNotEmpty()).firstOrNull()?.route ?: ProfileRoute
         }
     }
 
     var showPlayer by rememberSaveable { mutableStateOf(false) }
+    /** Where music & radio live: the Music tab with Navidrome, else the stand-alone Radio tab. */
+    fun musicHome(): Any = if (container.config.value?.navidromeReady == true) MusicRoute else RadioRoute
     // Bring back the last music queue (paused) so the mini player is there on every tab after a restart.
     LaunchedEffect(Unit) { if (container.config.value?.navidromeReady == true) container.musicEngine.restore() }
     val music by container.musicEngine.state.collectAsState()
@@ -231,10 +246,10 @@ private fun HarborNavContent(initial: ServerConfig) {
                 "downloads" -> nav.switchTab(TorrentsRoute)
                 "lab" -> nav.switchTab(LabRoute)
                 "live" -> nav.navigate(LiveRoute)
-                "music" -> nav.switchTab(MusicRoute)
+                "music" -> nav.switchTab(musicHome())
                 "remote" -> nav.navigate(RemoteRoute)
-                "nowplaying" -> { nav.switchTab(MusicRoute); showPlayer = true }
-                "recordings" -> { nav.switchTab(MusicRoute); container.showRecordings.value = true }
+                "nowplaying" -> { nav.switchTab(musicHome()); showPlayer = true }
+                "recordings" -> { nav.switchTab(musicHome()); container.showRecordings.value = true }
                 else -> when {
                     dest.startsWith("item:") -> nav.navigate(ItemRoute(dest.removePrefix("item:")))
                     dest.startsWith("doctor:") -> nav.navigate(DoctorRoute(dest.removePrefix("doctor:")))
@@ -369,7 +384,7 @@ private fun HarborNavContent(initial: ServerConfig) {
                         val primary = container.ssh.primary
                         if (primary != null && container.ssh.hosts.value.size == 1) nav.navigate(TerminalRoute(primary.id)) else nav.navigate(HostsRoute)
                     },
-                    onProfile = { nav.navigate(ProfileRoute) },
+                    onProfile = { nav.switchTab(ProfileRoute) },
                 )
             }}
             composable<HostsRoute> { Readable { com.sridhar.harbor.ui.ssh.HostsScreen(onConnect = { nav.navigate(TerminalRoute(it)) }, onBack = { nav.popBackStack() }) }}
@@ -389,6 +404,7 @@ private fun HarborNavContent(initial: ServerConfig) {
             composable<ProtectedRoute> { com.sridhar.harbor.ui.parental.ProtectedTitlesScreen(onItem = { nav.navigate(ItemRoute(it)) }, onBack = { nav.popBackStack() }) }
             composable<OfflineRoute> { Readable { OfflineScreen(onBack = { nav.popBackStack() }) }}
             composable<MusicRoute> { com.sridhar.harbor.ui.music.MusicHomeScreen(musicNav) }
+            composable<RadioRoute> { com.sridhar.harbor.ui.music.RadioHomeScreen() }
             composable<MusicAlbumRoute> { Readable { com.sridhar.harbor.ui.music.CollectionScreen("album", it.toRoute<MusicAlbumRoute>().id, musicNav) }}
             composable<MusicPlaylistRoute> { Readable { com.sridhar.harbor.ui.music.CollectionScreen("playlist", it.toRoute<MusicPlaylistRoute>().id, musicNav) }}
             composable<MusicDownloadedRoute> { Readable { com.sridhar.harbor.ui.music.CollectionScreen("downloaded", "downloaded", musicNav) }}
@@ -400,7 +416,7 @@ private fun HarborNavContent(initial: ServerConfig) {
 
         }
         val onMusicScreen = dest != null && listOf(MusicAlbumRoute::class, MusicPlaylistRoute::class, MusicLikedRoute::class, MusicDownloadedRoute::class, MusicArtistRoute::class, MusicSearchRoute::class, MusicLibraryRoute::class).any { dest.hasRoute(it) }
-        val onMusicTab = dest?.hasRoute(MusicRoute::class) == true
+        val onMusicTab = dest?.hasRoute(MusicRoute::class) == true || dest?.hasRoute(RadioRoute::class) == true
         val showMini = (musicActive || (onMusicScreen || onMusicTab) && music.current != null) && (showBar || onMusicScreen)
         val miniLift = if (showMini && !useRail) 68.dp else 0.dp
         com.sridhar.harbor.cast.CastMiniBar(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = (if (showBar && !useRail) 160.dp else 16.dp) + miniLift))
@@ -534,7 +550,7 @@ private fun FloatingNavBar(tabs: List<Tab>, selected: Int, onSelect: (Int) -> Un
                 }
             }
             // Radio recordings (they live in Music, which needs Navidrome).
-            if (tabs.any { it.route == MusicRoute }) {
+            if (tabs.any { it.route == MusicRoute || it.route == RadioRoute }) {
                 val container = com.sridhar.harbor.ui.components.LocalContainer.current
                 val recs by com.sridhar.harbor.radio.RadioLibrary.recordings.collectAsState()
                 val live by com.sridhar.harbor.radio.RadioLibrary.live.collectAsState()

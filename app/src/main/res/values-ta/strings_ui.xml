@@ -1197,4 +1197,9 @@
     <string name="rec_short">பதிவு</string>
     <string name="rec_busy">பதிவாகிறது…</string>
     <string name="rec_menu">வானொலி பதிவுகள்</string>
+    <string name="tab_radio">வானொலி</string>
+    <string name="radio_home_hint">நேரலை FM &amp; இணைய நிலையங்கள் · பதிவு · நினைவூட்டல்</string>
+    <string name="rec_upcoming_count">%1$d திட்டமிடப்பட்டவை · நிர்வகிக்க தட்டவும்</string>
+    <string name="setup_radio_only">வானொலி மட்டும் பயன்படுத்து</string>
+    <string name="setup_radio_only_hint">சர்வர் தேவையில்லை – Jellyfin போன்றவற்றை பின்னர் அமைப்புகளில் சேர்க்கலாம்</string>
 </resources>

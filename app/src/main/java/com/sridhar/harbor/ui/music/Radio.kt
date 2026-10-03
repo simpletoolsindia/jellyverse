@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -56,9 +57,9 @@ import com.sridhar.harbor.ui.theme.Harbor
 import kotlinx.coroutines.launch
 
 /** Saved internet / FM stations: tap to play live, long-press to edit / record / schedule / remove, "+" (or a shared link) to add. */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun RadioShelf() {
+fun RadioShelf(grid: Boolean = false) {
     val c = LocalContainer.current
     val stations by c.radio.stations.collectAsState()
     val shared by c.sharedRadioLink.collectAsState()
@@ -72,17 +73,12 @@ fun RadioShelf() {
     var discovering by remember { mutableStateOf(false) }
     LaunchedEffect(shared) { shared?.let { adding = it; c.sharedRadioLink.value = null } }
 
-    Column(Modifier.padding(top = 24.dp)) {
-        Text(stringResource(R.string.radio_title), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp))
-        Text(stringResource(R.string.radio_hint), color = Harbor.TextDim, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
-        Spacer(Modifier.height(10.dp))
-        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(stations, key = { it.id }) { st ->
+    val stationTile: @Composable (RadioStation, androidx.compose.ui.unit.Dp) -> Unit = { st, tileW ->
                 val live = playing.current?.id == st.toSong().id
                 val (a, b) = remember(st.id) { seedColors(st.name + "radio") }
-                Column(Modifier.width(112.dp).clip(RoundedCornerShape(14.dp))
+                Column(Modifier.width(tileW).clip(RoundedCornerShape(14.dp))
                     .combinedClickable(onLongClick = { acting = st }) { c.musicEngine.play(listOf(st.toSong()), source = st.name) }) {
-                    Box(Modifier.size(112.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(a, b)))
+                    Box(Modifier.size(tileW).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(a, b)))
                         .then(if (live) Modifier.border(2.dp, Color.White, RoundedCornerShape(14.dp)) else Modifier), Alignment.Center) {
                         if (live && playing.playing) EqualizerBars(true, Modifier.size(34.dp), Color.White)
                         else Icon(Icons.Rounded.Radio, null, tint = Color.White, modifier = Modifier.size(40.dp))
@@ -92,9 +88,9 @@ fun RadioShelf() {
                     Text(if (live) stringResource(R.string.radio_live) else stringResource(R.string.radio_station), color = if (live) Harbor.Mint else Harbor.TextDim, fontSize = 12.sp)
                 }
             }
-            item(key = "recordings") {
-                Column(Modifier.width(112.dp).clip(RoundedCornerShape(14.dp)).combinedClickable { c.showRecordings.value = true }) {
-                    Box(Modifier.size(112.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(Harbor.Rose.copy(alpha = .4f), Harbor.Violet.copy(alpha = .25f)))), Alignment.Center) {
+    val recordingsTile: @Composable (androidx.compose.ui.unit.Dp) -> Unit = { tileW ->
+                Column(Modifier.width(tileW).clip(RoundedCornerShape(14.dp)).combinedClickable { c.showRecordings.value = true }) {
+                    Box(Modifier.size(tileW).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(Harbor.Rose.copy(alpha = .4f), Harbor.Violet.copy(alpha = .25f)))), Alignment.Center) {
                         if (recLive != null) RecPulse() else Icon(Icons.Rounded.FiberManualRecord, null, tint = Color.White, modifier = Modifier.size(36.dp))
                     }
                     Spacer(Modifier.height(6.dp))
@@ -102,24 +98,44 @@ fun RadioShelf() {
                     Text(if (recLive != null) stringResource(R.string.rec_live_short) else recCount.size.toString(), color = if (recLive != null) Harbor.Rose else Harbor.TextDim, fontSize = 12.sp)
                 }
             }
-            item(key = "discover") {
-                Column(Modifier.width(112.dp).clip(RoundedCornerShape(14.dp)).combinedClickable { discovering = true }) {
-                    Box(Modifier.size(112.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(Harbor.Violet.copy(alpha = .35f), Harbor.Sky.copy(alpha = .2f)))), Alignment.Center) {
+    val discoverTile: @Composable (androidx.compose.ui.unit.Dp) -> Unit = { tileW ->
+                Column(Modifier.width(tileW).clip(RoundedCornerShape(14.dp)).combinedClickable { discovering = true }) {
+                    Box(Modifier.size(tileW).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(Harbor.Violet.copy(alpha = .35f), Harbor.Sky.copy(alpha = .2f)))), Alignment.Center) {
                         Text("🔎", fontSize = 34.sp)
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(stringResource(R.string.radio_discover), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 2)
                 }
             }
-            item(key = "add") {
-                Column(Modifier.width(112.dp).clip(RoundedCornerShape(14.dp)).combinedClickable { adding = "" }) {
-                    Box(Modifier.size(112.dp).clip(RoundedCornerShape(14.dp)).border(1.5.dp, Harbor.VioletSoft.copy(alpha = .5f), RoundedCornerShape(14.dp)), Alignment.Center) {
+    val addTile: @Composable (androidx.compose.ui.unit.Dp) -> Unit = { tileW ->
+                Column(Modifier.width(tileW).clip(RoundedCornerShape(14.dp)).combinedClickable { adding = "" }) {
+                    Box(Modifier.size(tileW).clip(RoundedCornerShape(14.dp)).border(1.5.dp, Harbor.VioletSoft.copy(alpha = .5f), RoundedCornerShape(14.dp)), Alignment.Center) {
                         Icon(Icons.Rounded.Add, null, tint = Harbor.VioletSoft, modifier = Modifier.size(36.dp))
                     }
                     Spacer(Modifier.height(6.dp))
                     Text(stringResource(R.string.radio_add), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Harbor.VioletSoft)
                 }
             }
+
+    if (grid) {
+        // Full page (stand-alone Radio tab): stations as a grid, three across on phones.
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp)) {
+            val across = (maxWidth / 132.dp).toInt().coerceAtLeast(3)
+            val tileW = (maxWidth - 12.dp * (across - 1)) / across - 1.dp   // -1dp: rounding must never push the last tile to a new row
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                stations.forEach { st -> androidx.compose.runtime.key(st.id) { stationTile(st, tileW) } }
+                recordingsTile(tileW); discoverTile(tileW); addTile(tileW)
+            }
+        }
+    } else Column(Modifier.padding(top = 24.dp)) {
+        Text(stringResource(R.string.radio_title), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp))
+        Text(stringResource(R.string.radio_hint), color = Harbor.TextDim, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
+        Spacer(Modifier.height(10.dp))
+        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(stations, key = { it.id }) { st -> stationTile(st, 112.dp) }
+            item(key = "recordings") { recordingsTile(112.dp) }
+            item(key = "discover") { discoverTile(112.dp) }
+            item(key = "add") { addTile(112.dp) }
         }
     }
     adding?.let { pre -> AddStationDialog(pre, onDismiss = { adding = null }) }
@@ -207,6 +223,59 @@ private fun DiscoverSheet(onDismiss: () -> Unit) {
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The stand-alone Radio tab (no Navidrome needed – also the whole app in "Just use Radio" mode): your stations,
+ * discover / add, and the latest recordings to play right here.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun RadioHomeScreen() {
+    val c = LocalContainer.current
+    val recs by com.sridhar.harbor.radio.RadioLibrary.recordings.collectAsState()
+    val scheds by com.sridhar.harbor.radio.RadioLibrary.schedules.collectAsState()
+    val fmt = remember { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT) }
+    androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = 120.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current)) {
+        item {
+            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 20.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.tab_radio), fontSize = 30.sp, fontWeight = FontWeight.Black)
+                    Text(stringResource(R.string.radio_home_hint), color = Harbor.TextDim, fontSize = 13.sp)
+                }
+                com.sridhar.harbor.ui.ai.AiOrb(44.dp)
+            }
+        }
+        item { RadioShelf(grid = true) }
+        if (recs.isNotEmpty()) {
+            item {
+                androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 28.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.rec_recordings), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    TextButton({ c.showRecordings.value = true }) { Text(stringResource(R.string.see_all), color = Harbor.VioletSoft) }
+                }
+            }
+            items(recs.take(5), key = { "r" + it.id }) { r ->
+                androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().combinedClickable { c.musicEngine.play(listOf(r.toSong()), source = r.station) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    val (a, b) = remember(r.station) { seedColors(r.station + "radio") }
+                    Box(Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(Brush.linearGradient(listOf(a, b))), Alignment.Center) {
+                        Icon(Icons.Rounded.FiberManualRecord, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(r.station, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("${fmt.format(r.startedAt)} · ${clock(r.durationMs)}", color = Harbor.TextDim, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+        if (scheds.isNotEmpty()) item {
+            Text(stringResource(R.string.rec_upcoming_count, scheds.size), color = Harbor.TextDim, fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).clip(RoundedCornerShape(8.dp)).combinedClickable { c.showRecordings.value = true })
         }
     }
 }

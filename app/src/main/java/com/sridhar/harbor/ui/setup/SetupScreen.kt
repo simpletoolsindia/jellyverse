@@ -1,5 +1,7 @@
 package com.sridhar.harbor.ui.setup
 
+import androidx.compose.material.icons.rounded.Radio as RadioIconDef
+
 import com.sridhar.harbor.L10n
 import com.sridhar.harbor.R
 import androidx.compose.ui.res.stringResource
@@ -301,6 +303,17 @@ fun SetupScreen(onDone: () -> Unit) {
             }
 
             GradientButton(stringResource(R.string.enter_jellyverse), onClick = onDone, modifier = Modifier.fillMaxWidth(), enabled = vm.anyConnected)
+            // No servers? The radio works on its own (internet / FM stations, recording, reminders).
+            if (!vm.anyConnected) {
+                val c = com.sridhar.harbor.ui.components.LocalContainer.current
+                androidx.compose.material3.OutlinedButton({ c.radioOnly = true; onDone() }, Modifier.fillMaxWidth().height(52.dp)) {
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.RadioIconDef, null)
+                    Spacer(Modifier.width(10.dp))
+                    Text(stringResource(R.string.setup_radio_only))
+                }
+                Text(stringResource(R.string.setup_radio_only_hint), color = Harbor.TextDim, style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.CenterHorizontally))
+            }
             com.sridhar.harbor.ui.components.MadeWithLove(Modifier.align(Alignment.CenterHorizontally))
             Spacer(Modifier.height(24.dp))
         }
