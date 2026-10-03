@@ -22,12 +22,15 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
         L10n.init(this)
         com.sridhar.harbor.ui.theme.Looks.init(this, BuildConfig.FLAVOR == "tv")
         com.sridhar.harbor.net.NetworkMonitor.init(this)
+        com.sridhar.harbor.radio.RadioLibrary.init(this)
         container = AppContainer(this)
         container.cast.init()
         // Off the main thread: channels + WorkManager aren't needed for the first frame.
         container.scope.launch {
             com.sridhar.harbor.alerts.Alerts.createChannels(this@HarborApp)
             com.sridhar.harbor.update.UpdateWorker.schedule(this@HarborApp)
+            com.sridhar.harbor.radio.RecordService.channels(this@HarborApp)
+            com.sridhar.harbor.radio.RadioScheduler.rearmAll(this@HarborApp)
             if (!packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)) com.sridhar.harbor.alerts.Alerts.schedule(this@HarborApp)
         }
     }

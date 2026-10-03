@@ -1,0 +1,1 @@
+JellyVerse 2.13.0: record radio (now or on a schedule, 15 min–3 h, daily), listening reminders, edit stations, recordings you can play or save to Downloads, alerts when new films land in Jellyfin (with Fix name & poster), smarter recommendations, faster downloads, a new launch animation and loader, and Jelly, your animated assistant.

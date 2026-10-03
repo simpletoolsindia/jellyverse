@@ -89,6 +89,8 @@ class AppContainer(context: Context) {
     val radio by lazy { com.sridhar.harbor.data.music.RadioStations(context, http) }
     /** A stream link shared into the app ("Share → JellyVerse"); Music home offers to save it as a station. */
     val sharedRadioLink = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    /** Opens the radio recordings sheet in Music (from the recording notifications). */
+    val showRecordings = kotlinx.coroutines.flow.MutableStateFlow(false)
     val admin by lazy { com.sridhar.harbor.data.jellyfin.admin.JellyfinAdminRepository(jellyfin) }
     val seerr = SeerrRepository(settings, http)
     /** Multi-part parallel downloader shared by offline films and AI models. */

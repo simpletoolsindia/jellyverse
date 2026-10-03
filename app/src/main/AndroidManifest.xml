@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:name=".HarborApp"
@@ -87,6 +89,19 @@
             android:name="com.sridhar.harbor.data.download.DownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Radio recording (foreground, timed) and its schedule/reminder alarms. -->
+        <service
+            android:name="com.sridhar.harbor.radio.RecordService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        <receiver android:name="com.sridhar.harbor.radio.RadioAlarmReceiver" android:exported="false" />
+        <receiver android:name="com.sridhar.harbor.radio.RadioBootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".tile.TurtleTileService"

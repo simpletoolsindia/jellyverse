@@ -74,6 +74,16 @@ class RadioStations(context: Context, private val http: OkHttpClient) {
 
     fun remove(station: RadioStation) = save(_stations.value.filterNot { it.id == station.id })
 
+    /** Rename a station and/or change its stream link (playlist links are resolved like when adding). Keeps its place. */
+    suspend fun update(id: String, name: String, url: String): RadioStation {
+        val stream = resolve(url.trim())
+        val updated = RadioStation(id = id, name = name.trim().ifBlank { guessName(stream) }, url = stream)
+        save(_stations.value.map { if (it.id == id) updated else it })
+        return updated
+    }
+
+    fun byId(id: String) = _stations.value.firstOrNull { it.id == id }
+
     private suspend fun resolve(url: String): String = withContext(Dispatchers.IO) {
         val lower = url.substringBefore('?').lowercase()
         if (!lower.endsWith(".pls") && !lower.endsWith(".m3u")) return@withContext url

@@ -55,4 +55,18 @@ class RecommenderTest {
         val r = Recommender.compute(library, keep = { it.id != "Vikram" }, now = now)
         assertThat(r.forYou.map { it.item.id }).doesNotContain("Vikram")
     }
+
+    @Test fun droppedFilmIsNotRecommendedOrUsedAsSeed() {
+        val dropped = item("Frozen", listOf("Animation", "Family", "Musical"), listOf("Idina Menzel")).copy(
+            userData = UserData(playedPercentage = 12.0, playCount = 1, lastPlayedDate = now.minusSeconds(40 * 86_400).toString()))
+        val r = Recommender.compute(library.map { if (it.id == "Frozen") dropped else it }, now = now)
+        assertThat(r.forYou.map { it.item.id }).doesNotContain("Frozen")
+        assertThat(r.because.map { it.seed.id }).doesNotContain("Frozen")
+    }
+
+    @Test fun newlyAddedBreaksTies() {
+        val lib = library.map { if (it.id == "Action 3") it.copy(dateCreated = now.minusSeconds(86_400).toString()) else it }
+        val ids = Recommender.compute(lib, now = now).forYou.map { it.item.id }
+        assertThat(ids.indexOf("Action 3")).isLessThan(ids.indexOf("Action 1"))
+    }
 }

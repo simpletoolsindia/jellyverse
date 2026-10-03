@@ -238,10 +238,19 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
 
     private suspend fun toItem(s: Song): MediaItem {
         val cfg = settings.current()
+        // Radio recording: a local file with a real timeline.
+        if (s.id.startsWith("rec:")) s.streamUrl?.let { url ->
+            return MediaItem.Builder().setMediaId(s.id).setUri(url)
+                .setMediaMetadata(MediaMetadata.Builder().setTitle(s.title).setArtist(s.artist).setIsPlayable(true).setIsBrowsable(false)
+                    .setArtworkData(RadioArt.png(s.title, recording = true), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC).setExtras(bundleOf("song" to HarborJson.encodeToString(Song.serializer(), s))).build())
+                .build()
+        }
         s.streamUrl?.let { url ->
             // Live radio: straight from the station, never cached.
             return MediaItem.Builder().setMediaId(s.id).setUri(url)
                 .setMediaMetadata(MediaMetadata.Builder().setTitle(s.title).setArtist(s.artist).setStation(s.title)
+                    .setArtworkData(RadioArt.png(s.title, recording = false), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
                     .setIsPlayable(true).setIsBrowsable(false).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
                     .setExtras(bundleOf("song" to HarborJson.encodeToString(Song.serializer(), s))).build())
                 .build()

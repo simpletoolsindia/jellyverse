@@ -50,20 +50,9 @@ import com.sridhar.harbor.ui.components.LocalContainer
 import com.sridhar.harbor.ui.theme.Harbor
 import kotlinx.coroutines.delay
 
-/** Animated "AI orb" – a rotating sweep-gradient ring. */
+/** The assistant's face everywhere in the app: Jelly, the animated mascot (see [JellyBuddy]). */
 @Composable
-fun AiOrb(size: androidx.compose.ui.unit.Dp, busy: Boolean = false) {
-    val t = rememberInfiniteTransition(label = "orb")
-    val angle by t.animateFloat(0f, 360f, infiniteRepeatable(tween(if (busy) 1200 else 4000)), label = "a")
-    val pulse by t.animateFloat(0.9f, 1f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "p")
-    Box(Modifier.size(size), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            rotate(angle) { drawCircle(Brush.sweepGradient(listOf(Harbor.Violet, Harbor.Coral, Harbor.Sky, Harbor.Violet)), radius = this.size.minDimension / 2 * pulse) }
-            drawCircle(Harbor.Ink.copy(alpha = .55f), radius = this.size.minDimension / 2 * 0.72f)
-        }
-        Icon(Icons.Rounded.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(size * 0.42f))
-    }
-}
+fun AiOrb(size: androidx.compose.ui.unit.Dp, busy: Boolean = false) = JellyBuddy(size, busy)
 
 @Composable
 fun ModelCard(modifier: Modifier = Modifier) {

@@ -41,10 +41,10 @@ data class DlState(
 }
 
 @Serializable
-private data class Seg(val start: Long, val end: Long, var pos: Long)
+private data class Seg(val start: Long, var end: Long, var pos: Long)
 
 @Serializable
-private data class Meta(val url: String, val total: Long, val segs: List<Seg>, val ranged: Boolean = true)
+private data class Meta(val url: String, val total: Long, val segs: MutableList<Seg>, val ranged: Boolean = true)
 
 /**
  * IDM / ADM-style downloader: the file is split into up to [MAX_PARTS] byte ranges fetched in parallel over
@@ -52,11 +52,25 @@ private data class Meta(val url: String, val total: Long, val segs: List<Seg>, v
  * speed). Progress per part is saved next to the file (`.part.meta`), so a download interrupted by a network drop
  * or the app being killed resumes where it stopped. Servers without Range support fall back to one stream.
  * A foreground service keeps it alive and shows speed / ETA in the notification shade.
+ *
+ * Speed tricks: parts are fetched over separate HTTP/1.1 connections (an HTTP/2 CDN would otherwise multiplex them
+ * all onto one TCP stream and nothing would be gained); a worker that finishes early **steals** half of the biggest
+ * remaining part, so all connections stay busy until the very end instead of the last slow part dragging alone;
+ * and reads are batched into large writes.
  */
-class SegmentedDownloader(private val context: Context, private val http: OkHttpClient) {
+class SegmentedDownloader(private val context: Context, baseHttp: OkHttpClient) {
+    /** One TCP connection per part: HTTP/1.1 only, generous pool, no read-timeout surprises on slow mirrors. */
+    private val http: OkHttpClient = baseHttp.newBuilder()
+        .protocols(listOf(okhttp3.Protocol.HTTP_1_1))
+        .connectionPool(okhttp3.ConnectionPool(MAX_PARTS * 3, 2, java.util.concurrent.TimeUnit.MINUTES))
+        .readTimeout(45, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
     companion object {
-        const val MAX_PARTS = 6
-        private const val MIN_PART = 8L shl 20        // don't split below 8 MB per part
+        const val MAX_PARTS = 8
+        private const val MIN_PART = 4L shl 20        // don't split below 4 MB per part
+        private const val STEAL_MIN = 2L shl 20       // only steal from a part with at least this much left (> 2 × BUF, see fetch)
+        private const val BUF = 512 * 1024
         private const val RETRIES = 6
     }
 
@@ -120,19 +134,40 @@ class SegmentedDownloader(private val context: Context, private val http: OkHttp
                 val cr = r.header("Content-Range")?.substringAfter('/')?.toLongOrNull()
                 if (r.code == 206 && cr != null) cr to true else (r.body?.contentLength() ?: -1L) to false
             }
+            // Small files: fewer parts; big ones get them all (and the stealing below keeps them busy).
             val n = if (!ranged || total <= 0) 1 else (total / MIN_PART).coerceIn(1, MAX_PARTS.toLong()).toInt()
             val size = if (total > 0) total / n else -1
             val segs = if (total <= 0) listOf(Seg(0, -1, 0)) else (0 until n).map { i ->
                 val s = i * size; Seg(s, if (i == n - 1) total - 1 else s + size - 1, s)
             }
-            meta = Meta(url, total, segs, ranged)
+            meta = Meta(url, total, segs.toMutableList(), ranged)
             RandomAccessFile(part, "rw").use { if (total > 0) it.setLength(total) else it.setLength(0) }
             metaFile.writeText(HarborJson.encodeToString(Meta.serializer(), meta))
         }
         val m = meta
+        val lock = Any()
         if (!m.ranged) m.segs.forEach { it.pos = it.start }   // no Range support: a restart can only begin at 0
         val done = AtomicLong(m.segs.sumOf { it.pos - it.start })
-        put(DlState(key, title, DlStatus.Running, done.get(), m.total, parts = m.segs.size))
+        val pending = ArrayDeque(m.segs.filter { it.end < 0 || it.pos <= it.end })
+        val busy = HashSet<Seg>()
+        val remaining = m.total - done.get()
+        val workers = if (!m.ranged || m.total <= 0) 1 else (remaining / MIN_PART).coerceIn(1, MAX_PARTS.toLong()).toInt().coerceAtLeast(pending.size.coerceAtMost(MAX_PARTS))
+        put(DlState(key, title, DlStatus.Running, done.get(), m.total, parts = workers))
+
+        /** Next part to fetch: a waiting one, else split the largest part still in flight (work stealing). */
+        fun next(): Seg? = synchronized(lock) {
+            pending.removeFirstOrNull()?.also { busy += it } ?: run {
+                if (!m.ranged) return@synchronized null
+                val victim = busy.maxByOrNull { it.end - it.pos } ?: return@synchronized null
+                val left = victim.end - victim.pos + 1
+                if (left < STEAL_MIN) return@synchronized null
+                val mid = victim.pos + left / 2
+                val stolen = Seg(mid, victim.end, mid)
+                victim.end = mid - 1
+                m.segs += stolen; busy += stolen
+                stolen
+            }
+        }
 
         coroutineScope {
             // Speed meter + progress checkpoint, once a second.
@@ -142,44 +177,61 @@ class SegmentedDownloader(private val context: Context, private val http: OkHttp
                     delay(1000)
                     val now = done.get(); val inst = (now - last).toDouble(); last = now
                     ema = if (ema == 0.0) inst else ema * 0.6 + inst * 0.4
-                    put(DlState(key, title, DlStatus.Running, now, m.total, ema.toLong(), m.segs.size))
-                    runCatching { metaFile.writeText(HarborJson.encodeToString(Meta.serializer(), m)) }
+                    put(DlState(key, title, DlStatus.Running, now, m.total, ema.toLong(), synchronized(lock) { busy.size }.coerceAtLeast(1)))
+                    runCatching { val json = synchronized(lock) { HarborJson.encodeToString(Meta.serializer(), m) }; metaFile.writeText(json) }
                 }
             }
-            m.segs.filter { it.end < 0 || it.pos <= it.end }.map { seg ->
+            (0 until workers).map {
                 async {
-                    var attempt = 0
                     while (true) {
-                        try { fetch(url, headers, part, seg, done, m.ranged); break }
-                        catch (e: IOException) {
-                            if (++attempt > RETRIES || !m.ranged) throw e
-                            delay(1000L * attempt * attempt)   // network hiccup: back off and resume this part
+                        val seg = next() ?: break
+                        var attempt = 0
+                        while (true) {
+                            try { fetch(url, headers, part, seg, done, m.ranged, lock); break }
+                            catch (e: IOException) {
+                                if (++attempt > RETRIES || !m.ranged) throw e
+                                delay(1000L * attempt * attempt)   // network hiccup: back off and resume this part
+                            }
                         }
+                        synchronized(lock) { busy -= seg }
                     }
                 }
             }.awaitAll()
             meter.cancel()
         }
+        if (m.ranged && m.segs.any { it.pos <= it.end }) throw IOException("Download incomplete")
         metaFile.delete()
         if (dest.exists()) dest.delete()
         if (!part.renameTo(dest)) throw IOException("Couldn't save ${dest.name}")
     }
 
-    private suspend fun fetch(url: String, headers: Map<String, String>, part: File, seg: Seg, done: AtomicLong, ranged: Boolean) = coroutineScope {
-        val range = if (!ranged) null else "${seg.pos}-${seg.end}"
+    private suspend fun fetch(url: String, headers: Map<String, String>, part: File, seg: Seg, done: AtomicLong, ranged: Boolean, lock: Any) = coroutineScope {
+        val range = if (!ranged) null else synchronized(lock) { "${seg.pos}-${seg.end}" }
         http.newCall(request(url, headers, range)).execute().use { r ->
             if (!r.isSuccessful) throw IOException("HTTP ${r.code}")
             if (ranged && r.code != 206) throw IOException("Server ignored the byte range")
             RandomAccessFile(part, "rw").use { raf ->
                 raf.seek(seg.pos)
-                val input = r.body!!.byteStream(); val buf = ByteArray(128 * 1024)
-                while (true) {
+                val input = r.body!!.byteStream(); val buf = ByteArray(BUF)
+                var eof = false
+                while (!eof) {
                     ensureActive()
-                    val n = input.read(buf); if (n < 0) break
-                    raf.write(buf, 0, n); seg.pos += n; done.addAndGet(n.toLong())
+                    // Fill the buffer before writing: fewer, larger disk writes.
+                    var filled = 0
+                    while (filled < buf.size) {
+                        val n = input.read(buf, filled, buf.size - filled)
+                        if (n < 0) { eof = true; break }
+                        filled += n
+                    }
+                    if (filled == 0) break
+                    // Another worker may have taken the tail of this part: stop at the (possibly moved) end.
+                    val allowed = synchronized(lock) { if (seg.end < 0) Long.MAX_VALUE else seg.end - seg.pos + 1 }
+                    val w = minOf(filled.toLong(), allowed).toInt()
+                    if (w > 0) { raf.write(buf, 0, w); synchronized(lock) { seg.pos += w }; done.addAndGet(w.toLong()) }
+                    if (w < filled) break
                 }
             }
         }
-        if (ranged && seg.pos <= seg.end) throw IOException("Connection closed early")
+        if (ranged && synchronized(lock) { seg.pos <= seg.end }) throw IOException("Connection closed early")
     }
 }

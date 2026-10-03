@@ -219,7 +219,7 @@ private fun TvNowPlayingBody() {
             Text(song.displayTitle, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(song.displayArtist, color = Color.White.copy(.75f), fontSize = 18.sp, maxLines = 1)
             Spacer(Modifier.height(16.dp))
-            if (song.streamUrl != null) Row(verticalAlignment = Alignment.CenterVertically) {
+            if (song.isLive) Row(verticalAlignment = Alignment.CenterVertically) {
                 // Live radio: no timeline.
                 Box(Modifier.clip(RoundedCornerShape(6.dp)).background(Harbor.Rose).padding(horizontal = 10.dp, vertical = 4.dp)) {
                     Text("LIVE", color = Color.White, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 1.sp)
@@ -235,7 +235,7 @@ private fun TvNowPlayingBody() {
             }
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                val live = song.streamUrl != null   // shuffle / repeat mean nothing for a live station
+                val live = song.isLive   // shuffle / repeat mean nothing for a live station
                 if (!live) TvIcon(Icons.Rounded.Shuffle, s.shuffle) { engine.setShuffle(!s.shuffle) }
                 TvIcon(Icons.Rounded.SkipPrevious) { engine.previous() }
                 TvIcon(if (s.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, big = true, modifier = Modifier.focusRequester(play)) { engine.toggle() }

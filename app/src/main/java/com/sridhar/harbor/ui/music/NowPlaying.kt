@@ -253,7 +253,7 @@ private fun NowPlayingBody(onClose: () -> Unit, onAlbum: (String) -> Unit, onArt
                 if (song.streamUrl == null) LikeButton(song.id in s.likedIds) { engine.toggleLike(song) }
             }
             // ---- scrubber
-            if (song.streamUrl == null) Scrubber(position, s.durationMs, onSeek = engine::seekTo)
+            if (!song.isLive) Scrubber(position, s.durationMs, onSeek = engine::seekTo)
             else Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
                 // Radio has no timeline – just show it's live.
                 Box(Modifier.clip(RoundedCornerShape(6.dp)).background(Harbor.Rose).padding(horizontal = 8.dp, vertical = 3.dp)) {

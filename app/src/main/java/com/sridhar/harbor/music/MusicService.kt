@@ -6,7 +6,14 @@ import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
+import android.os.Bundle
+import androidx.media3.session.CommandButton
 import androidx.media3.session.LibraryResult
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.google.common.collect.ImmutableList
@@ -28,6 +35,7 @@ import kotlinx.coroutines.guava.future
  */
 @OptIn(UnstableApi::class)
 class MusicService : MediaLibraryService() {
+    private companion object { const val CMD_LIKE = "jv.like"; const val CMD_SHUFFLE = "jv.shuffle" }
     private var session: MediaLibrarySession? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main + com.sridhar.harbor.CrashGuard)
     private val container get() = (application as HarborApp).container
@@ -41,6 +49,22 @@ class MusicService : MediaLibraryService() {
         )
         session = MediaLibrarySession.Builder(this, container.musicEngine.player, LibraryCallback())
             .setSessionActivity(open).build()
+        // Like + shuffle buttons in the notification / lock screen, kept in sync with the app.
+        scope.launch {
+            container.musicEngine.state.map { st -> Triple(st.current?.let { it.streamUrl == null }, st.current?.id in st.likedIds, st.shuffle) }
+                .distinctUntilChanged().collect { (likeable, liked, shuffle) -> session?.setCustomLayout(buttons(likeable == true, liked, shuffle)) }
+        }
+    }
+
+    private fun buttons(likeable: Boolean, liked: Boolean, shuffle: Boolean): ImmutableList<CommandButton> {
+        val out = ImmutableList.builder<CommandButton>()
+        if (likeable) out.add(CommandButton.Builder().setDisplayName(L10n.s(if (liked) R.string.mu_unlike else R.string.mu_like))
+            .setIconResId(if (liked) androidx.media3.session.R.drawable.media3_icon_heart_filled else androidx.media3.session.R.drawable.media3_icon_heart_unfilled)
+            .setSessionCommand(SessionCommand(CMD_LIKE, Bundle.EMPTY)).build())
+        out.add(CommandButton.Builder().setDisplayName(L10n.s(R.string.mu_shuffle))
+            .setIconResId(if (shuffle) androidx.media3.session.R.drawable.media3_icon_shuffle_on else androidx.media3.session.R.drawable.media3_icon_shuffle_off)
+            .setSessionCommand(SessionCommand(CMD_SHUFFLE, Bundle.EMPTY)).build())
+        return out.build()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = session
@@ -82,6 +106,21 @@ class MusicService : MediaLibraryService() {
     }
 
     private inner class LibraryCallback : MediaLibrarySession.Callback {
+        override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
+            val cmds = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
+                .add(SessionCommand(CMD_LIKE, Bundle.EMPTY)).add(SessionCommand(CMD_SHUFFLE, Bundle.EMPTY)).build()
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session).setAvailableSessionCommands(cmds).build()
+        }
+
+        override fun onCustomCommand(session: MediaSession, controller: MediaSession.ControllerInfo, customCommand: SessionCommand, args: Bundle): ListenableFuture<SessionResult> {
+            val e = container.musicEngine
+            when (customCommand.customAction) {
+                CMD_LIKE -> e.state.value.current?.let(e::toggleLike)
+                CMD_SHUFFLE -> e.setShuffle(!e.state.value.shuffle)
+            }
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+
         override fun onGetLibraryRoot(session: MediaLibrarySession, browser: MediaSession.ControllerInfo, params: LibraryParams?): ListenableFuture<LibraryResult<MediaItem>> =
             Futures.immediateFuture(LibraryResult.ofItem(folder("root", "JellyVerse Music"), params))
 

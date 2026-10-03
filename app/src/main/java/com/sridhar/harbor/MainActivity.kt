@@ -90,6 +90,22 @@ class MainActivity : FragmentActivity() {
         handleIntent(intent)
     }
 
+    /** Links from notifications: radio/<station>, record/<station>/<minutes>, item/<id>, doctor/<id>. */
+    private fun openDeep(seg: List<String>) {
+        when (seg[0]) {
+            "radio" -> container.radio.byId(seg[1])?.let { st ->
+                container.musicEngine.play(listOf(st.toSong()), source = st.name); container.navRequests.tryEmit("nowplaying")
+            }
+            "record" -> container.radio.byId(seg[1])?.let { st ->
+                com.sridhar.harbor.radio.RecordService.start(this, st.name, st.url, seg.getOrNull(2)?.toIntOrNull() ?: 60)
+                container.navRequests.tryEmit("recordings")
+            }
+            "item" -> container.navRequests.tryEmit("item:" + seg[1])
+            "doctor" -> container.navRequests.tryEmit("doctor:" + seg[1])
+            else -> container.navRequests.tryEmit(seg.last())
+        }
+    }
+
     private fun handleIntent(intent: Intent?) {
         intent ?: return
         val data: Uri? = intent.data
@@ -100,6 +116,7 @@ class MainActivity : FragmentActivity() {
             }
             // TV QR scanned with the phone's own camera app.
             data?.scheme == "jellyverse" && data.host == "tv" -> if (container.remote.connectFromQr(data.toString())) container.navRequests.tryEmit("remote")
+            data?.scheme == "jellyverse" && data.host == "open" && data.pathSegments.size >= 2 -> openDeep(data.pathSegments)
             data?.scheme == "jellyverse" -> container.navRequests.tryEmit(data.lastPathSegment ?: data.host?.takeIf { it != "open" } ?: "watch")
             data?.scheme == "magnet" -> container.incomingTorrents.tryEmit(IncomingTorrent.Magnet(data.toString()))
             intent.action == Intent.ACTION_SEND -> {

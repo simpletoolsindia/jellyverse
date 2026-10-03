@@ -1,5 +1,6 @@
 package com.sridhar.harbor.ui.music
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -53,7 +55,7 @@ import com.sridhar.harbor.ui.components.friendly
 import com.sridhar.harbor.ui.theme.Harbor
 import kotlinx.coroutines.launch
 
-/** Saved internet / FM stations: tap to play live, long-press to remove, "+" (or a shared link) to add. */
+/** Saved internet / FM stations: tap to play live, long-press to edit / record / schedule / remove, "+" (or a shared link) to add. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RadioShelf() {
@@ -63,6 +65,10 @@ fun RadioShelf() {
     val playing by c.musicEngine.state.collectAsState()
     var adding by remember { mutableStateOf<String?>(null) }   // null = closed, else prefilled URL
     var removing by remember { mutableStateOf<RadioStation?>(null) }
+    var acting by remember { mutableStateOf<RadioStation?>(null) }
+    val showRecs by c.showRecordings.collectAsState()
+    val recLive by com.sridhar.harbor.radio.RadioLibrary.live.collectAsState()
+    val recCount by com.sridhar.harbor.radio.RadioLibrary.recordings.collectAsState()
     var discovering by remember { mutableStateOf(false) }
     LaunchedEffect(shared) { shared?.let { adding = it; c.sharedRadioLink.value = null } }
 
@@ -75,7 +81,7 @@ fun RadioShelf() {
                 val live = playing.current?.id == st.toSong().id
                 val (a, b) = remember(st.id) { seedColors(st.name + "radio") }
                 Column(Modifier.width(112.dp).clip(RoundedCornerShape(14.dp))
-                    .combinedClickable(onLongClick = { removing = st }) { c.musicEngine.play(listOf(st.toSong()), source = st.name) }) {
+                    .combinedClickable(onLongClick = { acting = st }) { c.musicEngine.play(listOf(st.toSong()), source = st.name) }) {
                     Box(Modifier.size(112.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(a, b)))
                         .then(if (live) Modifier.border(2.dp, Color.White, RoundedCornerShape(14.dp)) else Modifier), Alignment.Center) {
                         if (live && playing.playing) EqualizerBars(true, Modifier.size(34.dp), Color.White)
@@ -84,6 +90,16 @@ fun RadioShelf() {
                     Spacer(Modifier.height(6.dp))
                     Text(st.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     Text(if (live) stringResource(R.string.radio_live) else stringResource(R.string.radio_station), color = if (live) Harbor.Mint else Harbor.TextDim, fontSize = 12.sp)
+                }
+            }
+            item(key = "recordings") {
+                Column(Modifier.width(112.dp).clip(RoundedCornerShape(14.dp)).combinedClickable { c.showRecordings.value = true }) {
+                    Box(Modifier.size(112.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(Harbor.Rose.copy(alpha = .4f), Harbor.Violet.copy(alpha = .25f)))), Alignment.Center) {
+                        if (recLive != null) RecPulse() else Icon(Icons.Rounded.FiberManualRecord, null, tint = Color.White, modifier = Modifier.size(36.dp))
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(stringResource(R.string.rec_recordings), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1)
+                    Text(if (recLive != null) stringResource(R.string.rec_live_short) else recCount.size.toString(), color = if (recLive != null) Harbor.Rose else Harbor.TextDim, fontSize = 12.sp)
                 }
             }
             item(key = "discover") {
@@ -108,12 +124,22 @@ fun RadioShelf() {
     }
     adding?.let { pre -> AddStationDialog(pre, onDismiss = { adding = null }) }
     if (discovering) DiscoverSheet(onDismiss = { discovering = false })
+    acting?.let { st -> StationSheet(st, onRemove = { removing = st }, onRecordings = { c.showRecordings.value = true }, onDismiss = { acting = null }) }
+    if (showRecs) RecordingsSheet(onDismiss = { c.showRecordings.value = false })
     removing?.let { st ->
         AlertDialog(onDismissRequest = { removing = null }, containerColor = Harbor.Surface,
             title = { Text(stringResource(R.string.radio_remove_q, st.name)) },
             confirmButton = { TextButton({ c.radio.remove(st); removing = null }) { Text(stringResource(R.string.remove), color = Harbor.Rose) } },
             dismissButton = { TextButton({ removing = null }) { Text(stringResource(R.string.cancel)) } })
     }
+}
+
+/** Pulsing red dot while a recording runs. */
+@Composable
+private fun RecPulse() {
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "rec")
+    val a by t.animateFloat(1f, .35f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(700), androidx.compose.animation.core.RepeatMode.Reverse), label = "a")
+    Icon(Icons.Rounded.FiberManualRecord, null, tint = Harbor.Rose.copy(alpha = a), modifier = Modifier.size(40.dp))
 }
 
 @Composable

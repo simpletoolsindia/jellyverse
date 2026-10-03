@@ -53,14 +53,19 @@ fun LaunchIntro(content: @Composable () -> Unit) {
     var done by rememberSaveable { mutableStateOf(false) }
     // Respect "Remove animations" – no intro at all.
     val animationsOff = remember { android.provider.Settings.Global.getFloat(com.sridhar.harbor.HarborApp.instance?.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
+    // 0 → 1 while the intro opens like an iris from the tile; the app settles in from a slight zoom underneath.
+    val reveal = remember { Animatable(if (done || animationsOff) 1f else 0f) }
     Box(Modifier.fillMaxSize()) {
-        content()
-        if (!done && !animationsOff) Intro(onFinished = { done = true })
+        Box(Modifier.fillMaxSize().graphicsLayer {
+            val r = reveal.value
+            if (r < 1f) { val sc = 1.06f - 0.06f * r; scaleX = sc; scaleY = sc; alpha = 0.35f + 0.65f * r }
+        }) { content() }
+        if (!done && !animationsOff) Intro(reveal, onFinished = { done = true })
     }
 }
 
 @Composable
-private fun Intro(onFinished: () -> Unit) {
+private fun Intro(reveal: Animatable<Float, *>, onFinished: () -> Unit) {
     val tile = remember { Animatable(0f) }      // 0 → 1 tile grows in
     val beat = remember { Animatable(0f) }      // jellyfish pump clock
     val dart = remember { Animatable(0f) }      // 0 → 1 swims away
@@ -71,7 +76,7 @@ private fun Intro(onFinished: () -> Unit) {
     val measurer = rememberTextMeasurer()
     val focus = remember { FocusRequester() }
 
-    fun skip() = scope.launch { fade.animateTo(0f, tween(180)); onFinished() }
+    fun skip() = scope.launch { launch { reveal.animateTo(1f, tween(220)) }; fade.animateTo(0f, tween(180)); onFinished() }
 
     val container = LocalContainer.current
     LaunchedEffect(Unit) {
@@ -85,12 +90,14 @@ private fun Intro(onFinished: () -> Unit) {
         launch { words.animateTo(1f, tween(620, easing = EaseOutExpo)) }
         kotlinx.coroutines.delay(360)
         dart.animateTo(1f, tween(420, easing = CubicBezierEasing(0.5f, 0f, 0.9f, 0.4f)))
-        fade.animateTo(0f, tween(260))
+        // Iris-open from the tile into the app (smoother than a flat cross-fade), then let go.
+        launch { kotlinx.coroutines.delay(380); fade.animateTo(0f, tween(220)) }
+        reveal.animateTo(1f, tween(600, easing = EaseOutExpo))
         onFinished()
     }
 
     Canvas(
-        Modifier.fillMaxSize().graphicsLayer { alpha = fade.value }
+        Modifier.fillMaxSize().graphicsLayer { alpha = fade.value; compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
             .focusRequester(focus).focusable().onKeyEvent { skip(); true }
             .pointerInput(Unit) { detectTapGestures { skip() } },
     ) {
@@ -136,6 +143,14 @@ private fun Intro(onFinished: () -> Unit) {
                 drawRect(Brush.horizontalGradient(listOf(Color.Transparent, Color.White.copy(alpha = .5f), Color.Transparent), sweep - 60f, sweep + 60f),
                     Offset(sweep - 60f, y), Size(120f, layout.size.height.toFloat()))
             }
+        }
+        // Iris: a growing soft-edged hole shows the app underneath.
+        val r = reveal.value
+        if (r > 0f) {
+            val far = kotlin.math.hypot(size.width, size.height)
+            val rad = far * EaseOutExpo.transform(r)
+            drawCircle(Brush.radialGradient(0f to Color.Black, 0.85f to Color.Black, 1f to Color.Transparent, center = Offset(cx, cy), radius = rad.coerceAtLeast(1f)),
+                rad.coerceAtLeast(1f), Offset(cx, cy), blendMode = androidx.compose.ui.graphics.BlendMode.DstOut)
         }
     }
 }

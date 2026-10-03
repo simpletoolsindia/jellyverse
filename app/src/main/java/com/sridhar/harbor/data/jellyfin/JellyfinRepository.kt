@@ -262,7 +262,7 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
     suspend fun recoCorpus(): List<BaseItem> {
         val (a, c) = api()
         return a.items(c.jellyfinUserId, types = "Movie,Series", limit = 6000, sortBy = "SortName",
-            fields = "Genres,Tags,Studios,People,Overview,OfficialRating,PremiereDate", imageTypeLimit = 1).items
+            fields = "Genres,Tags,Studios,People,Overview,OfficialRating,PremiereDate,DateCreated", imageTypeLimit = 1).items
     }
 
     suspend fun libraryItems(): List<LibraryItem> { val (a, c) = api(); return a.libraryItems(c.jellyfinUserId).items }
@@ -279,6 +279,13 @@ class JellyfinRepository(private val settings: SettingsStore, private val baseHt
     }
 
     suspend fun refreshItem(itemId: String) { api().first.refreshItem(itemId) }
+    /** Newest films and shows on the server (for the "new in your library" alert). */
+    suspend fun recentlyAdded(limit: Int = 15): List<BaseItem> {
+        val (a, c) = api()
+        return a.items(c.jellyfinUserId, types = "Movie,Series", sortBy = "DateCreated", sortOrder = "Descending", limit = limit,
+            fields = "Overview,DateCreated,ProductionYear", imageTypeLimit = 1).items
+    }
+
     suspend fun refreshLibrary() { api().first.refreshLibrary() }
     suspend fun virtualFolders() = api().first.virtualFolders()
 

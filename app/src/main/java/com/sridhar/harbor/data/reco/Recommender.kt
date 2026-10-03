@@ -22,9 +22,10 @@ data class Recommendations(val forYou: List<Pick>, val because: List<BecauseRow>
  * Every title becomes a sparse **embedding**: weighted features for its genres, tags, studios, director, lead cast,
  * decade, age rating and overview keywords, scaled by TF-IDF (a feature shared by few titles says more than
  * "Drama") and L2-normalised. Your **taste profile** is the blend of what you've watched in Jellyfin – recent
- * watches, favourites and rewatches weigh more, old ones fade (90-day half-life). Unwatched titles are ranked by
- * cosine similarity to the profile, lightly boosted by rating, then diversified (MMR) so one genre can't take
- * over the row.
+ * watches, favourites and rewatches weigh more, old ones fade (90-day half-life). Films you started and gave up on
+ * pull the profile *away* from what they are (negative feedback). Unwatched titles are ranked by cosine similarity
+ * to the profile, lightly boosted by rating and by being newly added to the library, then diversified (MMR) so one
+ * genre can't take over the row.
  */
 object Recommender {
     private typealias Vec = Map<String, Double>
@@ -67,6 +68,16 @@ object Recommender {
         u.played || u.playCount > 0 || (u.playedPercentage ?: 0.0) > 20 || (i.type == "Series" && u.lastPlayedDate != null)
     } ?: false
 
+    /** A film started and dropped early, weeks ago: a "not for me" signal. Series are excluded (people binge in bits). */
+    private fun abandoned(i: BaseItem, now: Instant): Boolean = i.userData?.let { u ->
+        val pct = u.playedPercentage ?: 0.0
+        i.type == "Movie" && !u.played && u.playCount <= 1 && pct in 1.0..35.0 && !u.isFavorite &&
+            (lastPlayed(i)?.let { now.epochSecond - it.epochSecond > 21 * 86_400L } ?: false)
+    } ?: false
+
+    private fun addedDaysAgo(i: BaseItem, now: Instant): Double? =
+        i.dateCreated?.let { runCatching { Instant.parse(it) }.getOrNull() }?.let { (now.epochSecond - it.epochSecond) / 86_400.0 }
+
     fun compute(all: List<BaseItem>, keep: (BaseItem) -> Boolean = { true }, now: Instant = Instant.now()): Recommendations {
         if (all.size < 5) return Recommendations.EMPTY
         val raws = all.associate { it.id to raw(it) }
@@ -77,7 +88,8 @@ object Recommender {
             norm(r.mapValuesTo(HashMap()) { (k, w) -> w * ln(1 + n / (1 + (df[k] ?: 0))) })
         }
 
-        val seen = all.filter(::watched)
+        val dropped = all.filter { abandoned(it, now) }.map { it.id }.toSet()
+        val seen = all.filter { watched(it) && it.id !in dropped }
         if (seen.isEmpty()) return Recommendations.EMPTY
         // Taste profile: recency-decayed, favourites and rewatches count more.
         val profile = HashMap<String, Double>()
@@ -86,13 +98,20 @@ object Recommender {
             var w = exp(-ln(2.0) * days.coerceAtLeast(0.0) / 90.0) + 0.15
             if (it.userData?.isFavorite == true) w += 1.5
             w *= 1 + ln(1.0 + (it.userData?.playCount ?: 0).coerceAtMost(5))
+            if ((it.userData?.playedPercentage ?: 0.0) >= 85 || it.userData?.played == true) w *= 1.25   // finished it
             emb[it.id]?.forEach { (k, x) -> profile[k] = (profile[k] ?: 0.0) + w * x }
+        }
+        // Negative feedback (Rocchio): drift away from what was dropped – but never below zero, so one bad pick
+        // can't erase a genre you otherwise love.
+        val pos = HashMap(profile)
+        all.filter { it.id in dropped }.forEach { d ->
+            emb[d.id]?.forEach { (k, x) -> if (k in profile) profile[k] = maxOf((profile[k] ?: 0.0) - 0.35 * x, (pos[k] ?: 0.0) * 0.3) }
         }
         val prof = norm(profile)
 
         // Candidates need real metadata (a genre plus cast or a synopsis) – bare files would win on noise – and
         // duplicate copies of a film count once.
-        val candidates = all.filter { !watched(it) && it.userData?.isFavorite != true && keep(it) &&
+        val candidates = all.filter { !watched(it) && it.id !in dropped && it.userData?.isFavorite != true && keep(it) &&
                 it.genres.isNotEmpty() && (it.people.isNotEmpty() || (it.overview?.length ?: 0) > 40) }
             .distinctBy { it.name.lowercase().trim() to it.year }
         // Sparse vectors score deceptively high cosines: scale by how much we actually know about the title.
@@ -100,7 +119,9 @@ object Recommender {
         val scored = candidates.map { c ->
             val sim = cos(prof, emb.getValue(c.id)) * coverage.getValue(c.id)
             val quality = ((c.communityRating ?: 6.0).coerceIn(0.0, 10.0) / 10.0)
-            c to (0.85 * sim + 0.15 * quality * sim.coerceAtLeast(0.05))
+            // Fresh in the library: a gentle nudge that fades over ~3 weeks, only for things that already match.
+            val fresh = addedDaysAgo(c, now)?.let { d -> exp(-d.coerceAtLeast(0.0) / 21.0) } ?: 0.0
+            c to (0.85 * sim + 0.15 * quality * sim.coerceAtLeast(0.05)) * (1 + 0.18 * fresh)
         }.sortedByDescending { it.second }.take(120)
 
         // MMR: relevance minus similarity to what's already picked, so the row stays varied.
@@ -114,7 +135,8 @@ object Recommender {
 
         // "Because you watched": the three most recent distinct watches, nearest unwatched neighbours of each.
         val used = forYou.take(8).map { it.item.id }.toMutableSet()
-        val seeds = seen.filter { keep(it) }.sortedByDescending { lastPlayed(it) ?: Instant.EPOCH }.take(3)
+        val seeds = seen.filter { keep(it) && (it.userData?.isFavorite == true || it.userData?.played == true || (it.userData?.playedPercentage ?: 0.0) > 50 || it.type == "Series") }
+            .ifEmpty { seen.filter { keep(it) } }.sortedByDescending { lastPlayed(it) ?: Instant.EPOCH }.take(3)
         val because = seeds.mapNotNull { seed ->
             val sv = emb.getValue(seed.id)
             val picks = candidates.asSequence().filter { it.id !in used }

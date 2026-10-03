@@ -233,7 +233,12 @@ private fun HarborNavContent(initial: ServerConfig) {
                 "music" -> nav.switchTab(MusicRoute)
                 "remote" -> nav.navigate(RemoteRoute)
                 "nowplaying" -> { nav.switchTab(MusicRoute); showPlayer = true }
-                else -> nav.switchTab(WatchRoute)
+                "recordings" -> { nav.switchTab(MusicRoute); container.showRecordings.value = true }
+                else -> when {
+                    dest.startsWith("item:") -> nav.navigate(ItemRoute(dest.removePrefix("item:")))
+                    dest.startsWith("doctor:") -> nav.navigate(DoctorRoute(dest.removePrefix("doctor:")))
+                    else -> nav.switchTab(WatchRoute)
+                }
             }
             @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class) container.navRequests.resetReplayCache()
         }

@@ -26,6 +26,8 @@ data class Song(
     val displayArtist get() = MusicText.cleanArtist(artist).let { a -> if (a == "Unknown artist") MusicText.creditsFromTitle(title) ?: a else a }
     val displayAlbum get() = album?.let { MusicText.cleanAlbum(it) }
     val liked get() = starred != null
+    /** A live stream (radio). Recordings also carry a URL (a local file) but have a timeline and can seek. */
+    val isLive get() = streamUrl != null && !id.startsWith("rec:")
     /** Text for a generated cover: the album, unless the song is an untagged single. */
     val coverTitle get() = displayAlbum?.takeIf { it != "Singles" } ?: displayTitle
 }

@@ -127,10 +127,12 @@ fun ProfileScreen(onDoctor: () -> Unit, onAssistant: () -> Unit, onTerminal: () 
         var aDl by remember { mutableStateOf(alertPrefs.downloads) }
         var aRq by remember { mutableStateOf(alertPrefs.requests) }
         var aLab by remember { mutableStateOf(alertPrefs.homelab) }
+        var aNew by remember { mutableStateOf(alertPrefs.newInLibrary) }
         var lock by remember { mutableStateOf(lockPrefs.enabled) }
         Column(Modifier.glass()) {
             ToggleRow(stringResource(R.string.download_finished), stringResource(R.string.qbittorrent_aria2), aDl) { aDl = it; alertPrefs.downloads = it; com.sridhar.harbor.alerts.Alerts.schedule(ctx) }
             ToggleRow(stringResource(R.string.request_available), stringResource(R.string.when_jellyseerr_requests_land_in_your), aRq) { aRq = it; alertPrefs.requests = it; com.sridhar.harbor.alerts.Alerts.schedule(ctx) }
+            ToggleRow(stringResource(R.string.new_lib_channel), stringResource(R.string.new_lib_channel_desc), aNew) { aNew = it; alertPrefs.newInLibrary = it; com.sridhar.harbor.alerts.Alerts.schedule(ctx) }
             ToggleRow(stringResource(R.string.homelab_alerts), stringResource(R.string.disk_full_overheating_containers_down), aLab) { aLab = it; alertPrefs.homelab = it; com.sridhar.harbor.alerts.Alerts.schedule(ctx) }
             ToggleRow(stringResource(R.string.app_lock), stringResource(R.string.fingerprint_pin_after_1_minute_away), lock) { lock = it; lockPrefs.enabled = it }
             if (container.updater.enabled) {

@@ -88,17 +88,42 @@ internal fun DrawScope.jelly(origin: Offset, box: Float, t: Float, color: Color,
 
 /**
  * Brand loading indicator – drop-in for an indeterminate CircularProgressIndicator.
+ * A soft, shape-shifting gradient blob (in the spirit of Material 3 Expressive's morphing loader) turns slowly
+ * while the white jellyfish pumps on top of it; a thin comet arc orbits the rim.
  * [strokeWidth] is accepted for call-site compatibility and ignored.
  */
 @Composable
 fun JellyLoader(modifier: Modifier = Modifier, color: Color = Color.White, accent: Color = Harbor.Sky, @Suppress("UNUSED_PARAMETER") strokeWidth: Dp = Dp.Unspecified) {
     val bell = remember { bellPath() }
-    val t = rememberInfiniteTransition(label = "jelly").animateFloat(0f, 1f, infiniteRepeatable(tween(1300, easing = LinearEasing)), label = "beat")
+    val blob = remember { Path() }
+    val clock = rememberInfiniteTransition(label = "jelly")
+    val t = clock.animateFloat(0f, 1f, infiniteRepeatable(tween(1300, easing = LinearEasing)), label = "beat")
+    val spin = clock.animateFloat(0f, 360f, infiniteRepeatable(tween(4200, easing = LinearEasing)), label = "spin")
+    val morph = clock.animateFloat(0f, 1f, infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "morph")
+    val violet = Harbor.Violet
     Canvas(modifier.size(48.dp).semantics { progressBarRangeInfo = ProgressBarRangeInfo.Indeterminate }) {
         val s = minOf(size.width, size.height)
-        // The mark's visible content spans x 20..88 of the 108 box – centre that span in the canvas.
-        val box = s * 108f / 68f
-        jelly(Offset((size.width - s) / 2f - 20f * box / 108f, (size.height - s) / 2f - 20f * box / 108f), box, t.value, color, accent, bell, bubbles = s > 28.dp.toPx())
+        val c = Offset(size.width / 2f, size.height / 2f)
+        val r = s * 0.40f
+        // Morphing blob: 5 soft lobes ↔ 8 tighter ones, rotating.
+        val m = morph.value
+        val rot = spin.value * PI.toFloat() / 180f
+        blob.reset()
+        for (i in 0..72) {
+            val a = i / 72f * 2f * PI.toFloat()
+            val k = 1f + (1f - m) * 0.075f * kotlin.math.cos(5f * (a - rot)) + m * 0.055f * kotlin.math.cos(8f * (a + rot * 0.6f))
+            val x = c.x + r * k * kotlin.math.cos(a); val y = c.y + r * k * sin(a)
+            if (i == 0) blob.moveTo(x, y) else blob.lineTo(x, y)
+        }
+        blob.close()
+        drawPath(blob, Brush.linearGradient(listOf(violet, accent), Offset(c.x - r, c.y - r), Offset(c.x + r, c.y + r)))
+        // Comet arc on the rim.
+        val ring = s * 0.47f
+        drawArc(Brush.sweepGradient(listOf(Color.Transparent, accent.copy(alpha = .9f)), c), spin.value * 2f, 100f, false,
+            Offset(c.x - ring, c.y - ring), androidx.compose.ui.geometry.Size(ring * 2, ring * 2), style = Stroke(s * 0.035f, cap = StrokeCap.Round))
+        // The jellyfish, centred in the blob.
+        val box = s * 0.62f * 108f / 68f
+        jelly(Offset(c.x - box * 54f / 108f - 4f * box / 108f, c.y - box * 54f / 108f), box, t.value, color, Color.White, bell, bubbles = s > 40.dp.toPx())
     }
 }
 
