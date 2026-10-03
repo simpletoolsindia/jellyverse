@@ -74,7 +74,7 @@ private fun Intro(reveal: Animatable<Float, *>, onFinished: () -> Unit) {
     val fade = remember { Animatable(1f) }      // whole overlay alpha
     val scope = rememberCoroutineScope()
     val measurer = rememberTextMeasurer()
-    val show = remember { kotlin.random.Random.nextInt(6) }
+    val show = remember { kotlin.random.Random.nextInt(12) }
     val focus = remember { FocusRequester() }
 
     fun skip() = scope.launch { launch { reveal.animateTo(1f, tween(220)) }; fade.animateTo(0f, tween(180)); onFinished() }
@@ -141,8 +141,16 @@ private fun Intro(reveal: Animatable<Float, *>, onFinished: () -> Unit) {
                    sc = 1f + 0.12f * (if (d > 0.85f) sin((d - 0.85f) / 0.15f * pi) else 0f) }
             4 -> { open = if (d < 0.35f) 0.05f else 1f; dy = if (d > 0.35f) -sin((d - 0.35f) / 0.65f * pi) * full * 0.3f else 0f // sleepy → wakes up
                    tongue = if (d > 0.5f) 1f else 0f; tilt = if (d < 0.35f) -8f else 0f }
-            else -> { tilt = sin(d * tw * 3) * 14f; dx = sin(d * tw * 1.5f) * full * 0.12f; sway = sin(d * tw * 5)            // dance
-                      dy = -kotlin.math.abs(sin(d * tw * 3)) * full * 0.05f; tongue = if (d > 0f) 1f else 0f }
+            5 -> { tilt = sin(d * tw * 3) * 14f; dx = sin(d * tw * 1.5f) * full * 0.12f; sway = sin(d * tw * 5)               // dance
+                   dy = -kotlin.math.abs(sin(d * tw * 3)) * full * 0.05f; tongue = if (d > 0f) 1f else 0f }
+            6 -> { val amp = (1f - d) * (if (d > 0f) 1f else 0f); dx = sin(d * tw * 9) * full * 0.07f * amp                    // wet-dog shake
+                   tilt = sin(d * tw * 9) * 10f * amp; sway = sin(d * tw * 9); tongue = if (d > 0.7f) 1f else 0f }
+            7 -> { tilt = when { d < 0.33f -> -16f * sin(d / 0.33f * pi); d < 0.66f -> 16f * sin((d - 0.33f) / 0.33f * pi); else -> 0f } // look around
+                   dy = if (d > 0.8f) -sin((d - 0.8f) / 0.2f * pi) * full * 0.15f else 0f; tongue = if (d > 0.8f) 1f else 0f }
+            8 -> { tilt = kotlin.math.cos(d * tw) * 12f; dy = -kotlin.math.abs(sin(d * tw * 2)) * full * 0.08f; tongue = if (d > 0f) 1f else 0f } // ball chase
+            9 -> { tilt = 6f * sin(d * tw * 2); tongue = if (d > 0f) 0.6f else 0f }                                             // paw wave
+            10 -> { tilt = if (d > 0.6f) -6f else 0f; dy = if (d > 0.6f) -sin((d - 0.6f) / 0.4f * pi) * full * 0.08f else 0f }   // sunglasses
+            else -> { dy = -sin(d * pi) * full * 0.35f; sc = 1f + 0.1f * sin(d * pi); tongue = if (d > 0f) 1f else 0f }         // confetti jump
         }
         val pivot = Offset(cx + dx, dogCy + dy)
         withTransform({ rotate(rot, pivot); scale(sc, sc, pivot) }) {
@@ -163,6 +171,37 @@ private fun Intro(reveal: Animatable<Float, *>, onFinished: () -> Unit) {
             1 -> if (d > 0f) for (i in 0..3) {
                 val px = cx + dx - kotlin.math.cos(d * tw) * box * (0.45f + i * 0.12f); val py = dogCy + box * 0.42f
                 drawCircle(Color(0xFFD9C3A5).copy(alpha = 0.5f - i * 0.1f), box * (0.05f + i * 0.015f), Offset(px, py))
+            }
+            6 -> if (d > 0f && d < 0.85f) for (i in 0..7) {                                                                  // water drops
+                val a = i / 8f * tw + d * 3f; val r = box * (0.45f + d * 0.5f)
+                drawCircle(Color(0xFF7CC8FF).copy(alpha = 0.8f * (1f - d)), box * 0.025f, Offset(cx + kotlin.math.cos(a) * r, dogCy + kotlin.math.sin(a) * r * 0.7f))
+            }
+            7 -> if (d > 0.05f) {
+                val mark = if (d < 0.66f) "?" else "!"
+                drawText(measurer.measure(mark, TextStyle(fontSize = (box / 4.5f).toSp(), fontWeight = FontWeight.Black, color = if (mark == "?") Color(0xFF9FB4FF) else Color(0xFFFFB74D))),
+                    topLeft = Offset(cx + box * 0.42f, dogCy - box * 0.75f))
+            }
+            8 -> if (d > 0f) {                                                                                                      // bouncing ball
+                val bx = cx + kotlin.math.cos(d * tw) * full * 0.9f; val by = dogCy + box * 0.35f - kotlin.math.abs(sin(d * tw * 2)) * full * 0.35f
+                drawCircle(Color(0xFFE8505B), box * 0.07f, Offset(bx, by)); drawCircle(Color.White.copy(alpha = .6f), box * 0.025f, Offset(bx - box * 0.02f, by - box * 0.02f))
+            }
+            9 -> if (d > 0f) {                                                                                                      // waving paw + sparkles
+                val px = cx + box * 0.36f; val py = dogCy + box * 0.1f - sin(d * tw * 3).coerceAtLeast(0f) * box * 0.12f
+                drawOval(Color(0xFFF4EBDD), Offset(px - box * 0.07f, py - box * 0.05f), androidx.compose.ui.geometry.Size(box * 0.14f, box * 0.11f))
+                for (i in 0..2) { val st = ((d * 2f + i / 3f) % 1f); drawCircle(Color(0xFFFFE08A).copy(alpha = 1f - st), box * 0.02f * (1f - st), Offset(px + box * (0.1f + 0.15f * st), py - box * (0.1f + 0.25f * st) + i * box * 0.05f)) }
+            }
+            10 -> if (d > 0f) {                                                                                                     // sunglasses slide down
+                val gy = dogCy - box * 0.05f - (1f - kotlin.math.min(1f, d * 1.8f)) * box * 0.7f
+                for (ex in listOf(-0.11f, 0.11f)) drawRoundRect(Color(0xFF111111), Offset(cx + ex * box - box * 0.09f, gy - box * 0.055f), androidx.compose.ui.geometry.Size(box * 0.18f, box * 0.12f), CornerRadius(box * 0.04f))
+                drawLine(Color(0xFF111111), Offset(cx - box * 0.03f, gy - box * 0.02f), Offset(cx + box * 0.03f, gy - box * 0.02f), box * 0.02f)
+                if (d > 0.6f) drawText(measurer.measure("✦", TextStyle(fontSize = (box / 7f).toSp(), color = Color.White)), topLeft = Offset(cx + box * 0.12f, gy - box * 0.14f), alpha = (1f - d) * 2.5f)
+            }
+            11 -> if (d > 0.15f) for (i in 0..17) {                                                                                 // confetti
+                val sx = (i * 0.618034f) % 1f; val sy = (i * 0.381966f + 0.17f) % 1f          // golden-ratio scatter
+                val x = cx + (sx - 0.5f) * full * 2.4f + sin(d * tw * 2 + i) * box * 0.06f
+                val y = dogCy - full * (0.6f + sy * 0.7f) + (d - 0.15f) * full * 1.5f
+                val colors = listOf(Color(0xFFFF6B8B), Color(0xFFFFD166), Color(0xFF6EE7B7), Color(0xFF8EC5FF), Color(0xFFB39DFF))
+                drawRect(colors[i % colors.size], Offset(x, y), androidx.compose.ui.geometry.Size(box * 0.04f, box * 0.07f), alpha = (1.2f - d).coerceIn(0f, 1f))
             }
             4 -> if (d < 0.4f) {
                 val zs = TextStyle(fontSize = (box / 6f).toSp(), fontWeight = FontWeight.Black, color = Color(0xFF9FB4FF))

@@ -1243,4 +1243,8 @@
     <string name="setup_done_btn">Done</string>
     <string name="setup_set_up">Set up</string>
     <string name="setup_fix">Fix</string>
+    <string name="lab_server_mood">Server mood</string>
+    <string name="lab_mood_happy">all good</string>
+    <string name="lab_mood_busy">getting busy</string>
+    <string name="lab_mood_stressed">stressed!</string>
 </resources>

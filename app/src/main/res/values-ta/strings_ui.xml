@@ -1243,4 +1243,8 @@
     <string name="setup_done_btn">முடிந்தது</string>
     <string name="setup_set_up">அமை</string>
     <string name="setup_fix">சரிசெய்</string>
+    <string name="lab_server_mood">சர்வர் மனநிலை</string>
+    <string name="lab_mood_happy">எல்லாம் நன்று</string>
+    <string name="lab_mood_busy">பிஸியாகிறது</string>
+    <string name="lab_mood_stressed">அழுத்தம்!</string>
 </resources>

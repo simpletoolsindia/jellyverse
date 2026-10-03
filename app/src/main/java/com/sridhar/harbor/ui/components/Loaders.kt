@@ -338,3 +338,58 @@ fun CuteDino(modifier: Modifier = Modifier) {
             fontWeight = androidx.compose.ui.text.font.FontWeight.Black)), topLeft = Offset(74 * u, 6 * u), alpha = 1f - kotlin.math.abs(v - 0.82f) * 6f)
     }
 }
+
+/**
+ * Health bar with a little dino walking at the tip of the fill. Its mood follows the value:
+ * calm & green below 60 %, sweating & amber from 60 %, panicking red with "!!" above 85 %.
+ */
+@Composable
+fun DinoMeter(fraction: Float, modifier: Modifier = Modifier, height: Dp = 30.dp) {
+    val still = reducedMotion()
+    val f = fraction.coerceIn(0f, 1f)
+    val shown = androidx.compose.animation.core.animateFloatAsState(f, tween(700), label = "f")
+    val clock = rememberInfiniteTransition(label = "dinometer")
+    val t = clock.animateFloat(0f, 1f, infiniteRepeatable(tween(if (f > 0.85f) 420 else if (f > 0.6f) 700 else 1000, easing = LinearEasing)), label = "t")
+    val mood = when { f > 0.85f -> 2; f > 0.6f -> 1; else -> 0 }
+    val barColor = when (mood) { 2 -> Harbor.Rose; 1 -> Harbor.Amber; else -> Color(0xFF34C77B) }
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    Canvas(modifier.fillMaxWidth().height(height)) {
+        val trackH = 8.dp.toPx(); val y = size.height - trackH / 2f - 1f
+        val v = if (still) 0f else t.value
+        val dinoW = size.height * 1.05f
+        val usable = size.width - dinoW * 0.3f
+        val tip = (usable * shown.value).coerceAtLeast(dinoW * 0.55f)
+        drawLine(Color.Gray.copy(alpha = .18f), Offset(trackH / 2, y), Offset(size.width - trackH / 2, y), trackH, StrokeCap.Round)
+        drawLine(barColor, Offset(trackH / 2, y), Offset(tip, y), trackH, StrokeCap.Round)
+        // the dino stands on the fill's tip
+        val u = dinoW / 40f
+        val shake = if (mood == 2 && !still) sin(v * 2f * PI.toFloat() * 4) * 1.2f * u else 0f
+        val ox = tip - dinoW * 0.62f + shake
+        val oy = y - trackH / 2f - 30f * u + if (!still) -kotlin.math.abs(sin(v * 2f * PI.toFloat())) * 1.5f * u else 0f
+        fun o(x: Float, yy: Float) = Offset(ox + x * u, oy + yy * u)
+        val green = Color(0xFF5BC27A); val dark = Color(0xFF3E9B5C)
+        // legs (walking)
+        val step = if (still) 0f else sin(v * 2f * PI.toFloat() * 2)
+        drawRoundRect(dark, o(12f + step * 2f, 22f), androidx.compose.ui.geometry.Size(4f * u, 8f * u), androidx.compose.ui.geometry.CornerRadius(2f * u))
+        drawRoundRect(dark, o(20f - step * 2f, 22f), androidx.compose.ui.geometry.Size(4f * u, 8f * u), androidx.compose.ui.geometry.CornerRadius(2f * u))
+        // tail, body, spikes, head
+        drawPath(Path().apply { moveTo(ox + 8f * u, oy + 18f * u); lineTo(ox + 0f * u, oy + 14f * u + step * u); lineTo(ox + 9f * u, oy + 23f * u); close() }, green)
+        drawOval(green, o(6f, 10f), androidx.compose.ui.geometry.Size(22f * u, 16f * u))
+        for (i in 0..2) drawPath(Path().apply { val bx = ox + (9f + i * 5f) * u; val by = oy + (11f - i) * u
+            moveTo(bx, by + 2 * u); lineTo(bx + 2.5f * u, by - 3 * u); lineTo(bx + 5f * u, by + 2 * u); close() }, dark)
+        drawOval(green, o(20f, 2f), androidx.compose.ui.geometry.Size(17f * u, 14f * u))
+        drawCircle(Color(0xFFCFF2C2), 5f * u, o(26f, 18f))
+        // face by mood
+        drawCircle(Color.White, 2.6f * u, o(30f, 7f)); drawCircle(Color(0xFF1E2A22), 1.4f * u, o(30.8f, 7.2f))
+        when (mood) {
+            0 -> drawArc(Color(0xFF1E2A22), 10f, 140f, false, o(28f, 9f), androidx.compose.ui.geometry.Size(6f * u, 4f * u), style = Stroke(1.2f * u, cap = StrokeCap.Round))
+            1 -> { drawLine(Color(0xFF1E2A22), o(29f, 12f), o(34f, 12f), 1.2f * u, StrokeCap.Round)
+                   drawCircle(Color(0xFF7CC8FF), 1.6f * u, o(22f, 3f + (v * 4f) % 4f)) }   // sweat drop
+            else -> { drawOval(Color(0xFF1E2A22), o(30f, 10.5f), androidx.compose.ui.geometry.Size(3.5f * u, 3f * u))
+                      drawCircle(Color(0xFF7CC8FF), 1.6f * u, o(21f, 2f + (v * 6f) % 5f)); drawCircle(Color(0xFF7CC8FF), 1.3f * u, o(37f, 3f + ((v + .5f) * 6f) % 5f))
+                      drawText(measurer.measure("!!", androidx.compose.ui.text.TextStyle(fontSize = (8 * u).toSp(), color = Harbor.Rose,
+                          fontWeight = androidx.compose.ui.text.font.FontWeight.Black)), topLeft = o(34f, -6f)) }
+        }
+        if (mood > 0) drawCircle(Color(0xFFFF9AA8).copy(alpha = .6f), 1.8f * u, o(26f, 10f))
+    }
+}

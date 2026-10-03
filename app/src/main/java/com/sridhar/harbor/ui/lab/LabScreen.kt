@@ -168,6 +168,14 @@ fun LabScreen(onSetup: () -> Unit, onTerminal: () -> Unit, onProfile: () -> Unit
                     val t = s.tempC ?: 0f
                     RingGauge(stringResource(R.string.temp), (t / 85f).coerceIn(0f, 1f), s.tempC?.let { "${it.toInt()}°" } ?: "–", when { t > 75 -> stringResource(R.string.hot); t > 60 -> stringResource(R.string.warm); else -> stringResource(R.string.cool) })
                 }
+                // Server mood: the dino reacts to the worst of CPU, memory, temperature and the fullest disk.
+                val worst = listOf(s.cpu, s.mem, ((s.tempC ?: 0f) / 85f).coerceIn(0f, 1f), s.disks.maxOfOrNull { it.fraction } ?: 0f).max()
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Harbor.Surface).padding(14.dp)) {
+                    Text(stringResource(R.string.lab_server_mood) + " · " + stringResource(when { worst > 0.85f -> R.string.lab_mood_stressed; worst > 0.6f -> R.string.lab_mood_busy; else -> R.string.lab_mood_happy }),
+                        fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    com.sridhar.harbor.ui.components.DinoMeter(worst, height = 40.dp)
+                }
             }
             item(key = "live") { LiveCard(vm, s) }
             item(key = "swap") {
@@ -343,7 +351,7 @@ private fun MeterRow(title: String, fraction: Float, detail: String, modifier: M
             Text("${(fraction * 100).toInt()}%", fontWeight = FontWeight.Black, color = c)
         }
         Spacer(Modifier.height(8.dp))
-        GradientProgress(fraction, height = 8.dp, brush = if (fraction > 0.75f) SolidColor(c) else Harbor.accentH)
+        com.sridhar.harbor.ui.components.DinoMeter(fraction)
         Text(detail, fontSize = 11.sp, color = Harbor.TextDim, modifier = Modifier.padding(top = 5.dp))
     }
 }
