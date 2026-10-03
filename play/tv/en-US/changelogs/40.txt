@@ -1,0 +1,1 @@
+JellyVerse 2.21.2: Library Doctor "Organize files" no longer reports a move as done when another copy already sits at the destination – it tells you instead. The Move button turns into Close once everything is done.

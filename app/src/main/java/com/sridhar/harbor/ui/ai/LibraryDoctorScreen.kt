@@ -421,8 +421,12 @@ private fun MovesSheet(plans: List<MovePlan>, moving: Boolean, onDismiss: () -> 
                     }
                 }
             }
-            GradientButton(if (moving) stringResource(R.string.moving) else stringResource(R.string.move_1_s_item_s, selected.size), { onRun(plans.filter { it.itemId in selected }) },
-                Modifier.fillMaxWidth().padding(bottom = 16.dp), icon = Icons.AutoMirrored.Rounded.DriveFileMove, enabled = !moving && selected.isNotEmpty())
+            // Only items not yet attempted can be moved; once everything is done the button just closes the sheet.
+            val pending = plans.filter { it.itemId in selected && it.done == null }
+            if (!moving && pending.isEmpty() && plans.any { it.done != null })
+                GradientButton(stringResource(R.string.close), onDismiss, Modifier.fillMaxWidth().padding(bottom = 16.dp))
+            else GradientButton(if (moving) stringResource(R.string.moving) else stringResource(R.string.move_1_s_item_s, pending.size), { onRun(pending) },
+                Modifier.fillMaxWidth().padding(bottom = 16.dp), icon = Icons.AutoMirrored.Rounded.DriveFileMove, enabled = !moving && pending.isNotEmpty())
         }
     }
 }

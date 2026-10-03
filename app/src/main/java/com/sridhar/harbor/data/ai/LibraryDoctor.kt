@@ -197,9 +197,19 @@ class LibraryDoctor(
     suspend fun executeMoves(plans: List<MovePlan>, onEach: (MovePlan) -> Unit): List<MovePlan> {
         val host = ssh.primary ?: throw IOException("No SSH host")
         val out = plans.map { p ->
-            val r = runCatching { ssh.exec(host, "(${p.commands}) && echo HARBOR_OK || echo HARBOR_FAIL", 120_000) }
+            // A destination that already exists means another copy is there: never move onto it (mv -n would just
+            // skip silently). Success = the source is gone AND the destination exists – not merely "destination exists".
+            val src = q(p.fromHost); val dst = q(p.toHost)
+            val script = "if test -e $dst; then echo HARBOR_EXISTS; elif test ! -e $src; then echo HARBOR_NOSRC; " +
+                "else (${p.commands}) >/dev/null 2>&1; if test ! -e $src && test -e $dst; then echo HARBOR_OK; else echo HARBOR_FAIL; fi; fi"
+            val r = runCatching { ssh.exec(host, script, 120_000) }
             val res = r.fold(
-                { txt -> if (txt.contains("HARBOR_OK")) p.copy(done = true) else p.copy(done = false, error = txt.replace("HARBOR_FAIL", "").trim().ifBlank { "Target exists or source missing" }) },
+                { txt -> when {
+                    txt.contains("HARBOR_OK") -> p.copy(done = true)
+                    txt.contains("HARBOR_EXISTS") -> p.copy(done = false, error = "Another file is already at the destination (a different copy?) – nothing was moved")
+                    txt.contains("HARBOR_NOSRC") -> p.copy(done = false, error = "The original file isn't there any more – rescan to refresh")
+                    else -> p.copy(done = false, error = txt.replace("HARBOR_FAIL", "").trim().ifBlank { "The move didn't complete – nothing was changed" })
+                } },
                 { e -> p.copy(done = false, error = e.message) })
             onEach(res); res
         }
