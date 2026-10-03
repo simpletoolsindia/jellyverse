@@ -1189,4 +1189,12 @@
     <string name="aq_mobile_hint">குறைவானது குறைந்த டேட்டா – 128k ≈ நிமிடத்திற்கு 1 MB</string>
     <string name="aq_download">பதிவிறக்கங்கள் (ஆஃப்லைன் பாடல்கள்)</string>
     <string name="aq_download_hint">குறைவானது சேமிப்பிடத்தைச் சேமிக்கும்; புதிய பதிவிறக்கங்களுக்கு மட்டும்</string>
+    <string name="update_installing">நிறுவுகிறது… Android காட்டும் சாளரத்தில் உறுதிப்படுத்தவும்</string>
+    <string name="update_allow_hint">JellyVerse இலிருந்து நிறுவ Android ஒருமுறை அனுமதி கேட்கும். அதை இயக்கி திரும்பி வாருங்கள் – புதுப்பிப்பு தானாகத் தொடரும்.</string>
+    <string name="update_failed_title">புதுப்பிப்பு முடியவில்லை</string>
+    <string name="update_retry">மீண்டும் முயல்</string>
+    <string name="update_github">GitHub</string>
+    <string name="rec_short">பதிவு</string>
+    <string name="rec_busy">பதிவாகிறது…</string>
+    <string name="rec_menu">வானொலி பதிவுகள்</string>
 </resources>

@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -98,16 +99,65 @@ fun rememberConfig(): ServerConfig {
 fun Modifier.shimmer(): Modifier = composed {
     if (reducedMotion()) return@composed drawWithContent { drawRect(Harbor.SurfaceHigh) }   // static placeholder
     val t = rememberInfiniteTransition(label = "shimmer")
-    val x by t.animateFloat(-1f, 2f, infiniteRepeatable(tween(1300), RepeatMode.Restart), label = "x")
+    // A soft diagonal sheen glides across, with a slow "breath" on the base so long waits still feel alive.
+    val x by t.animateFloat(-1f, 2f, infiniteRepeatable(tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing), RepeatMode.Restart), label = "x")
+    val glow by t.animateFloat(0f, 1f, infiniteRepeatable(tween(1500), RepeatMode.Reverse), label = "glow")
+    val tint = Harbor.Violet
     drawWithContent {
         drawRect(Harbor.SurfaceHigh)
+        drawRect(tint.copy(alpha = 0.025f + 0.035f * glow))
         drawRect(
             Brush.linearGradient(
-                listOf(Color.Transparent, Harbor.line(0.06f), Color.Transparent),
+                listOf(Color.Transparent, Harbor.line(0.05f), Harbor.line(0.10f), Harbor.line(0.05f), Color.Transparent),
                 start = androidx.compose.ui.geometry.Offset(size.width * x, 0f),
-                end = androidx.compose.ui.geometry.Offset(size.width * (x + 0.6f), size.height),
+                end = androidx.compose.ui.geometry.Offset(size.width * (x + 0.8f), size.height),
             )
         )
+    }
+}
+
+/** Content that just replaced a skeleton: fades and rises in once (skipped on reduced motion). */
+fun Modifier.fadeInOnce(): Modifier = composed {
+    if (reducedMotion()) return@composed this
+    val a = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { a.animateTo(1f, tween(320, easing = androidx.compose.animation.core.LinearOutSlowInEasing)) }
+    graphicsLayer { alpha = a.value; translationY = (1f - a.value) * 14.dp.toPx() }
+}
+
+/** Placeholder for a title page (backdrop, poster, title, buttons, text) while it loads. */
+@Composable
+fun SkeletonDetail(modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxWidth().height(300.dp).shimmer())
+        Row(Modifier.padding(horizontal = 20.dp).offset(y = (-60).dp), verticalAlignment = Alignment.Bottom) {
+            Box(Modifier.width(110.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(14.dp)).shimmer())
+            Spacer(Modifier.width(16.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.width(180.dp).height(26.dp).clip(RoundedCornerShape(8.dp)).shimmer())
+                Box(Modifier.width(120.dp).height(14.dp).clip(RoundedCornerShape(6.dp)).shimmer())
+            }
+        }
+        Column(Modifier.padding(horizontal = 20.dp).offset(y = (-40).dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(26.dp)).shimmer())
+            repeat(4) { i -> Box(Modifier.fillMaxWidth(if (i == 3) 0.6f else 1f).height(14.dp).clip(RoundedCornerShape(6.dp)).shimmer()) }
+        }
+    }
+}
+
+/** Placeholder list rows (artwork + two lines) for songs, albums, requests… */
+@Composable
+fun SkeletonRows(count: Int = 6, modifier: Modifier = Modifier, circle: Boolean = false) {
+    Column(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        repeat(count) { i ->
+            Row(Modifier.enterRise(i), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(52.dp).clip(if (circle) androidx.compose.foundation.shape.CircleShape else RoundedCornerShape(10.dp)).shimmer())
+                Spacer(Modifier.width(14.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.fillMaxWidth(0.55f + (i % 3) * 0.1f).height(14.dp).clip(RoundedCornerShape(6.dp)).shimmer())
+                    Box(Modifier.fillMaxWidth(0.35f).height(12.dp).clip(RoundedCornerShape(6.dp)).shimmer())
+                }
+            }
+        }
     }
 }
 

@@ -6,6 +6,7 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Settings
@@ -530,6 +531,21 @@ private fun FloatingNavBar(tabs: List<Tab>, selected: Int, onSelect: (Int) -> Un
                     Icon(if (active) tab.icon else tab.idleIcon, null, tint = if (active) Harbor.VioletSoft else Harbor.Fg)
                     Spacer(Modifier.width(18.dp))
                     Text(tab.label, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium, fontSize = 16.sp)
+                }
+            }
+            // Radio recordings (they live in Music, which needs Navidrome).
+            if (tabs.any { it.route == MusicRoute }) {
+                val container = com.sridhar.harbor.ui.components.LocalContainer.current
+                val recs by com.sridhar.harbor.radio.RadioLibrary.recordings.collectAsState()
+                val live by com.sridhar.harbor.radio.RadioLibrary.live.collectAsState()
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                    .clickable { moreOpen = false; container.navRequests.tryEmit("recordings") }.padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.FiberManualRecord, null, tint = Harbor.Rose)
+                    Spacer(Modifier.width(18.dp))
+                    Text(com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.rec_menu), fontWeight = FontWeight.Medium, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                    Text(if (live != null) com.sridhar.harbor.L10n.s(com.sridhar.harbor.R.string.rec_live_short) else recs.size.takeIf { it > 0 }?.toString().orEmpty(),
+                        color = if (live != null) Harbor.Rose else Harbor.TextDim, fontSize = 13.sp)
                 }
             }
         }

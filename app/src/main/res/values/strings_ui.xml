@@ -1189,4 +1189,12 @@
     <string name="aq_mobile_hint">Lower uses less data – 128k is about 1 MB per minute</string>
     <string name="aq_download">Downloads (offline songs)</string>
     <string name="aq_download_hint">Lower saves storage; applies to new downloads</string>
+    <string name="update_installing">Installing… confirm in the window Android shows</string>
+    <string name="update_allow_hint">Android will ask you to allow installs from JellyVerse once. Turn it on and come back – the update continues by itself.</string>
+    <string name="update_failed_title">Update didn\'t finish</string>
+    <string name="update_retry">Retry</string>
+    <string name="update_github">GitHub</string>
+    <string name="rec_short">REC</string>
+    <string name="rec_busy">Recording…</string>
+    <string name="rec_menu">Radio recordings</string>
 </resources>

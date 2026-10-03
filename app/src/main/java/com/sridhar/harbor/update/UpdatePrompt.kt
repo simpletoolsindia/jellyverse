@@ -1,5 +1,7 @@
 package com.sridhar.harbor.update
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -52,22 +55,30 @@ fun UpdatePrompt() {
     val state by updater.state.collectAsState()
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
-    // Check on launch and whenever the app comes back to the foreground (at most every 20 h).
+    // Check on launch and whenever the app comes back to the foreground (at most every 20 h); and continue an
+    // install the user just allowed in "Install unknown apps".
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) {
-        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { runCatching { updater.checkIfDue() } }
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            updater.resumeAfterPermission(ctx)
+            runCatching { updater.checkIfDue() }
+        }
     }
 
     val info = when (val s = state) {
         is UpdateState.Available -> s.info
         is UpdateState.Downloading -> s.info
         is UpdateState.ReadyToInstall -> s.info
+        is UpdateState.Installing -> s.info
+        is UpdateState.Failed -> s.info ?: return
         else -> return
     }
-    Dialog(onDismissRequest = { if (state is UpdateState.Available) updater.dismiss() }) {
-        Column(Modifier.widthIn(max = 480.dp).clip(RoundedCornerShape(28.dp)).background(Harbor.Surface).padding(24.dp)) {
+    val busy = state is UpdateState.Downloading || state is UpdateState.Installing
+    Dialog(onDismissRequest = { if (!busy) updater.dismiss() }) {
+        Column(Modifier.widthIn(max = 480.dp).clip(RoundedCornerShape(28.dp)).background(Harbor.Surface).padding(24.dp)
+            .animateContentSize(androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow))) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                HarborLogo(48.dp)
+                com.sridhar.harbor.ui.ai.JellyBuddy(52.dp, busy = busy)
                 Spacer(Modifier.width(14.dp))
                 Column {
                     Text(stringResource(R.string.update_title), fontWeight = FontWeight.Bold, fontSize = 20.sp)
@@ -77,28 +88,73 @@ fun UpdatePrompt() {
             if (info.notes.isNotBlank()) {
                 Text(stringResource(R.string.update_whats_new), color = Harbor.TextDim, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 18.dp, bottom = 6.dp))
                 Box(Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(14.dp)).background(Harbor.line(.04f)).verticalScroll(rememberScrollState()).padding(12.dp)) {
-                    Text(info.notes.replace("**", ""), fontSize = 14.sp, color = Harbor.Fg.copy(alpha = .85f))
+                    Text(releaseNotes(info.notes), fontSize = 14.sp, color = Harbor.Fg.copy(alpha = .85f), lineHeight = 20.sp)
                 }
             }
             Spacer(Modifier.size(18.dp))
             val first = remember { FocusRequester() }
             LaunchedEffect(state::class) { runCatching { first.requestFocus() } }
-            when (val s = state) {
-                is UpdateState.Downloading -> {
-                    Text(stringResource(R.string.update_downloading, (s.progress * 100).toInt()), color = Harbor.TextDim, fontSize = 13.sp)
-                    Spacer(Modifier.size(8.dp))
-                    TideBar(Modifier.fillMaxWidth(), progress = { s.progress })
-                }
-                is UpdateState.ReadyToInstall -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton({ updater.install(ctx) }, Modifier.focusRequester(first).focusRing()) { Text(stringResource(R.string.update_install), fontWeight = FontWeight.Bold) }
-                }
-                else -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton({ updater.dismiss() }, Modifier.focusRing()) { Text(stringResource(R.string.update_later), color = Harbor.TextDim) }
-                    TextButton({ scope.launch(com.sridhar.harbor.CrashGuard) { updater.download() } }, Modifier.focusRequester(first).focusRing()) {
-                        Text(stringResource(R.string.update_now), fontWeight = FontWeight.Bold)
+            androidx.compose.animation.AnimatedContent(state::class, label = "upd",
+                transitionSpec = { (androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { it / 3 }) togetherWith androidx.compose.animation.fadeOut() }) { _ ->
+                when (val s = state) {
+                    is UpdateState.Downloading -> Column {
+                        Text(stringResource(R.string.update_downloading, (s.progress * 100).toInt()), color = Harbor.TextDim, fontSize = 13.sp)
+                        Spacer(Modifier.size(8.dp))
+                        val p by androidx.compose.animation.core.animateFloatAsState(s.progress, label = "p")
+                        TideBar(Modifier.fillMaxWidth(), progress = { p })
+                    }
+                    is UpdateState.Installing -> Column {
+                        Text(stringResource(R.string.update_installing), color = Harbor.TextDim, fontSize = 13.sp)
+                        Spacer(Modifier.size(8.dp))
+                        TideBar(Modifier.fillMaxWidth())
+                    }
+                    is UpdateState.ReadyToInstall -> Column {
+                        if (android.os.Build.VERSION.SDK_INT >= 26 && !ctx.packageManager.canRequestPackageInstalls())
+                            Text(stringResource(R.string.update_allow_hint), color = Harbor.TextDim, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            TextButton({ updater.install(ctx) }, Modifier.focusRequester(first).focusRing()) { Text(stringResource(R.string.update_install), fontWeight = FontWeight.Bold) }
+                        }
+                    }
+                    is UpdateState.Failed -> Column {
+                        Text(stringResource(R.string.update_failed_title), color = Harbor.Rose, fontWeight = FontWeight.Bold)
+                        Text(s.message, color = Harbor.TextDim, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            TextButton({ updater.dismiss() }, Modifier.focusRing()) { Text(stringResource(R.string.update_later), color = Harbor.TextDim) }
+                            TextButton({
+                                runCatching { ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(updater.releasePage(info.version))).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                            }, Modifier.focusRing()) { Text(stringResource(R.string.update_github)) }
+                            TextButton({ updater.startDownload() }, Modifier.focusRequester(first).focusRing()) { Text(stringResource(R.string.update_retry), fontWeight = FontWeight.Bold) }
+                        }
+                    }
+                    else -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton({ updater.dismiss() }, Modifier.focusRing()) { Text(stringResource(R.string.update_later), color = Harbor.TextDim) }
+                        TextButton({ updater.startDownload() }, Modifier.focusRequester(first).focusRing()) {
+                            Text(stringResource(R.string.update_now), fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+/** GitHub release notes (Markdown) as readable text: headings bold, bullets, tables as "a · b · c", no markup. */
+internal fun releaseNotes(md: String): androidx.compose.ui.text.AnnotatedString = androidx.compose.ui.text.buildAnnotatedString {
+    val lines = md.lines().map { it.trimEnd() }
+    var first = true
+    for (raw in lines) {
+        val l = raw.trim()
+        if (l.matches(Regex("""\|?\s*:?-{2,}.*"""))) continue                       // table separator
+        if (l.startsWith("## ") && !l.startsWith("### ")) continue                    // the "JellyVerse x.y" title repeats the header
+        if (l.isEmpty()) { if (!first) append("\n"); continue }
+        if (!first) append("\n")
+        first = false
+        val text = l.replace("**", "").replace("`", "")
+        when {
+            text.startsWith("#") -> withStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold)) { append(text.trimStart('#').trim()) }
+            text.startsWith("- ") || text.startsWith("* ") -> append("•  " + text.drop(2))
+            text.startsWith("|") -> append(text.trim('|').split('|').map { it.trim() }.filter { it.isNotEmpty() }.joinToString("  ·  "))
+            else -> append(text)
         }
     }
 }

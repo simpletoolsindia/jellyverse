@@ -217,18 +217,37 @@ class RecordService : Service() {
         Intent(this, MainActivity::class.java).setAction(Intent.ACTION_VIEW).setData(android.net.Uri.parse("jellyverse://open/$extra")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
-    private fun progress(station: String, elapsed: Long, total: Long, bytes: Long): Notification =
-        NotificationCompat.Builder(this, CHANNEL)
+    /**
+     * The ongoing "recording" notification: a blinking REC dot, a level meter and a clock that ticks every second –
+     * all animated by the system itself (ViewFlipper + Chronometer), so we only refresh it every 5 s for size/progress.
+     */
+    private fun progress(station: String, elapsed: Long, total: Long, bytes: Long): Notification {
+        val pct = (elapsed * 1000 / total.coerceAtLeast(1)).toInt()
+        fun view(big: Boolean) = android.widget.RemoteViews(packageName, R.layout.notif_recording).apply {
+            setChronometer(R.id.rec_clock, android.os.SystemClock.elapsedRealtime() - elapsed, null, true)
+            setTextViewText(R.id.rec_total, " / ${clock(total)}")
+            setTextViewText(R.id.rec_station, station)
+            setProgressBar(R.id.rec_progress, 1000, pct, false)
+            setTextViewText(R.id.rec_size, mb(bytes))
+            if (!big) { setViewVisibility(R.id.rec_size, android.view.View.GONE) }
+        }
+        return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_rec)
+            .setColor(0xFFE8505B.toInt())
             .setLargeIcon(Avatar.bitmap(this))
             .setContentTitle(L10n.s(R.string.rec_now, station))
-            .setContentText("${clock(elapsed)} / ${clock(total)} · ${mb(bytes)}")
-            .setProgress(1000, (elapsed * 1000 / total.coerceAtLeast(1)).toInt(), false)
+            .setContentText("${clock(elapsed)} / ${clock(total)} · ${mb(bytes)}")   // shown where custom views aren't
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomContentView(view(false))
+            .setCustomBigContentView(view(true))
+            .setWhen(System.currentTimeMillis() - elapsed).setUsesChronometer(true).setShowWhen(true)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setOngoing(true).setOnlyAlertOnce(true).setSilent(true)
             .setContentIntent(openApp(1, "recordings"))
             .addAction(0, L10n.s(R.string.rec_stop), PendingIntent.getService(this, 2,
                 Intent(this, RecordService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE))
             .build()
+    }
 
     private fun notifyDone(station: String, elapsed: Long, error: String?) {
         nm.notify(("done$station${System.currentTimeMillis()}").hashCode(), NotificationCompat.Builder(this, CHANNEL_DONE)

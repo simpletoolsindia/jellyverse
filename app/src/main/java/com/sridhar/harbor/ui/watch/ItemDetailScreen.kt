@@ -1,5 +1,7 @@
 package com.sridhar.harbor.ui.watch
 
+import com.sridhar.harbor.ui.components.fadeInOnce
+
 import androidx.compose.material.icons.rounded.Downloading
 import androidx.compose.runtime.mutableIntStateOf
 import com.sridhar.harbor.L10n
@@ -214,8 +216,8 @@ fun ItemDetailScreen(id: String, onItem: (String) -> Unit, onBack: () -> Unit, o
     Box(Modifier.fillMaxSize().background(Harbor.Ink)) {
         if (item == null) {
             if (vm.error != null) MessageState(stringResource(R.string.couldn_t_load), vm.error, Modifier.align(Alignment.Center), onRetry = { vm.load() })
-            else com.sridhar.harbor.ui.components.JellyLoader(Modifier.align(Alignment.Center))
-        } else LazyColumn(Modifier.fillMaxSize(), list, contentPadding = PaddingValues(bottom = 48.dp)) {
+            else com.sridhar.harbor.ui.components.SkeletonDetail()
+        } else LazyColumn(Modifier.fillMaxSize().fadeInOnce(), list, contentPadding = PaddingValues(bottom = 48.dp)) {
             item(key = "header") {
                 Box(Modifier.fillMaxWidth().height(440.dp)) {
                     NetImage(jf.backdropUrl(cfg, item, 1600), Modifier.fillMaxSize().graphicsLayer {

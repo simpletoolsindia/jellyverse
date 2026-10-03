@@ -1,6 +1,7 @@
 package com.sridhar.harbor.ui.music
 
 import android.content.Intent
+import androidx.compose.animation.core.animateFloat
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
@@ -94,6 +95,67 @@ internal fun clock(ms: Long): String {
 }
 
 private enum class Mode { Menu, Edit, Record, Schedule, Remind }
+
+/** Wall-clock milliseconds, refreshed every second while shown – for live recording timers. */
+@Composable
+internal fun rememberNow(): Long {
+    val now by androidx.compose.runtime.produceState(System.currentTimeMillis()) {
+        while (true) { value = System.currentTimeMillis(); kotlinx.coroutines.delay(1000L - System.currentTimeMillis() % 1000L) }
+    }
+    return now
+}
+
+/**
+ * Record button for the radio Now Playing screen: "● REC" → pick a duration → records; while recording this station
+ * it shows a pulsing dot, the time ticking every second, and Stop.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RecordControl(song: com.sridhar.harbor.data.music.Song, modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current
+    val live by RadioLibrary.live.collectAsState()
+    var picking by remember { mutableStateOf(false) }
+    val mine = live?.takeIf { it.station == song.title }
+    if (mine != null) {
+        val now = rememberNow()
+        val el = (now - mine.startedAt).coerceAtLeast(0)
+        val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "rec")
+        val a by t.animateFloat(1f, .25f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(650), androidx.compose.animation.core.RepeatMode.Reverse), label = "a")
+        Row(modifier.clip(RoundedCornerShape(50)).background(Harbor.Rose.copy(alpha = .22f)).clickable { RecordService.stop(ctx) }
+            .padding(start = 10.dp, end = 6.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.FiberManualRecord, null, tint = Harbor.Rose.copy(alpha = a), modifier = Modifier.size(12.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("${clock(el)} / ${clock(mine.durationMs)}", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.width(4.dp))
+            Icon(Icons.Rounded.Stop, stringResource(R.string.rec_stop), tint = Color.White, modifier = Modifier.size(20.dp))
+        }
+    } else {
+        Row(modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = .14f)).clickable(enabled = live == null) { picking = true }
+            .padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.FiberManualRecord, null, tint = if (live == null) Harbor.Rose else Color.White.copy(.4f), modifier = Modifier.size(12.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(if (live == null) R.string.rec_short else R.string.rec_busy), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+    if (picking) ModalBottomSheet(onDismissRequest = { picking = false }, containerColor = Harbor.Surface) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp).navigationBarsPadding()) {
+            Text(song.title, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(12.dp))
+            var min by remember { mutableIntStateOf(60) }
+            Text(stringResource(R.string.rec_how_long), fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            DurationChips(min) { min = it }
+            Text(stringResource(R.string.rec_cool_hint), color = Harbor.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
+                TextButton({ song.streamUrl?.let { RecordService.start(ctx, song.title, it, min) }; picking = false }) {
+                    Icon(Icons.Rounded.FiberManualRecord, null, tint = Harbor.Rose, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.rec_start))
+                }
+            }
+        }
+    }
+}
 
 /** Long-press on a station: edit it, record now, schedule a recording, set a listening reminder, or remove it. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -252,7 +314,7 @@ fun RecordingsSheet(onDismiss: () -> Unit) {
                             Text(stringResource(R.string.rec_now, l.station), Modifier.weight(1f), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             IconButton({ RecordService.stop(ctx) }) { Icon(Icons.Rounded.Stop, stringResource(R.string.rec_stop), tint = Harbor.Rose) }
                         }
-                        val el = System.currentTimeMillis() - l.startedAt
+                        val el = (rememberNow() - l.startedAt).coerceAtLeast(0)
                         LinearProgressIndicator({ (el.toFloat() / l.durationMs).coerceIn(0f, 1f) }, Modifier.fillMaxWidth(), color = Harbor.Rose)
                         Text("${clock(el)} / ${clock(l.durationMs)} · ${"%.1f".format(l.bytes / 1e6)} MB", color = Harbor.TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                     }

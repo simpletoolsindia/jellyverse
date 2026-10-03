@@ -101,12 +101,19 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
         val upstream = androidx.media3.datasource.DefaultDataSource.Factory(context, OkHttpDataSource.Factory(http))
         val cached = CacheDataSource.Factory().setCache(cache).setUpstreamDataSourceFactory(upstream).setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
         ExoPlayer.Builder(context)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(cached))
+            // Radio recordings are raw MP3/AAC streams with no length header: estimate duration (and allow seeking)
+            // from the constant bitrate, so Now Playing shows played / total time.
+            .setMediaSourceFactory(DefaultMediaSourceFactory(cached, androidx.media3.extractor.DefaultExtractorsFactory()
+                .setConstantBitrateSeekingEnabled(true).setConstantBitrateSeekingAlwaysEnabled(true)))
             .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build().also { p -> p.addListener(listener); p.pauseAtEndOfMediaItems = false }
     }
+
+    /** Player's duration, or – when the file doesn't say (some recordings) – the length we know from the song itself. */
+    private fun knownDuration(): Long = player.duration.takeIf { it != C.TIME_UNSET && it > 0 }
+        ?: _state.value.queue.getOrNull(player.currentMediaItemIndex)?.duration?.takeIf { it > 0 }?.let { it * 1000L } ?: 0L
 
     private var controller: MediaController? = null
     private var ticker: Job? = null
@@ -119,12 +126,15 @@ class MusicEngine(private val context: Context, private val repo: NavidromeRepos
             _state.update { it.copy(playing = isPlaying) }
             if (isPlaying) startTicker() else persist()
         }
+        override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+            _state.update { it.copy(durationMs = knownDuration()) }
+        }
         override fun onPlaybackStateChanged(s: Int) {
-            _state.update { it.copy(buffering = s == Player.STATE_BUFFERING, durationMs = player.duration.coerceAtLeast(0)) }
+            _state.update { it.copy(buffering = s == Player.STATE_BUFFERING, durationMs = knownDuration()) }
         }
         override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
             if (_state.value.sleepAfterSong && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) { player.pause(); _state.update { it.copy(sleepAfterSong = false) } }
-            _state.update { it.copy(index = player.currentMediaItemIndex, durationMs = player.duration.coerceAtLeast(0), error = null) }
+            _state.update { it.copy(index = player.currentMediaItemIndex, durationMs = knownDuration(), error = null) }
             scrobbled = false
             _state.value.current?.takeIf { it.streamUrl == null }?.let { s -> scope.launch { repo.scrobble(s.id, submission = false) } }
             persist()

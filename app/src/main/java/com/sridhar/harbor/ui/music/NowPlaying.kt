@@ -141,7 +141,7 @@ fun MiniPlayer(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val cfg = rememberConfig()
     val art = c.music.coverUrl(cfg, song.coverArt, 200)
     val tint = rememberArtColor(art, song.coverTitle)
-    val progress by produceState(0f, song.id) { engine.positionFlow().collect { value = if (s.durationMs > 0) it.toFloat() / engine.player.duration.coerceAtLeast(1) else 0f } }
+    val progress by produceState(0f, song.id) { engine.positionFlow().collect { val d = engine.state.value.durationMs; value = if (d > 0) (it.toFloat() / d).coerceIn(0f, 1f) else 0f } }
     val drag = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
 
@@ -261,6 +261,8 @@ private fun NowPlayingBody(onClose: () -> Unit, onAlbum: (String) -> Unit, onArt
                 }
                 Spacer(Modifier.width(10.dp))
                 EqualizerBars(s.playing, Modifier.size(18.dp), Color.White)
+                Spacer(Modifier.weight(1f))
+                RecordControl(song)
             }
             // ---- transport
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {

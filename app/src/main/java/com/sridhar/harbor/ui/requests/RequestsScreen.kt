@@ -181,7 +181,7 @@ fun RequestsScreen(onOpen: (String, Int) -> Unit, onSetup: () -> Unit) {
             items(vm.requests, key = { it.id }) { r ->
                 RequestCard(r, vm, cfg, onOpen)
             }
-            if (vm.loading) item { Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) { com.sridhar.harbor.ui.components.JellyLoader() } }
+            if (vm.loading) item { com.sridhar.harbor.ui.components.SkeletonRows(4) }
         }
         androidx.compose.material3.SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(bottom = 100.dp + com.sridhar.harbor.ui.components.LocalMiniPlayerInset.current))
     }

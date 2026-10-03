@@ -141,7 +141,7 @@ fun MusicHomeScreen(nav: MusicNav) {
             }
         }
         when {
-            vm.loading && vm.recent.isEmpty() && vm.newest.isEmpty() -> item { Box(Modifier.fillMaxWidth().padding(64.dp), Alignment.Center) { com.sridhar.harbor.ui.components.JellyLoader() } }
+            vm.loading && vm.recent.isEmpty() && vm.newest.isEmpty() -> item { Column { repeat(3) { com.sridhar.harbor.ui.components.SkeletonShelf(150.dp, 1f, 5) } } }
             vm.error != null && vm.newest.isEmpty() -> {
                 // Offline: downloaded songs still play.
                 if (offlineSongs.isNotEmpty()) item(key = "downloaded") { DownloadedTile(offlineSongs.size) { nav.downloaded() } }
@@ -374,7 +374,7 @@ fun CollectionScreen(kind: String, id: String, nav: MusicNav) {
                 }
             }
             when {
-                vm.loading && vm.songs.isEmpty() -> item { Box(Modifier.fillMaxWidth().padding(48.dp), Alignment.Center) { com.sridhar.harbor.ui.components.JellyLoader() } }
+                vm.loading && vm.songs.isEmpty() -> item { com.sridhar.harbor.ui.components.SkeletonRows(8) }
                 vm.error != null -> item { MessageState(stringResource(R.string.couldn_t_load), vm.error, onRetry = { vm.load() }) }
                 vm.songs.isEmpty() -> item { MessageState(stringResource(R.string.nothing_here), null, icon = Icons.Rounded.MusicNote) }
             }
@@ -443,7 +443,7 @@ fun ArtistScreen(ids: List<String>, name: String, nav: MusicNav) {
                 items(vm.info.similarArtist, key = { it.id }) { a -> ArtistBubble(ArtistGroup(com.sridhar.harbor.data.music.MusicText.cleanArtist(a.name), listOf(a.id), a.coverArt, 0)) { nav.artist(listOf(a.id), a.name) } }
             }
         }
-        if (vm.loading && vm.albums.isEmpty()) item { Box(Modifier.fillMaxWidth().padding(48.dp), Alignment.Center) { com.sridhar.harbor.ui.components.JellyLoader() } }
+        if (vm.loading && vm.albums.isEmpty()) item { com.sridhar.harbor.ui.components.SkeletonShelf(150.dp, 1f, 5) }
     }
     actionsFor?.let { song -> SongActionsSheet(song, onDismiss = { actionsFor = null }, onAlbum = nav.album, onArtist = nav.artist) }
 }
@@ -523,7 +523,7 @@ fun MusicLibraryScreen(nav: MusicNav) {
                 1 -> items(vm.albums, key = { it.id }) { a -> LibraryRow(a.coverArt, a.displayName, a.displayArtist) { nav.album(a.id) } }
                 else -> items(vm.artists, key = { it.ids.first() }) { a -> LibraryRow(a.coverArt, a.name, stringResource(R.string.mu_albums_count, a.albumCount), circle = true) { nav.artist(a.ids, a.name) } }
             }
-            if (vm.loading) item { Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) { com.sridhar.harbor.ui.components.JellyLoader() } }
+            if (vm.loading) item { com.sridhar.harbor.ui.components.SkeletonRows(6) }
         }
     }
     if (creating) com.sridhar.harbor.ui.admin.TextPromptDialog(stringResource(R.string.mu_create_playlist), stringResource(R.string.name), stringResource(R.string.create), onDismiss = { creating = false }) { vm.createPlaylist(it); creating = false }

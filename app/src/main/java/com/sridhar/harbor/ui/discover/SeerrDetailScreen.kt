@@ -1,5 +1,7 @@
 package com.sridhar.harbor.ui.discover
 
+import com.sridhar.harbor.ui.components.fadeInOnce
+
 import com.sridhar.harbor.L10n
 import com.sridhar.harbor.R
 import androidx.compose.ui.res.stringResource
@@ -120,8 +122,8 @@ fun SeerrDetailScreen(type: String, id: Int, onOpen: (String, Int) -> Unit, onBa
         val d = vm.details
         if (d == null) {
             if (vm.error != null) MessageState(stringResource(R.string.couldn_t_load), vm.error, Modifier.align(Alignment.Center), onRetry = { vm.load() })
-            else com.sridhar.harbor.ui.components.JellyLoader(Modifier.align(Alignment.Center))
-        } else LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 48.dp)) {
+            else com.sridhar.harbor.ui.components.SkeletonDetail()
+        } else LazyColumn(Modifier.fillMaxSize().fadeInOnce(), contentPadding = PaddingValues(bottom = 48.dp)) {
             item {
                 Box(Modifier.fillMaxWidth().height(420.dp)) {
                     NetImage(tmdb(d.backdropPath, "w1280"), Modifier.fillMaxSize())

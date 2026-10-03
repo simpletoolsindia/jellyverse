@@ -9,8 +9,11 @@
     <uses-feature android:name="android.hardware.wifi" android:required="false" />
     <uses-permission android:name="com.android.providers.tv.permission.WRITE_EPG_DATA" />
 
+    <!-- TV remotes keep the classic Back key handling (no predictive back gesture on TV). -->
     <application
-        android:banner="@drawable/tv_banner">
+        android:banner="@drawable/tv_banner"
+        android:enableOnBackInvokedCallback="false"
+        tools:replace="android:enableOnBackInvokedCallback">
 
         <!-- The phone shell is not used on TV -->
         <activity android:name=".MainActivity" tools:node="remove" />

@@ -1,0 +1,1 @@
+JellyVerse 2.16.0: app updates now install reliably (works on Xiaomi/Oppo/Vivo, continues after you allow installs, shows errors with Retry). Record radio from the player, live recording timer every second, animated recording notification, recordings in the More menu with played/total time. Smoother loading with skeletons and Android's back gesture preview.
