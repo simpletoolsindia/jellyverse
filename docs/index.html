@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JellyVerse – your whole media universe</title>
+<meta name="description" content="JellyVerse is a native Android and Android TV app for your self-hosted homelab: Jellyfin, Navidrome music and radio, Live TV, Jellyseerr, Sonarr, Radarr, qBittorrent, SSH and an on-device AI.">
+<meta property="og:title" content="JellyVerse – your whole media universe">
+<meta property="og:description" content="One app for your whole homelab: movies, shows, music, radio, live TV, requests, downloads and server health – on phone and TV.">
+<meta property="og:image" content="assets/feature.jpg">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0F1014; --surface: #16181F; --raised: #1F222A; --line: rgba(255,255,255,.08);
+    --blue: #1F80E0; --sky: #06B2FF; --deep: #1766C8; --soft: #8CC0F5;
+    --mint: #3CD771; --amber: #F5B83D; --rose: #E8505B; --dim: #8F98B2; --text: #F3F5FA;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--ink); color: var(--text); font: 16px/1.6 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+
+  /* nav */
+  header { position: sticky; top: 0; z-index: 10; background: rgba(15,16,20,.82); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+  header .wrap { display: flex; align-items: center; gap: 12px; height: 64px; }
+  header img { width: 34px; height: 34px; border-radius: 10px; }
+  header b { font-weight: 900; font-size: 19px; letter-spacing: -.02em; }
+  header nav { margin-left: auto; display: flex; gap: 22px; font-size: 14px; color: var(--dim); }
+  header nav a:hover { color: var(--text); }
+  @media (max-width: 720px) { header nav a:not(.cta) { display: none; } }
+  .cta { background: var(--blue); color: #fff !important; padding: 8px 16px; border-radius: 999px; font-weight: 600; }
+
+  /* hero */
+  .hero { position: relative; padding: 88px 0 72px; overflow: hidden; }
+  .hero::before { content: ""; position: absolute; inset: -20% -10% auto auto; width: 70vw; height: 70vw; max-width: 900px; max-height: 900px;
+    background: radial-gradient(closest-side, rgba(31,128,224,.28), transparent); pointer-events: none; }
+  .hero .wrap { display: grid; grid-template-columns: 1.15fr .85fr; gap: 40px; align-items: center; position: relative; }
+  @media (max-width: 860px) { .hero .wrap { grid-template-columns: minmax(0,1fr); } .hero { padding-top: 48px; } .split { grid-template-columns: minmax(0,1fr); } .dl { padding: 32px 20px; } }
+  .eyebrow { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--soft); background: rgba(31,128,224,.12);
+    border: 1px solid rgba(31,128,224,.3); padding: 6px 12px; border-radius: 999px; }
+  h1 { overflow-wrap: anywhere; font-size: clamp(38px, 7vw, 76px); line-height: 1.02; font-weight: 900; letter-spacing: -.035em; margin: 18px 0 18px; }
+  h1 span { background: linear-gradient(90deg, var(--sky), var(--blue)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: 19px; color: #C9D0E0; max-width: 560px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 14px; font-weight: 600; transition: transform .15s; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: linear-gradient(135deg, var(--blue), var(--deep)); box-shadow: 0 10px 30px rgba(31,128,224,.35); }
+  .btn.ghost { border: 1px solid var(--line); background: var(--surface); }
+  .btn small { display: block; font-weight: 400; font-size: 12px; opacity: .75; }
+  .facts { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 34px; color: var(--dim); font-size: 14px; }
+  .facts b { display: block; color: var(--text); font-size: 22px; font-weight: 800; }
+
+  /* the swimming jellyfish (same mark as the app icon + loader) */
+  .tank { aspect-ratio: 1; max-width: 420px; width: 100%; margin: 0 auto; border-radius: 36%;
+    background: linear-gradient(135deg, #2B8FF2, #1766C8 55%, #0A3F9E); box-shadow: 0 40px 90px rgba(10,63,158,.55), inset 0 0 0 1px rgba(255,255,255,.12);
+    display: grid; place-items: center; position: relative; overflow: hidden; }
+  .tank svg { width: 82%; animation: swim 2.6s ease-in-out infinite; }
+  .bell { transform-origin: 62px 54px; animation: pump 1.3s cubic-bezier(.4,0,.2,1) infinite; }
+  .tent { animation: wave 1.3s ease-in-out infinite; }
+  .tent:nth-child(2) { animation-delay: -.2s } .tent:nth-child(3) { animation-delay: -.4s }
+  .bubble { fill: none; stroke: rgba(255,255,255,.6); stroke-width: 1.1; animation: rise 2.6s linear infinite; }
+  .bubble:nth-of-type(2) { animation-delay: -.9s } .bubble:nth-of-type(3) { animation-delay: -1.7s }
+  @keyframes pump { 0%,100% { transform: scale(1,1) } 25% { transform: scale(1.07,.85) } }
+  @keyframes swim { 0%,100% { transform: translate(-3%, 1%) } 50% { transform: translate(3%, -1%) } }
+  @keyframes wave { 0%,100% { transform: translateY(0) } 50% { transform: translateY(1.6px) } }
+  @keyframes rise { from { transform: translate(0,0); opacity: 0 } 20% { opacity: 1 } to { transform: translate(-14px,-14px); opacity: 0 } }
+  @media (prefers-reduced-motion: reduce) { .tank svg, .bell, .tent, .bubble { animation: none } }
+
+  /* sections */
+  section { padding: 84px 0; border-top: 1px solid var(--line); }
+  .kicker { color: var(--sky); font-weight: 600; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
+  h2 { font-size: clamp(30px, 4.4vw, 46px); font-weight: 900; letter-spacing: -.03em; line-height: 1.1; margin: 10px 0 14px; }
+  .sub { color: var(--dim); max-width: 640px; font-size: 17px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 16px; margin-top: 40px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 26px; transition: border-color .2s, transform .2s; }
+  .card:hover { border-color: rgba(31,128,224,.45); transform: translateY(-3px); }
+  .card .ico { font-size: 28px; line-height: 1; }
+  .card h3 { font-size: 19px; font-weight: 800; margin: 14px 0 8px; letter-spacing: -.01em; }
+  .card ul { list-style: none; color: #B9C1D4; font-size: 14.5px; }
+  .card li { padding: 4px 0 4px 18px; position: relative; }
+  .card li::before { content: ""; position: absolute; left: 0; top: 13px; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 3px 8px; border-radius: 6px; margin-left: 6px; vertical-align: middle; }
+  .tag.new { background: rgba(60,215,113,.15); color: var(--mint); }
+  .tag.tv { background: rgba(6,178,255,.14); color: var(--sky); }
+
+  /* spotlight rows */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
+  @media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+  .panel { background: linear-gradient(160deg, var(--raised), var(--surface)); border: 1px solid var(--line); border-radius: 28px; padding: 28px; }
+  .pin { display: grid; grid-template-columns: repeat(3, 64px); gap: 12px; justify-content: center; margin-top: 18px; }
+  .pin span { height: 64px; border-radius: 50%; background: rgba(255,255,255,.06); display: grid; place-items: center; font-weight: 600; font-size: 22px; }
+  .pin span.on { background: var(--blue); box-shadow: 0 0 0 2px #fff; }
+  .dots { display: flex; gap: 14px; justify-content: center; }
+  .dots i { width: 14px; height: 14px; border-radius: 50%; background: rgba(255,255,255,.15); }
+  .dots i.f { background: var(--sky); }
+  .checks { list-style: none; margin-top: 22px; }
+  .checks li { padding: 9px 0 9px 32px; position: relative; color: #C9D0E0; }
+  .checks li::before { content: "✓"; position: absolute; left: 0; top: 8px; width: 22px; height: 22px; border-radius: 50%; background: rgba(60,215,113,.15); color: var(--mint);
+    display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+  .radio { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px; }
+  .station { flex: 0 0 116px; }
+  .station div { height: 116px; border-radius: 16px; display: grid; place-items: center; font-size: 34px; }
+  .station b { display: block; margin-top: 8px; font-size: 14px; } .station small { color: var(--dim); }
+  .eq { display: flex; gap: 4px; align-items: end; height: 34px; }
+  .eq i { width: 6px; background: #fff; border-radius: 3px; animation: eq 1s ease-in-out infinite; }
+  .eq i:nth-child(2) { animation-delay: -.3s } .eq i:nth-child(3) { animation-delay: -.6s }
+  @keyframes eq { 0%,100% { height: 30% } 50% { height: 100% } }
+
+  /* download */
+  .dl { background: linear-gradient(135deg, #12264A, #0F1014 70%); border: 1px solid rgba(31,128,224,.35); border-radius: 32px; padding: 48px; text-align: center; }
+  .dl .buttons { justify-content: center; }
+  .note { color: var(--dim); font-size: 14px; margin-top: 18px; }
+  code { background: var(--raised); padding: 2px 7px; border-radius: 6px; font-size: .92em; }
+  pre { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; overflow-x: auto; font-size: 14px; margin-top: 18px; text-align: left; }
+
+  footer { border-top: 1px solid var(--line); padding: 40px 0 60px; color: var(--dim); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 18px; justify-content: space-between; }
+  footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <img src="assets/icon.png" alt="">
+    <b>JellyVerse</b>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#tv">TV</a>
+      <a href="#family">Parental control</a>
+      <a href="#build">Build</a>
+      <a class="cta" href="#download">Download</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">📱 Android · 📺 Android TV · 🇮🇳 English &amp; தமிழ்</span>
+      <h1>Your whole <span>media universe</span>, in one app.</h1>
+      <p class="lead">JellyVerse is a native Android and Android TV app for your self-hosted homelab. Movies and shows from Jellyfin, music and FM radio from Navidrome, live TV, requests, downloads and server health: fast, beautiful and yours.</p>
+      <div class="buttons">
+        <a class="btn primary" href="#download">⬇&nbsp; Download for Android <small>Phone · tablet · TV</small></a>
+        <a class="btn ghost" href="https://github.com/simpletoolsindia/jellyverse">★&nbsp; Source on GitHub</a>
+      </div>
+      <div class="facts">
+        <div><b>12+</b>services in one app</div>
+        <div><b>2</b>apps: phone &amp; TV</div>
+        <div><b>0</b>trackers or ads</div>
+        <div><b>100%</b>on-device AI</div>
+      </div>
+    </div>
+    <div class="tank" aria-label="JellyVerse jellyfish logo, animated">
+      <svg viewBox="16 22 76 64" aria-hidden="true">
+        <g stroke="#fff" stroke-width="3.2" stroke-linecap="round" fill="none">
+          <path class="tent" d="M45,45.7 C39,42.5 35.5,50 30,47 C27,45.4 25,46 23.5,47.6" opacity=".8"/>
+          <path class="tent" d="M46.5,54 C42,51.8 39.5,57 35,54.8"/>
+          <path class="tent" d="M45,62.3 C39,59.1 35.5,66.6 30,63.6 C27,62 25,62.6 23.5,64.2" opacity=".8"/>
+        </g>
+        <circle class="bubble" cx="26" cy="40" r="1.6"/><circle class="bubble" cx="22" cy="54" r="1.2"/><circle class="bubble" cx="27" cy="68" r="1.4"/>
+        <g class="bell">
+          <path fill="#fff" d="M45,29 C63,29 80,43 83,54 C80,65 63,79 45,79 Q49,70.7 45,62.3 Q49,54 45,45.7 Q49,37.3 45,29 Z"/>
+          <path d="M53.5,37 C60,37.8 66,41 70,46" stroke="#1F80E0" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <div class="kicker">Everything it does</div>
+    <h2>One home for every service you run.</h2>
+    <p class="sub">Every service is optional. Connect what you use, and JellyVerse only shows the tabs you actually have.</p>
+
+    <div class="grid">
+      <div class="card"><div class="ico">🎬</div><h3>Watch <span class="tag tv">PHONE + TV</span></h3><ul>
+        <li>Cinematic home: spotlight hero, Continue watching, Next up, "New in…" rails</li>
+        <li>Library filters by language, year and genre, plus sort and unwatched/favourites</li>
+        <li>Detail pages with seasons, cast, media info and similar titles</li>
+        <li>Voice: "Play <i>The 6th Day</i> on JellyVerse"</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">▶️</div><h3>A player that just plays</h3><ul>
+        <li>Direct play, or server transcode at 20 / 8 / 4 / 2 Mbps (remembered)</li>
+        <li>Self-healing: remux → software decoder → re-encode before any error</li>
+        <li>Audio-language &amp; subtitle chips, subtitle search &amp; download</li>
+        <li>Skip intro, Up Next, chapters, sleep timer, PiP, lock mode</li>
+        <li>Double-tap ±10 s, hold to fast-forward, swipe for brightness/volume</li>
+        <li>♥ favourite right from the player</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">⬇️</div><h3>Offline downloads</h3><ul>
+        <li>Save the original file to your phone</li>
+        <li>No internet? Home leads with <b>On this device</b> and plays from storage</li>
+        <li>Progress syncs back when you're online again</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">🎧</div><h3>Music <span class="tag tv">PHONE + TV</span></h3><ul>
+        <li>Navidrome / Subsonic with a Spotify-style home and "Made for you" mixes</li>
+        <li>Now Playing in the album's colours, synced lyrics, queue, song radio</li>
+        <li>Background play, lock screen &amp; Android Auto, sleep timer with fade-out</li>
+        <li>Equalizer, bass boost, data saver, 512 MB smart cache</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">🎨</div><h3>Your look <span class="tag new">NEW</span></h3><ul>
+        <li>Five colour themes: Blue Bird, Red Blaster, Emerald Wave, Sunset Gold, Violet Dream</li>
+        <li>Dark, light or follow the system – every theme passes WCAG AA contrast</li>
+        <li>Home as a Spotlight carousel or a full-bleed Billboard with a numbered Top 10</li>
+        <li>Choose which rows appear on Home; Material 3 tab bar with a More menu</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">📻</div><h3>FM &amp; internet radio <span class="tag new">NEW</span></h3><ul>
+        <li>22 Tamil FM stations built in (Sooriyan, Shakthi, AIR, Vasantham…)</li>
+        <li>"Find more Tamil FM" from a live, health-checked directory</li>
+        <li>Save any stream link: MP3/AAC, Icecast, Shoutcast, HLS, .pls, .m3u</li>
+        <li>Share a link from any app → "Save &amp; play"</li>
+        <li>Plays in the background like any song</li>
+        <li>On TV too: pick stations with the remote, ⏮ / ⏭ flips between them</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">📡</div><h3>Live TV <span class="tag tv">PHONE + TV</span></h3><ul>
+        <li>Your M3U / Xtream playlists with XMLTV now &amp; next guide</li>
+        <li>Language, category and favourite filters; "Check channels" hides dead ones</li>
+        <li><b>Refresh from source</b> for lists that rotate stream links</li>
+        <li>Zap with CH+/CH− or ▲▼, even while a channel is still loading</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">📱</div><h3>Phone as TV remote <span class="tag new">NEW</span></h3><ul>
+        <li><b>Scan the TV's QR code</b> – pairs instantly and signs a new TV in to Jellyfin for you</li>
+        <li>"Connect phone" in the TV menu shows the QR any time; or pair with a 4-digit code</li>
+        <li>D-pad, swipe pad, play/pause, volume and channels</li>
+        <li>Type server URLs, passwords and searches from your phone keyboard</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">🎞️</div><h3>Trailer previews <span class="tag new">NEW</span></h3><ul>
+        <li>Rest on a title and its trailer fades in behind it, like Hotstar</li>
+        <li>Muted, looping, never on mobile data</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">🔄</div><h3>In-app updates <span class="tag new">NEW</span></h3><ul>
+        <li>New GitHub release? JellyVerse tells you and updates itself</li>
+        <li>Only installs APKs signed with the same key</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">🍿</div><h3>Discover &amp; Requests</h3><ul>
+        <li>Jellyseerr trending, popular and upcoming, with availability badges</li>
+        <li>Request movies or specific seasons; watch trailers</li>
+        <li>Approve, decline and retry requests; manage users</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">🗂️</div><h3>Sonarr &amp; Radarr</h3><ul>
+        <li>Live queue, 30-day calendar, wanted &amp; missing</li>
+        <li>Manual search with every indexer result, one tap to grab</li>
+        <li>Monitor toggles, season/episode search, disk and health warnings</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">🧲</div><h3>Torrents</h3><ul>
+        <li>qBittorrent &amp; aria2 with a live speed dashboard</li>
+        <li>Filters, batch actions, per-file selection, sequential download</li>
+        <li>Speed limits and turtle mode (also a Quick Settings tile)</li>
+        <li>Tap any magnet link on your phone to send it here</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">🖥️</div><h3>Lab &amp; SSH terminal</h3><ul>
+        <li>CPU, memory, temperature, disks, swap and Docker containers over SSH</li>
+        <li>Nothing to install on the server</li>
+        <li>Real xterm terminal with a key bar, snippets and host-key pinning</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">🛡️</div><h3>Jellyfin admin dashboard</h3><ul>
+        <li>Users &amp; policies, live sessions, libraries, scheduled tasks</li>
+        <li>Activity log, devices, plugins and API keys</li>
+      </ul></div>
+
+      <div class="card"><div class="ico">✨</div><h3>On-device AI</h3><ul>
+        <li>22 on-device models to choose from – Qwen 3, Gemma 4, Phi-4 mini, DeepSeek-R1, MiniCPM, Ministral and more – via Google LiteRT-LM</li>
+        <li><b>Recommended for you</b> and "Because you watched" rows, computed on your phone from your Jellyfin watch history</li>
+        <li>"Play Sooriyan FM", "play songs by Anirudh", "pause the music", "sleep timer 20 min"</li>
+        <li>"What's downloading?", "Play X on TV", "Is the server okay?"</li>
+        <li>Library Doctor fixes messy titles and missing posters</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="family">
+  <div class="wrap split">
+    <div>
+      <div class="kicker">Parental control <span class="tag new">NEW</span></div>
+      <h2>Family-safe by default.</h2>
+      <p class="sub">Set a 4-digit PIN once. Adult titles quietly leave Home and live in their own locked menu.</p>
+      <ul class="checks">
+        <li>R, NC-17, TV-MA, A and 18+ ratings are kept off Home, and episodes inherit their show's rating</li>
+        <li>A PIN-locked 🔞 18+ menu that you can hide completely</li>
+        <li>Lock any single title from its details page</li>
+        <li>The PIN is asked before a single frame plays, even offline</li>
+        <li>Works with touch, the TV remote's D-pad and its number keys</li>
+      </ul>
+    </div>
+    <div class="panel" aria-hidden="true">
+      <div style="text-align:center;font-weight:800;font-size:19px">🔒 Enter your PIN</div>
+      <div style="text-align:center;color:var(--dim);font-size:14px;margin:4px 0 18px">"This title" is protected by parental control.</div>
+      <div class="dots"><i class="f"></i><i class="f"></i><i></i><i></i></div>
+      <div class="pin"><span>1</span><span class="on">2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span style="background:none"></span><span>0</span><span>⌫</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="tv">
+  <div class="wrap split">
+    <div class="panel" aria-hidden="true">
+      <div style="font-weight:800;font-size:13px;letter-spacing:.14em;color:var(--dim)">SPOTLIGHT</div>
+      <div class="radio" style="margin-top:14px">
+        <div class="station"><div style="background:linear-gradient(135deg,#1F80E0,#0A3F9E);box-shadow:0 0 0 3px #fff">🎬</div><b>Now showing</b><small>● auto-advancing</small></div>
+        <div class="station" style="opacity:.6"><div style="background:linear-gradient(135deg,#E8505B,#7A1E2A)">🎭</div><b>Next pick</b><small>D-pad to browse</small></div>
+        <div class="station" style="opacity:.6"><div style="background:linear-gradient(135deg,#3CD771,#11603A)">🍿</div><b>And more</b><small>OK to open</small></div>
+      </div>
+      <div style="margin-top:26px;font-weight:800;font-size:13px;letter-spacing:.14em;color:var(--dim)">RADIO · LIVE</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:12px">
+        <div style="width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,#F5B83D,#B8690F);display:grid;place-items:center"><div class="eq"><i></i><i></i><i></i></div></div>
+        <div><b>Your FM station</b><br><small style="color:var(--mint)">● Live now</small></div>
+      </div>
+    </div>
+    <div>
+      <div class="kicker">JellyVerse TV</div>
+      <h2>Made for the remote.</h2>
+      <p class="sub">A separate, remote-first app for Android TV, Google TV and Fire TV-class devices.</p>
+      <ul class="checks">
+        <li>Animated Spotlight marquee with a poster rail and slowly drifting backdrops</li>
+        <li>The remote works everywhere in the player: seek, audio, subtitles (CC key), quality, volume</li>
+        <li>TV-sized posters with titles and ratings that never hide behind each other</li>
+        <li>Sign in with a Quick Connect code approved from your phone, no typing</li>
+        <li>Music, Live TV and the 18+ menu, plus "Play Next" on the Android TV home screen</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="kicker">Details that matter</div>
+    <h2>Fast, adaptive, and it doesn't feel like a template.</h2>
+    <div class="grid">
+      <div class="card"><div class="ico">📐</div><h3>Every screen size</h3><ul><li>Phones, foldables and tablets</li><li>Side rail in landscape, two-pane music player</li></ul></div>
+      <div class="card"><div class="ico">🪼</div><h3>Alive, not spinning</h3><ul><li>A swimming-jellyfish loader and tide bar</li><li>"Adrift" when you're offline, "Glitch" when a video can't play</li></ul></div>
+      <div class="card"><div class="ico">🌐</div><h3>English &amp; தமிழ்</h3><ul><li>The full UI in Tamil, switchable in-app</li><li>Preferred audio and subtitle languages are remembered</li></ul></div>
+      <div class="card"><div class="ico">🔐</div><h3>Private by design</h3><ul><li>Talks only to your own servers, with no analytics or ads</li><li>Secrets encrypted on the device; API keys instead of passwords</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <div class="dl">
+      <img src="assets/icon.png" alt="" width="84" height="84" style="border-radius:24px">
+      <h2>Get JellyVerse</h2>
+      <p class="sub" style="margin:0 auto">Free and open source. Install the APK on your phone or TV, then point it at your servers.</p>
+      <div class="buttons">
+        <a class="btn primary" href="https://github.com/simpletoolsindia/jellyverse/releases/latest/download/JellyVerse-phone.apk">📱&nbsp; Phone &amp; tablet APK</a>
+        <a class="btn primary" href="https://github.com/simpletoolsindia/jellyverse/releases/latest/download/JellyVerseTV-tv.apk">📺&nbsp; Android TV APK</a>
+        <a class="btn ghost" href="https://github.com/simpletoolsindia/jellyverse/releases">All releases &amp; changelog</a>
+      </div>
+      <p class="note">Android 8.0+ · On a TV, sideload with a file manager or <code>adb install</code>.</p>
+    </div>
+  </div>
+</section>
+
+<section id="build">
+  <div class="wrap">
+    <div class="kicker">For developers</div>
+    <h2>Build it yourself.</h2>
+    <p class="sub">Kotlin 2.1, Jetpack Compose, Media3, Retrofit and Coil. One project with phone and TV flavors, covered by unit, UI and end-to-end tests.</p>
+    <pre>git clone https://github.com/simpletoolsindia/jellyverse.git
+cd jellyverse
+./gradlew assemblePhoneRelease assembleTvRelease     # APKs
+./gradlew testPhoneDebugUnitTest                     # unit tests</pre>
+    <p class="note">Requires JDK 21 and the Android SDK (compile SDK 36). Without a <code>keystore.properties</code>, release builds use the debug key.</p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>JellyVerse · made with ❤️ by <a href="https://simpletools.in" style="color:var(--soft)">simpletools.in</a></div>
+    <div style="display:flex;gap:20px">
+      <a href="https://github.com/simpletoolsindia/jellyverse">GitHub</a>
+      <a href="privacy.html">Privacy policy</a>
+    </div>
+    <div style="flex-basis:100%;font-size:12.5px">Independent app, not affiliated with Jellyfin, Navidrome, Jellyseerr, Sonarr, Radarr or qBittorrent. You bring your own servers and content.</div>
+  </div>
+</footer>
+</body>
+</html>
