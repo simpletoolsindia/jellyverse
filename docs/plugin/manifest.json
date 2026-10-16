@@ -1,0 +1,20 @@
+[
+  {
+    "guid": "c168391b-2082-4c7a-be15-fd148d331157",
+    "name": "JellyVerse",
+    "description": "Parental control and kids accounts for the JellyVerse app, enforced by the server.",
+    "overview": "Keeps JellyVerse parental settings and title locks on the server and applies them to kids accounts in every client.",
+    "owner": "JellyVerse",
+    "category": "General",
+    "versions": [
+      {
+        "version": "1.0.0.0",
+        "changelog": "First release.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/simpletoolsindia/jellyverse/releases/download/plugin-v1.0.0.0/jellyverse-plugin_1.0.0.0.zip",
+        "checksum": "89b67d88ea7a7bdd17e483376b004ea8",
+        "timestamp": "2026-10-16T18:00:00Z"
+      }
+    ]
+  }
+]
