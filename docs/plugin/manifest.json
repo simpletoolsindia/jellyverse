@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.1.2.0",
+        "changelog": "Auto-import: names saved from web links (%20) are decoded; HD / Original leftovers removed.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/simpletoolsindia/jellyverse/releases/download/plugin-v1.1.2.0/jellyverse-plugin_1.1.2.0.zip",
+        "checksum": "cc0e846feeb0b8e53e0752af2984d718",
+        "timestamp": "2026-10-17T15:30:00Z"
+      },
+      {
         "version": "1.1.1.0",
         "changelog": "Auto-import downloads into Movies / TV Shows (turn on in the JellyVerse app).",
         "targetAbi": "12.1.0.0",
@@ -22,6 +30,14 @@
         "sourceUrl": "https://github.com/simpletoolsindia/jellyverse/releases/download/plugin-v1.1.0.0/jellyverse-plugin_1.1.0.0.zip",
         "checksum": "e37e5acaaff5c0fcaae55b7930037d7a",
         "timestamp": "2026-10-16T22:30:00Z"
+      },
+      {
+        "version": "1.0.2.0",
+        "changelog": "Auto-import: names saved from web links (%20) are decoded; HD / Original leftovers removed.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/simpletoolsindia/jellyverse/releases/download/plugin-v1.0.2.0/jellyverse-plugin_1.0.2.0.zip",
+        "checksum": "35da334596ae59f0982353ae89331991",
+        "timestamp": "2026-10-17T15:30:00Z"
       },
       {
         "version": "1.0.1.0",
