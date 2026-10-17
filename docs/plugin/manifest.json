@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.1.3.0",
+        "changelog": "Auto-import files dubbed films under their original title so Jellyfin finds the poster.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/simpletoolsindia/jellyverse/releases/download/plugin-v1.1.3.0/jellyverse-plugin_1.1.3.0.zip",
+        "checksum": "387460e65bccda15033598cfef751030",
+        "timestamp": "2026-10-17T17:00:00Z"
+      },
+      {
         "version": "1.1.2.0",
         "changelog": "Auto-import: names saved from web links (%20) are decoded; HD / Original leftovers removed.",
         "targetAbi": "12.1.0.0",
@@ -30,6 +38,14 @@
         "sourceUrl": "https://github.com/simpletoolsindia/jellyverse/releases/download/plugin-v1.1.0.0/jellyverse-plugin_1.1.0.0.zip",
         "checksum": "e37e5acaaff5c0fcaae55b7930037d7a",
         "timestamp": "2026-10-16T22:30:00Z"
+      },
+      {
+        "version": "1.0.3.0",
+        "changelog": "Auto-import files dubbed films under their original title so Jellyfin finds the poster.",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/simpletoolsindia/jellyverse/releases/download/plugin-v1.0.3.0/jellyverse-plugin_1.0.3.0.zip",
+        "checksum": "f9db94f12001381c1671f1545c90230c",
+        "timestamp": "2026-10-17T17:00:00Z"
       },
       {
         "version": "1.0.2.0",
